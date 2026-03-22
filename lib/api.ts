@@ -23,12 +23,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("unison_token");
-        window.location.href = "/login";
-      }
+    const isAuthRoute = window.location.pathname === "/login";
+
+    if (error.response?.status === 401 && !isAuthRoute) {
+      localStorage.removeItem("unison_token");
+      window.location.href = "/login";
     }
+
     return Promise.reject(error);
   }
 );

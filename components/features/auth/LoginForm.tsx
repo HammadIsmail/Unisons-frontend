@@ -56,6 +56,9 @@ export default function LoginForm() {
                 error.response?.data?.error ||
                 "Invalid email or password";
             setServerError(message);
+            if (message.toLowerCase().includes("pending")) {
+                router.push("/pending");
+            }
         }
     };
 
