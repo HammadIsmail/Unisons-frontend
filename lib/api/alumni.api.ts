@@ -1,0 +1,94 @@
+import api from "@/lib/api";
+import {
+  AlumniProfile,
+  Connection,
+  BatchMate,
+} from "@/types/api.types";
+
+export const getAlumniProfile = async (id: string): Promise<AlumniProfile> => {
+  const { data } = await api.get(`/api/alumni/profile/${id}`);
+  return data;
+};
+
+export const updateAlumniProfile = async (
+  id: string,
+  payload: FormData
+): Promise<{ message: string; profile: AlumniProfile }> => {
+  const { data } = await api.put(`/api/alumni/profile/${id}`, payload, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
+export const getMyNetwork = async (): Promise<Connection[]> => {
+  const { data } = await api.get("/api/alumni/network");
+  return data;
+};
+
+export const connectWithAlumni = async (
+  targetId: string,
+  connectionType: string
+): Promise<{ message: string }> => {
+  const { data } = await api.post(`/api/alumni/connect/${targetId}`, {
+    connection_type: connectionType,
+  });
+  return data;
+};
+
+export const getBatchMates = async (): Promise<BatchMate[]> => {
+  const { data } = await api.get("/api/alumni/batch-mates");
+  return data;
+};
+
+export const addWorkExperience = async (payload: {
+  company_name: string;
+  role: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  employment_type: string;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/alumni/work-experience", payload);
+  return data;
+};
+
+export const updateWorkExperience = async (
+  id: string,
+  payload: {
+    role?: string;
+    end_date?: string;
+    is_current?: boolean;
+  }
+): Promise<{ message: string }> => {
+  const { data } = await api.put(`/api/alumni/work-experience/${id}`, payload);
+  return data;
+};
+
+export const deleteWorkExperience = async (
+  id: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/alumni/work-experience/${id}`);
+  return data;
+};
+
+export const addSkill = async (payload: {
+  skill_name: string;
+  category: string;
+  proficiency_level: string;
+  years_experience?: number;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/alumni/skills", payload);
+  return data;
+};
+
+export const deleteSkill = async (
+  skillId: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/alumni/skills/${skillId}`);
+  return data;
+};
+
+export const getAllSkills = async (): Promise<string[]> => {
+  const { data } = await api.get("/api/skills/all");
+  return data;
+};
