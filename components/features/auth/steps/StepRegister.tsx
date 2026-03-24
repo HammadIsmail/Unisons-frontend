@@ -45,7 +45,8 @@ export default function StepRegister() {
     try {
       await registerUser({
         verified_token: verifiedToken,
-        name: formData.name,
+        username: formData.username,
+        display_name: formData.display_name,
         email: formData.email,
         password: formData.password,
         role: formData.role,
@@ -82,15 +83,41 @@ export default function StepRegister() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-        {/* Name */}
+        {/* Display Name */}
         <div className="space-y-1.5">
-          <Label htmlFor="name">Full Name</Label>
-          <Input {...register("name")} id="name" placeholder="Ahmed Raza" />
-          {errors.name && (
-            <p className="text-xs text-red-600">{errors.name.message}</p>
+          <Label htmlFor="display_name">Display Name</Label>
+          <Input
+            {...register("display_name")}
+            id="display_name"
+            placeholder="Ahmed The Dev"
+          />
+          <p className="text-xs text-gray-400">
+            This is how your name appears across the platform
+          </p>
+          {errors.display_name && (
+            <p className="text-xs text-red-600">{errors.display_name.message}</p>
           )}
         </div>
 
+        {/* Username */}
+        <div className="space-y-1.5">
+          <Label htmlFor="username">Username</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+            <Input
+              {...register("username")}
+              id="username"
+              placeholder="ahmed_h"
+              className="pl-7"
+            />
+          </div>
+          <p className="text-xs text-gray-400">
+            Lowercase letters, numbers, and underscores only
+          </p>
+          {errors.username && (
+            <p className="text-xs text-red-600">{errors.username.message}</p>
+          )}
+        </div>
         {/* Email (prefilled, readonly) */}
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
@@ -136,11 +163,10 @@ export default function StepRegister() {
                 key={r}
                 type="button"
                 onClick={() => setValue("role", r, { shouldValidate: true })}
-                className={`py-2.5 px-4 rounded-lg border text-sm font-medium capitalize transition ${
-                  selectedRole === r
-                    ? "border-green-700 bg-green-50 text-green-800"
-                    : "border-gray-200 text-gray-600 hover:border-gray-300"
-                }`}
+                className={`py-2.5 px-4 rounded-lg border text-sm font-medium capitalize transition ${selectedRole === r
+                  ? "border-green-700 bg-green-50 text-green-800"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  }`}
               >
                 {r}
               </button>

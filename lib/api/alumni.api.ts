@@ -4,17 +4,17 @@ import {
   Connection,
   BatchMate,
 } from "@/types/api.types";
+import { UserByUsername } from "@/types/api.types";
 
-export const getAlumniProfile = async (id: string): Promise<AlumniProfile> => {
-  const { data } = await api.get(`/api/alumni/profile/${id}`);
+export const getMyAlumniProfile = async (): Promise<AlumniProfile> => {
+  const { data } = await api.get("/api/alumni/me");
   return data;
 };
 
 export const updateAlumniProfile = async (
-  id: string,
   payload: FormData
-): Promise<{ message: string; profile: AlumniProfile }> => {
-  const { data } = await api.put(`/api/alumni/profile/${id}`, payload, {
+): Promise<{ message: string }> => {
+  const { data } = await api.put("/api/alumni/me", payload, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
@@ -32,6 +32,27 @@ export const connectWithAlumni = async (
   const { data } = await api.post(`/api/alumni/connect/${targetId}`, {
     connection_type: connectionType,
   });
+  return data;
+};
+
+export const getPendingRequests = async (): Promise<{
+  sender_id: string;
+  sender_name: string;
+  connection_type: string;
+  requested_at: string;
+}[]> => {
+  const { data } = await api.get("/api/alumni/connections/requests");
+  return data;
+};
+
+export const respondToRequest = async (
+  senderId: string,
+  action: "approve" | "reject"
+): Promise<{ message: string }> => {
+  const { data } = await api.patch(
+    `/api/alumni/connections/requests/${senderId}/respond`,
+    { action }
+  );
   return data;
 };
 
@@ -90,5 +111,12 @@ export const deleteSkill = async (
 
 export const getAllSkills = async (): Promise<string[]> => {
   const { data } = await api.get("/api/skills/all");
+  return data;
+};
+
+export const getAlumniByUsername = async (
+  username: string
+): Promise<UserByUsername> => {
+  const { data } = await api.get(`/api/search/user/${username}`);
   return data;
 };

@@ -6,12 +6,14 @@ import { searchAlumni, searchOpportunities } from "@/lib/api/search.api";
 import { getAllSkills } from "@/lib/api/alumni.api";
 import { useDebounce } from "@/hooks/useDebounce";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Tab = "alumni" | "opportunities";
 
 export default function SearchPage() {
   const [tab, setTab] = useState<Tab>("alumni");
   const [query, setQuery] = useState("");
+  const router = useRouter();
 
   // Alumni filters
   const [company, setCompany] = useState("");
@@ -37,7 +39,7 @@ export default function SearchPage() {
     queryKey: ["search", "alumni", { debouncedQuery, company, skill, batchYear, degree }],
     queryFn: () =>
       searchAlumni({
-        name: debouncedQuery || undefined,
+        display_name: debouncedQuery || undefined,
         company: company || undefined,
         skill: skill || undefined,
         batch_year: batchYear || undefined,
@@ -73,22 +75,50 @@ export default function SearchPage() {
       </div>
 
       {/* Search Input */}
-      <div className="relative mb-4">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-          ⌕
-        </span>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            tab === "alumni"
-              ? "Search by name..."
-              : "Search by title..."
-          }
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 text-sm transition"
-        />
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+            {query.startsWith("@") ? "@" : "⌕"}
+          </span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && query.startsWith("@")) {
+                const username = query.slice(1).trim();
+                if (username) router.push(`/alumni/${username}`);
+              }
+            }}
+            placeholder={
+              tab === "alumni"
+                ? "Search by name, or @username for exact lookup..."
+                : "Search by title..."
+            }
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 text-sm transition"
+          />
+        </div>
+
+        {/* Username lookup button — only shows when query starts with @ */}
+        {query.startsWith("@") && tab === "alumni" && (
+          <button
+            onClick={() => {
+              const username = query.slice(1).trim();
+              if (username) router.push(`/alumni/${username}`);
+            }}
+            className="px-4 py-2.5 bg-green-800 hover:bg-green-900 text-white text-sm font-medium rounded-xl transition flex-shrink-0"
+          >
+            Go to profile →
+          </button>
+        )}
       </div>
+
+      {/* Username hint */}
+      {query.startsWith("@") && tab === "alumni" && (
+        <p className="text-xs text-gray-400 mb-4 -mt-2 pl-1">
+          Press Enter or click "Go to profile" to view @{query.slice(1)}'s profile directly
+        </p>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-6 w-fit">
@@ -96,11 +126,10 @@ export default function SearchPage() {
           <button
             key={t}
             onClick={() => { setTab(t); setQuery(""); }}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition ${
-              tab === t
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition ${tab === t
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             {t}
           </button>
@@ -244,17 +273,17 @@ export default function SearchPage() {
                 {alumniResults.map((a) => (
                   <Link
                     key={a.id}
-                    href={`/alumni/${a.id}`}
+                    href={`/alumni/${a.username}`}
                     className="bg-white rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-4 hover:border-green-300 transition block"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-semibold text-sm flex-shrink-0">
-                        {a.name.charAt(0)}
+                        {a.display_name.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                        <p className="text-sm font-medium text-gray-900">{a.display_name}</p>
                         <p className="text-xs text-gray-500">
-                          {a.role} · {a.company}
+                          {a.role} · {a.current_company}
                         </p>
                       </div>
                     </div>
@@ -292,13 +321,12 @@ export default function SearchPage() {
                           {o.company} · {o.location}
                         </p>
                       </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${
-                        o.type === "job"
-                          ? "bg-blue-50 text-blue-700"
-                          : o.type === "internship"
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${o.type === "job"
+                        ? "bg-blue-50 text-blue-700"
+                        : o.type === "internship"
                           ? "bg-green-50 text-green-700"
                           : "bg-amber-50 text-amber-700"
-                      }`}>
+                        }`}>
                         {o.type}
                       </span>
                     </div>

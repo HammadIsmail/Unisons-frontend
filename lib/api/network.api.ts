@@ -16,7 +16,9 @@ export const getShortestPath = async (
   fromId: string,
   toId: string
 ): Promise<ShortestPath> => {
-  const { data } = await api.get(`/api/network/shortest-path/${fromId}/${toId}`);
+  const { data } = await api.get("/api/network/shortest-path", {
+    params: { from: fromId, to: toId },
+  });
   return data;
 };
 

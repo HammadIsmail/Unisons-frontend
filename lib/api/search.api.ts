@@ -1,8 +1,12 @@
 import api from "@/lib/api";
-import { AlumniSearchResult, OpportunitySearchResult } from "@/types/api.types";
+import {
+  AlumniSearchResult,
+  OpportunitySearchResult,
+  UserByUsername,
+} from "@/types/api.types";
 
 export const searchAlumni = async (params: {
-  name?: string;
+  display_name?: string;
   company?: string;
   skill?: string;
   batch_year?: string;
@@ -11,7 +15,6 @@ export const searchAlumni = async (params: {
   const { data } = await api.get("/api/search/alumni", { params });
   return data;
 };
-
 export const searchOpportunities = async (params: {
   title?: string;
   type?: string;
@@ -20,5 +23,12 @@ export const searchOpportunities = async (params: {
   is_remote?: boolean;
 }): Promise<OpportunitySearchResult[]> => {
   const { data } = await api.get("/api/search/opportunities", { params });
+  return data;
+};
+
+export const searchUserByUsername = async (
+  username: string
+): Promise<UserByUsername> => {
+  const { data } = await api.get(`/api/search/user/${username}`);
   return data;
 };

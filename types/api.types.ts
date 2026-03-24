@@ -20,7 +20,8 @@ export interface ResetPasswordResponse {
 // ── Profiles ──────────────────────────────────────
 export interface AlumniProfile {
   id: string;
-  name: string;
+  username: string;
+  display_name: string;
   email: string;
   phone: string;
   bio: string;
@@ -35,11 +36,32 @@ export interface AlumniProfile {
   skills: string[];
   connections_count: number;
   account_status: "approved" | "pending" | "rejected";
+  work_experiences: WorkExperience[];
+  detailed_skills: DetailedSkill[];
+}
+
+export interface WorkExperience {
+  id: string;
+  company_name: string;
+  role: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  employment_type: "full-time" | "part-time" | "freelance";
+}
+
+export interface DetailedSkill {
+  id: string;
+  skill_name: string;
+  category: string;
+  proficiency_level: "beginner" | "intermediate" | "expert";
+  years_experience?: number;
 }
 
 export interface StudentProfile {
   id: string;
-  name: string;
+  username: string;
+  display_name: string;
   email: string;
   phone: string;
   bio: string;
@@ -117,7 +139,7 @@ export interface PaginatedOpportunities {
 // ── Network ───────────────────────────────────────
 export interface Connection {
   id: string;
-  name: string;
+  display_name: string;
   company: string;
   role: string;
   connection_type: "batchmate" | "colleague" | "mentor";
@@ -125,23 +147,30 @@ export interface Connection {
 
 export interface BatchMate {
   id: string;
-  name: string;
+  display_name: string;
   company: string;
   role: string;
 }
 
 export interface Mentor {
   alumni_id: string;
-  name: string;
+  display_name: string;
   domain: string;
   company: string;
 }
 
 export interface CentralityScore {
   alumni_id: string;
-  name: string;
+  display_name: string;
   connections: number;
   centrality_score: number;
+}
+
+export interface ConnectionRequest {
+  sender_id: string;
+  sender_display_name: string;
+  connection_type: string;
+  requested_at: string;
 }
 
 export interface ShortestPath {
@@ -171,7 +200,7 @@ export interface BatchAnalysis {
 // ── Admin ─────────────────────────────────────────
 export interface PendingAccount {
   id: string;
-  name: string;
+  display_name: string;
   email: string;
   role: "alumni" | "student";
   registered_at: string;
@@ -188,14 +217,14 @@ export interface AdminStats {
 
 export interface AdminAlumni {
   id: string;
-  name: string;
+  display_name: string;
   company: string;
   role: string;
 }
 
 export interface AdminStudent {
   id: string;
-  name: string;
+  display_name: string;
   roll_number: string;
   semester: number;
 }
@@ -224,10 +253,13 @@ export interface Notification {
 // ── Search ────────────────────────────────────────
 export interface AlumniSearchResult {
   id: string;
-  name: string;
-  company: string;
+  display_name: string;
+  username: string;
+  email: string;
+  current_company: string;
   role: string;
   skills: string[];
+  batch: string;
 }
 
 export interface OpportunitySearchResult {
@@ -236,5 +268,21 @@ export interface OpportunitySearchResult {
   type: "job" | "internship" | "freelance";
   company: string;
   location: string;
-  apply_link: string;
+  is_remote: boolean;
+  posted_by: string;
+  posted_at: string;
+}
+
+export interface UserByUsername {
+  id: string;
+  username: string;
+  display_name: string;
+  role: string;
+  degree: string;
+  graduation_year: number;
+  company: string;
+  job_role: string;
+  skills: string[];
+  linkedin_url: string;
+  profile_picture?: string;
 }

@@ -88,7 +88,7 @@ export default function NetworkPage() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {a.name}
+                      {a.display_name}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

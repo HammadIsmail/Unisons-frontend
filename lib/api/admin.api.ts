@@ -17,21 +17,18 @@ export const getPendingAccounts = async (): Promise<PendingAccount[]> => {
 };
 
 export const approveAccount = async (
-  id: string,
-  role: string
+  id: string
 ): Promise<{ message: string }> => {
-  const { data } = await api.patch(`/api/admin/approve-account/${id}`, { role });
+  const { data } = await api.patch(`/api/admin/approve-account/${id}`);
   return data;
 };
 
 export const rejectAccount = async (
   id: string,
-  role: string,
-  rejection_reason: string
+  reason: string
 ): Promise<{ message: string }> => {
   const { data } = await api.patch(`/api/admin/reject-account/${id}`, {
-    role,
-    rejection_reason,
+    reason,
   });
   return data;
 };
@@ -55,11 +52,8 @@ export const getAllStudents = async (params: {
 };
 
 export const removeAccount = async (
-  id: string,
-  role: string
+  id: string
 ): Promise<{ message: string }> => {
-  const { data } = await api.delete(`/api/admin/remove-account/${id}`, {
-    data: { role },
-  });
+  const { data } = await api.delete(`/api/admin/remove-account/${id}`);
   return data;
 };

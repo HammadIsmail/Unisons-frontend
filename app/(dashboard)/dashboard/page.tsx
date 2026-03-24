@@ -59,7 +59,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">
-          Welcome back, {profile?.name?.split(" ")[0] ?? "there"} 👋
+          Welcome back, {profile?.display_name?.split(" ")[0] ?? "there"} 👋
         </h1>
         <p className="text-sm text-gray-500 mt-1 capitalize">
           {role} · {profile?.degree} · {profile?.batch}

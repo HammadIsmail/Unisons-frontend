@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAlumniProfile, connectWithAlumni } from "@/lib/api/alumni.api";
+import { getAlumniByUsername, connectWithAlumni } from "@/lib/api/alumni.api";
 import useAuthStore from "@/store/authStore";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +12,7 @@ import Link from "next/link";
 const CONNECTION_TYPES = ["batchmate", "colleague", "mentor"] as const;
 
 export default function AlumniProfilePage() {
-  const { id } = useParams<{ id: string }>();
+  const { username } = useParams<{ username: string }>();
   const { profile, role } = useAuthStore();
   const queryClient = useQueryClient();
   const [selectedType, setSelectedType] = useState<string>("batchmate");
@@ -21,15 +21,19 @@ export default function AlumniProfilePage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const { data: alumni, isLoading } = useQuery({
-    queryKey: ["alumni", id],
-    queryFn: () => getAlumniProfile(id),
+    queryKey: ["alumni", "username", username],
+    queryFn: () => getAlumniByUsername(username),
+    enabled: !!username,
   });
 
   const connectMutation = useMutation({
-    mutationFn: () => connectWithAlumni(id, selectedType),
+    mutationFn: () => {
+      if (!alumni?.id) throw new Error("Alumni ID not found");
+      return connectWithAlumni(alumni.id, selectedType);
+    },
     onSuccess: () => {
       setConnected(true);
-      setSuccessMsg("Connection established successfully.");
+      setSuccessMsg("Connection request sent successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "network"] });
     },
     onError: (error: any) => {
@@ -39,7 +43,7 @@ export default function AlumniProfilePage() {
     },
   });
 
-  const isOwnProfile = profile?.id === id;
+  const isOwnProfile = (profile as any)?.username === username;
 
   if (isLoading) {
     return (
@@ -88,28 +92,29 @@ export default function AlumniProfilePage() {
             {alumni.profile_picture ? (
               <img
                 src={alumni.profile_picture}
-                alt={alumni.name}
+                alt={alumni.display_name}
                 className="w-16 h-16 rounded-full object-cover"
               />
             ) : (
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-bold text-xl">
-                {alumni.name.charAt(0)}
+                {alumni.display_name?.charAt(0)}
               </div>
             )}
             <div>
               <h1 className="text-xl font-semibold text-gray-900">
-                {alumni.name}
+                {alumni.display_name}
               </h1>
-              <p className="text-sm text-gray-500">
-                {alumni.current_role} · {alumni.current_company}
+              <p className="text-sm text-gray-400">@{alumni.username}</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {alumni.job_role} · {alumni.company}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
-                {alumni.degree} · Batch {alumni.batch}
+                {alumni.degree} · Class of {alumni.graduation_year}
               </p>
             </div>
           </div>
 
-          {/* Connect Button — alumni only, not own profile */}
+          {/* Connect — alumni only, not own profile */}
           {role === "alumni" && !isOwnProfile && (
             <div className="flex flex-col gap-2">
               {!connected ? (
@@ -120,7 +125,9 @@ export default function AlumniProfilePage() {
                     className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-600 bg-white"
                   >
                     {CONNECTION_TYPES.map((t) => (
-                      <option key={t} value={t} className="capitalize">{t}</option>
+                      <option key={t} value={t} className="capitalize">
+                        {t}
+                      </option>
                     ))}
                   </select>
                   <Button
@@ -134,7 +141,7 @@ export default function AlumniProfilePage() {
                 </>
               ) : (
                 <span className="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg font-medium">
-                  ✓ Connected
+                  ✓ Request Sent
                 </span>
               )}
             </div>
@@ -164,32 +171,19 @@ export default function AlumniProfilePage() {
           </Alert>
         )}
 
-        {/* Bio */}
-        {alumni.bio && (
-          <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-            {alumni.bio}
-          </p>
-        )}
+        {/* LinkedIn */}
+        {alumni.linkedin_url && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
 
-        {/* Contact row */}
-        <div className="flex items-center gap-4 mt-4 flex-wrap">
-          {alumni.linkedin_url && (
-            
-              <a href={alumni.linkedin_url}
+            <a href={alumni.linkedin_url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-blue-600 hover:text-blue-800 font-medium"
             >
               LinkedIn ↗
             </a>
-          )}
-          <span className="text-xs text-gray-400">
-            {alumni.connections_count} connections
-          </span>
-          <span className="text-xs text-gray-400">
-            Roll: {alumni.roll_number}
-          </span>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Skills */}
@@ -197,7 +191,7 @@ export default function AlumniProfilePage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-3">Skills</h2>
           <div className="flex flex-wrap gap-2">
-            {alumni.skills.map((skill) => (
+            {alumni.skills.map((skill: string) => (
               <span
                 key={skill}
                 className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full font-medium"

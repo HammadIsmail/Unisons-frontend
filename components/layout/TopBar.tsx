@@ -51,12 +51,12 @@ export default function TopBar() {
             <Avatar className="w-8 h-8">
               <AvatarImage src={profile?.profile_picture} />
               <AvatarFallback className="bg-green-100 text-green-800 text-xs font-semibold">
-                {profile?.name ? getInitials(profile.name) : "U"}
+                {profile?.display_name ? getInitials(profile.display_name) : "U"}
               </AvatarFallback>
             </Avatar>
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-gray-900 leading-none">
-                {profile?.name ?? "User"}
+                {profile?.display_name ?? "User"}
               </p>
               <p className="text-xs text-gray-400 capitalize mt-0.5">{role}</p>
             </div>

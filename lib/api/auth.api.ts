@@ -24,7 +24,8 @@ export const verifyOTP = async (
 
 export const registerUser = async (payload: {
   verified_token: string;
-  name: string;
+  username: string;
+  display_name: string;
   email: string;
   password: string;
   role: "alumni" | "student";
@@ -36,7 +37,6 @@ export const registerUser = async (payload: {
   const { data } = await api.post("/api/auth/register", payload);
   return data;
 };
-
 export const loginUser = async (
   email: string,
   password: string

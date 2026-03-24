@@ -13,7 +13,12 @@ export const verifyOTPSchema = z.object({
 
 export const registerSchema = z
   .object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(20, "Username must be under 20 characters")
+      .regex(/^[a-z0-9_]+$/, "Lowercase letters, numbers, and underscores only"),
+    display_name: z.string().min(2, "Display name must be at least 2 characters"),
     email: z.string().email("Enter a valid email"),
     password: z
       .string()

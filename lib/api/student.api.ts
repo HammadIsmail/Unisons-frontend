@@ -1,16 +1,15 @@
 import api from "@/lib/api";
 import { StudentProfile, Mentor } from "@/types/api.types";
 
-export const getStudentProfile = async (id: string): Promise<StudentProfile> => {
-  const { data } = await api.get(`/api/student/profile/${id}`);
+export const getMyStudentProfile = async (): Promise<StudentProfile> => {
+  const { data } = await api.get("/api/student/me");
   return data;
 };
 
 export const updateStudentProfile = async (
-  id: string,
   payload: FormData
 ): Promise<{ message: string }> => {
-  const { data } = await api.put(`/api/student/profile/${id}`, payload, {
+  const { data } = await api.put("/api/student/me", payload, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
