@@ -37,7 +37,7 @@ export const connectWithAlumni = async (
 
 export const getPendingRequests = async (): Promise<{
   sender_id: string;
-  sender_name: string;
+  sender_display_name: string;
   connection_type: string;
   requested_at: string;
 }[]> => {
