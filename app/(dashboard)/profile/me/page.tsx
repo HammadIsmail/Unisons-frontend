@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useEffect } from "react";
 import {
     Select,
     SelectContent,
@@ -22,6 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { UserProfile } from "@/types/api.types";
 
 export default function MyProfilePage() {
     const { role, profile: authProfile, updateProfile } = useAuthStore();
@@ -81,24 +83,27 @@ export default function MyProfilePage() {
     const isCurrentJob = workForm.watch("is_current");
 
     // ── Mutations ──
-    const profileMutation = useMutation({
-        mutationFn: async (data: any) => {
-            const formData = new FormData();
-            Object.entries(data).forEach(([k, v]) => {
-                if (v !== undefined && v !== "") formData.append(k, String(v));
-            });
-            return isAlumni
-                ? updateAlumniProfile(formData)
-                : updateStudentProfile(formData);
-        },
-        onSuccess: () => {
-            setEditMode(false);
-            setSuccessMsg("Profile updated successfully.");
-            queryClient.invalidateQueries({
-                queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-            });
-        },
-    });
+const profileMutation = useMutation({
+    mutationFn: async (data: any) => {
+        return isAlumni
+            ? updateAlumniProfile(data)
+            : updateStudentProfile(data);
+    },
+    onSuccess: async () => {
+        setEditMode(false);
+        setSuccessMsg("Profile updated successfully.");
+
+        await queryClient.invalidateQueries({
+            queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+        });
+
+        const freshProfile = await queryClient.fetchQuery({
+            queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+        });
+
+        updateProfile(freshProfile as UserProfile);
+    },
+});
 
     const skillMutation = useMutation({
         mutationFn: (data: any) =>
@@ -144,13 +149,26 @@ export default function MyProfilePage() {
         setUploadingImage(true);
         try {
             const result = await uploadImage(file);
-            const formData = new FormData();
-            formData.append("profile_picture", result.url);
-            if (isAlumni) {
-                await updateAlumniProfile(formData);
-            } else {
-                await updateStudentProfile(formData);
-            }
+
+if (isAlumni) {
+    await updateAlumniProfile({
+        profile_picture: result.url,
+    });
+} else {
+    await updateStudentProfile({
+        profile_picture: result.url,
+    });
+}
+
+await queryClient.invalidateQueries({
+    queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+});
+
+const freshProfile = await queryClient.fetchQuery({
+    queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+});
+
+updateProfile(freshProfile as UserProfile);
             setSuccessMsg("Profile picture updated.");
             queryClient.invalidateQueries({
                 queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
@@ -416,10 +434,10 @@ export default function MyProfilePage() {
                                     {s.skill_name}
                                 </span>
                                 <span className={`text-xs ${s.proficiency_level === "expert"
-                                        ? "text-green-600"
-                                        : s.proficiency_level === "intermediate"
-                                            ? "text-blue-600"
-                                            : "text-gray-400"
+                                    ? "text-green-600"
+                                    : s.proficiency_level === "intermediate"
+                                        ? "text-blue-600"
+                                        : "text-gray-400"
                                     }`}>
                                     · {s.proficiency_level}
                                 </span>

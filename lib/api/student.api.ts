@@ -7,11 +7,9 @@ export const getMyStudentProfile = async (): Promise<StudentProfile> => {
 };
 
 export const updateStudentProfile = async (
-  payload: FormData
+  payload: any
 ): Promise<{ message: string }> => {
-  const { data } = await api.put("/api/student/me", payload, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await api.put("/api/student/me", payload);
   return data;
 };
 
