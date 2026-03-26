@@ -157,12 +157,12 @@ export default function OpportunitiesPage() {
               {/* Title & Company */}
               <h3 className="font-semibold text-gray-900 mb-1">{opp.title}</h3>
               <p className="text-sm text-gray-500 mb-3">
-                {opp.company} · {opp.location}
+                {opp.company.name} · {opp.location}
               </p>
 
               {/* Footer */}
               <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
-                <span>Posted by {opp.posted_by}</span>
+                <span>Posted by {opp.posted_by.display_name}</span>
                 <span>
                   Deadline:{" "}
                   {new Date(opp.deadline).toLocaleDateString("en-PK", {

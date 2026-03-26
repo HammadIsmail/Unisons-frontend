@@ -37,8 +37,29 @@ export const postOpportunity = async (payload: {
   company_name: string;
   apply_link: string;
   required_skills: string[];
+  media?: File[];
 }): Promise<{ message: string; opportunity_id: string }> => {
-  const { data } = await api.post("/api/opportunities", payload);
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("type", payload.type);
+  formData.append("description", payload.description);
+  formData.append("requirements", payload.requirements);
+  formData.append("location", payload.location);
+  formData.append("is_remote", String(payload.is_remote));
+  formData.append("deadline", payload.deadline);
+  formData.append("company_name", payload.company_name);
+  formData.append("apply_link", payload.apply_link);
+  payload.required_skills.forEach((skill) => {
+    formData.append("required_skills", skill);
+  });
+  if (payload.media) {
+    payload.media.forEach((file) => {
+      formData.append("media", file);
+    });
+  }
+  const { data } = await api.post("/api/opportunities", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 };
 

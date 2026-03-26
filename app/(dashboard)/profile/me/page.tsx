@@ -10,7 +10,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { updateAlumniProfileSchema, updateStudentProfileSchema, addSkillSchema, UpdateAlumniProfileInput, UpdateStudentProfileInput, AddSkillInput } from "@/schemas/profile.schemas";
 import { addWorkExperienceSchema, AddWorkExperienceInput } from "@/schemas/workExperience.schemas";
 import { getAllSkills } from "@/lib/api/alumni.api";
-import { uploadImage } from "@/lib/api/upload.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,25 +84,24 @@ export default function MyProfilePage() {
     // ── Mutations ──
 const profileMutation = useMutation({
     mutationFn: async (data: any) => {
-        return isAlumni
-            ? updateAlumniProfile(data)
-            : updateStudentProfile(data);
+      const formData = new FormData();
+      if (data.bio?.trim()) formData.append("bio", data.bio.trim());
+      if (data.phone?.trim()) formData.append("phone", data.phone.trim());
+      if (isAlumni && data.linkedin_url?.trim()) {
+        formData.append("linkedin_url", data.linkedin_url.trim());
+      }
+      return isAlumni
+        ? updateAlumniProfile(formData)
+        : updateStudentProfile(formData);
     },
-    onSuccess: async () => {
-        setEditMode(false);
-        setSuccessMsg("Profile updated successfully.");
-
-        await queryClient.invalidateQueries({
-            queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-        });
-
-        const freshProfile = await queryClient.fetchQuery({
-            queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-        });
-
-        updateProfile(freshProfile as UserProfile);
+    onSuccess: () => {
+      setEditMode(false);
+      setSuccessMsg("Profile updated successfully.");
+      queryClient.invalidateQueries({
+        queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+      });
     },
-});
+  });
 
     const skillMutation = useMutation({
         mutationFn: (data: any) =>
@@ -143,42 +141,28 @@ const profileMutation = useMutation({
     });
 
     // ── Image upload ──
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setUploadingImage(true);
-        try {
-            const result = await uploadImage(file);
-
-if (isAlumni) {
-    await updateAlumniProfile({
-        profile_picture: result.url,
-    });
-} else {
-    await updateStudentProfile({
-        profile_picture: result.url,
-    });
-}
-
-await queryClient.invalidateQueries({
-    queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-});
-
-const freshProfile = await queryClient.fetchQuery({
-    queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-});
-
-updateProfile(freshProfile as UserProfile);
-            setSuccessMsg("Profile picture updated.");
-            queryClient.invalidateQueries({
-                queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-            });
-        } catch {
-            setSuccessMsg("");
-        } finally {
-            setUploadingImage(false);
-        }
-    };
+const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("profile_picture", file);
+      if (isAlumni) {
+        await updateAlumniProfile(formData);
+      } else {
+        await updateStudentProfile(formData);
+      }
+      setSuccessMsg("Profile picture updated.");
+      queryClient.invalidateQueries({
+        queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+      });
+    } catch {
+      setSuccessMsg("");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
     if (isLoading) {
         return (

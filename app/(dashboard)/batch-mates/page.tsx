@@ -65,7 +65,7 @@ export default function BatchMatesPage() {
                     {b.display_name}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {b.role} · {b.company}
+                    {b.role ?? "—"} · {b.company ?? "—"}
                   </p>
                 </div>
               </div>

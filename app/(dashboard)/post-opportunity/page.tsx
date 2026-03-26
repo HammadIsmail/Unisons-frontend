@@ -100,11 +100,10 @@ export default function PostOpportunityPage() {
                 key={t}
                 type="button"
                 onClick={() => setValue("type", t, { shouldValidate: true })}
-                className={`py-2.5 px-4 rounded-lg border text-sm font-medium capitalize transition ${
-                  selectedType === t
+                className={`py-2.5 px-4 rounded-lg border text-sm font-medium capitalize transition ${selectedType === t
                     ? "border-green-700 bg-green-50 text-green-800"
                     : "border-gray-200 text-gray-600 hover:border-gray-300"
-                }`}
+                  }`}
               >
                 {t}
               </button>
@@ -160,13 +159,11 @@ export default function PostOpportunityPage() {
               <button
                 type="button"
                 onClick={() => setValue("is_remote", !isRemote, { shouldValidate: true })}
-                className={`relative w-11 h-6 rounded-full transition ${
-                  isRemote ? "bg-green-700" : "bg-gray-200"
-                }`}
+                className={`relative w-11 h-6 rounded-full transition ${isRemote ? "bg-green-700" : "bg-gray-200"
+                  }`}
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  isRemote ? "translate-x-5" : "translate-x-0"
-                }`} />
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isRemote ? "translate-x-5" : "translate-x-0"
+                  }`} />
               </button>
               <span className="text-sm text-gray-600">
                 {isRemote ? "Yes" : "No"}
@@ -215,11 +212,10 @@ export default function PostOpportunityPage() {
                 key={skill}
                 type="button"
                 onClick={() => toggleSkill(skill)}
-                className={`text-xs px-2.5 py-1 rounded-full font-medium transition ${
-                  selectedSkills.includes(skill)
+                className={`text-xs px-2.5 py-1 rounded-full font-medium transition ${selectedSkills.includes(skill)
                     ? "bg-green-800 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                  }`}
               >
                 {skill}
               </button>
@@ -262,7 +258,21 @@ export default function PostOpportunityPage() {
             <p className="text-xs text-red-600">{errors.deadline.message}</p>
           )}
         </div>
-
+        {/* Media (optional) */}
+        <div className="space-y-1.5">
+          <Label>Attachments (optional)</Label>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              setValue("media" as any, files);
+            }}
+            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+          />
+          <p className="text-xs text-gray-400">Max 5 files</p>
+        </div>
         {/* Submit */}
         <div className="flex gap-3 pt-2">
           <Button

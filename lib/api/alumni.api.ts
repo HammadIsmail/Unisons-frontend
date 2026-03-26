@@ -12,9 +12,11 @@ export const getMyAlumniProfile = async (): Promise<AlumniProfile> => {
 };
 
 export const updateAlumniProfile = async (
-  payload: any
+  payload: FormData
 ): Promise<{ message: string }> => {
-  const { data } = await api.put("/api/alumni/me", payload);
+  const { data } = await api.put("/api/alumni/me", payload, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 };
 

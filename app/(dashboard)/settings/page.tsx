@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyAlumniProfile, updateAlumniProfile } from "@/lib/api/alumni.api";
 import { getMyStudentProfile, updateStudentProfile } from "@/lib/api/student.api";
-import { uploadImage } from "@/lib/api/upload.api";
 import useAuthStore from "@/store/authStore";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -63,29 +62,28 @@ export default function SettingsPage() {
         },
     });
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setUploading(true);
-        try {
-            const result = await uploadImage(file);
-            const formData = new FormData();
-            formData.append("profile_picture", result.url);
-            if (isAlumni) {
-                await updateAlumniProfile(formData);
-            } else {
-                await updateStudentProfile(formData);
-            }
-            setSuccessMsg("Profile picture updated.");
-            queryClient.invalidateQueries({
-                queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-            });
-        } catch {
-            setSuccessMsg("");
-        } finally {
-            setUploading(false);
-        }
-    };
+const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("profile_picture", file);
+      if (isAlumni) {
+        await updateAlumniProfile(formData);
+      } else {
+        await updateStudentProfile(formData);
+      }
+      setSuccessMsg("Profile picture updated.");
+      queryClient.invalidateQueries({
+        queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+      });
+    } catch {
+      setSuccessMsg("");
+    } finally {
+      setUploading(false);
+    }
+  };
 
     if (isLoading) {
         return (

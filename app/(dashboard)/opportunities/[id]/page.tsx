@@ -7,7 +7,9 @@ import { useRouter, useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
+import { getInitials } from "@/lib/utils";
 
 export default function OpportunityDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -170,16 +172,20 @@ export default function OpportunityDetailPage() {
             < div className="bg-white rounded-xl border border-gray-200 p-6 mb-4" >
                 <h2 className="font-semibold text-gray-900 mb-3">Posted by</h2>
                 <Link
-                    href={`/alumni/${opp.posted_by?.id}`}
+                    href={`/alumni/${opp.posted_by?.username}`}
                     className="flex items-center gap-3 hover:opacity-80 transition"
                 >
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-semibold text-sm">
-                        {opp.posted_by?.name?.charAt(0) ?? "A"}
-                    </div>
+                    <Avatar className="w-8 h-8">
+                        <AvatarImage src={opp.posted_by?.profile_picture} />
+                        <AvatarFallback className="bg-green-100 text-green-800 text-xs font-semibold">
+                            {opp.posted_by?.display_name ? getInitials(opp.posted_by.display_name) : "U"}
+                        </AvatarFallback>
+                    </Avatar>
                     <div>
                         <p className="text-sm font-medium text-gray-900">
-                            {opp.posted_by?.name}
+                            {opp.posted_by?.display_name}
                         </p>
+                        <p className="text-xs text-gray-500">@{opp.posted_by?.username}</p>
                         <p className="text-xs text-gray-500">{opp.posted_by?.role}</p>
                     </div>
                 </Link>

@@ -87,14 +87,33 @@ export interface LoginResponse {
 export interface Opportunity {
   id: string;
   title: string;
-  type: "job" | "internship" | "freelance";
-  company: string;
+
+  // backend mismatch — confirm this!
+  type: string; // safer for now
+
+  description: string;
+  requirements: string;
+
   location: string;
   is_remote: boolean;
   apply_link: string;
-  posted_by: string;
-  posted_at: string;
   deadline: string;
+
+  company: {
+    name: string;
+  };
+
+  required_skills: string[];
+
+  posted_by: {
+    id: string;
+    display_name: string;
+    username: string;
+    profile_picture: string;
+    role: string;
+  };
+
+  media: string[];
 }
 
 export interface OpportunityDetail {
@@ -108,6 +127,7 @@ export interface OpportunityDetail {
   apply_link: string;
   deadline: string;
   status: "open" | "closed";
+  media: string[];
   company: {
     name: string;
     industry: string;
@@ -115,12 +135,13 @@ export interface OpportunityDetail {
   };
   required_skills: string[];
   posted_by: {
+    username: string;
+    display_name: string;
+    profile_picture: string;
     id: string;
-    name: string;
     role: string;
   };
 }
-
 export interface MyOpportunity {
   id: string;
   title: string;
@@ -148,8 +169,9 @@ export interface Connection {
 export interface BatchMate {
   id: string;
   display_name: string;
-  company: string;
-  role: string;
+  company: string | null;
+  role: string | null;
+  connection_type: string | null;
 }
 
 export interface Mentor {
@@ -162,7 +184,7 @@ export interface Mentor {
 export interface CentralityScore {
   alumni_id: string;
   display_name: string;
-  connections: number;
+  connections_count: number;
   centrality_score: number;
 }
 
