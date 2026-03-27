@@ -113,7 +113,29 @@ export default function OpportunityDetailPage() {
                         </a>
                     )}
                 </div>
+                {/* Media Images */}
+                {opp.media && opp.media.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
+                        <h2 className="font-semibold text-gray-900 mb-3">Media</h2>
+                        <div className="grid grid-cols-2 gap-3">
+                            {opp.media.map((url, i) => (
 
+                                <a key={i}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block"
+                                >
+                                    <img
+                                        src={url}
+                                        alt={`Opportunity media ${i + 1}`}
+                                        className="w-full h-40 object-cover rounded-lg hover:opacity-90 transition"
+                                    />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 {/* Deadline */}
                 <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-6 text-sm text-gray-500 flex-wrap">
                     <span>

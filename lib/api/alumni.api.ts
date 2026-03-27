@@ -47,7 +47,7 @@ export const getPendingRequests = async (): Promise<{
 
 export const respondToRequest = async (
   senderId: string,
-  action: "approve" | "reject"
+  action: "accept" | "reject"
 ): Promise<{ message: string }> => {
   const { data } = await api.patch(
     `/api/alumni/connections/requests/${senderId}/respond`,

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import useUIStore from "@/store/uiStore";
 import { getOpportunities } from "@/lib/api/opportunities.api";
-import { getSkillTrends } from "@/lib/api/network.api";
 import { getNotifications } from "@/lib/api/notifications.api";
 import { getMyNetwork } from "@/lib/api/alumni.api";
 import { getMyMentors } from "@/lib/api/student.api";
@@ -18,11 +17,6 @@ export default function DashboardPage() {
   const { data: opportunities, isLoading: oppsLoading } = useQuery({
     queryKey: ["opportunities", { limit: 5 }],
     queryFn: () => getOpportunities({ limit: 5 }),
-  });
-
-  const { data: skillTrends } = useQuery({
-    queryKey: ["network", "skill-trends"],
-    queryFn: getSkillTrends,
   });
 
   const { data: notifications } = useQuery({
@@ -129,17 +123,19 @@ export default function DashboardPage() {
                         {opp.title}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {opp.company?.name} · {opp.location}
-                        {opp.is_remote && " · Remote"}
+                        {opp.company ?? "Company not specified"} ·{" "}
+                        {(!opp.location || opp.location.toLowerCase() === "none")
+                          ? "Location not specified"
+                          : opp.location}
+                        {opp.is_remote === true && " · Remote"}
                       </p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
-                      opp.type === "job"
-                        ? "bg-blue-50 text-blue-700"
-                        : opp.type === "internship"
+                    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${opp.type === "job"
+                      ? "bg-blue-50 text-blue-700"
+                      : opp.type === "internship"
                         ? "bg-green-50 text-green-700"
                         : "bg-amber-50 text-amber-700"
-                    }`}>
+                      }`}>
                       {opp.type}
                     </span>
                   </div>
@@ -150,60 +146,6 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-400 text-center py-6">
               No opportunities yet
             </p>
-          )}
-        </div>
-
-        {/* Skill Trends */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Skill Trends</h2>
-            <Link
-              href="/network"
-              className="text-xs text-green-700 hover:text-green-800 font-medium"
-            >
-              Full analytics →
-            </Link>
-          </div>
-
-          {skillTrends ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  In-Demand Skills
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {skillTrends.most_required_in_opportunities.map((skill) => (
-                    <span
-                      key={skill}
-                      className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  Skill Gaps
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {skillTrends.gap.map((skill) => (
-                    <span
-                      key={skill}
-                      className="text-xs px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full font-medium"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2 animate-pulse">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-6 bg-gray-100 rounded w-full" />
-              ))}
-            </div>
           )}
         </div>
 
@@ -226,9 +168,8 @@ export default function DashboardPage() {
               {notifications.slice(0, 4).map((n) => (
                 <div
                   key={n.id}
-                  className={`py-3 flex items-start gap-3 ${
-                    !n.is_read ? "opacity-100" : "opacity-60"
-                  }`}
+                  className={`py-3 flex items-start gap-3 ${!n.is_read ? "opacity-100" : "opacity-60"
+                    }`}
                 >
                   {!n.is_read && (
                     <div className="w-2 h-2 rounded-full bg-green-600 mt-1.5 flex-shrink-0" />

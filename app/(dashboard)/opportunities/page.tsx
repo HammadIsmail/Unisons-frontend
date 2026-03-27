@@ -66,11 +66,10 @@ export default function OpportunitiesPage() {
             <button
               key={t}
               onClick={() => { setType(t === "all" ? "" : t); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${
-                (t === "all" && !type) || type === t
-                  ? "bg-green-800 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${(t === "all" && !type) || type === t
+                ? "bg-green-800 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
             >
               {t}
             </button>
@@ -97,11 +96,10 @@ export default function OpportunitiesPage() {
             setIsRemote(isRemote === true ? undefined : true);
             setPage(1);
           }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-            isRemote === true
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${isRemote === true
+            ? "bg-blue-600 text-white"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
         >
           Remote only
         </button>
@@ -138,13 +136,12 @@ export default function OpportunitiesPage() {
             >
               {/* Type badge */}
               <div className="flex items-start justify-between gap-2 mb-3">
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  opp.type === "job"
-                    ? "bg-blue-50 text-blue-700"
-                    : opp.type === "internship"
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${opp.type === "job"
+                  ? "bg-blue-50 text-blue-700"
+                  : opp.type === "internship"
                     ? "bg-green-50 text-green-700"
                     : "bg-amber-50 text-amber-700"
-                }`}>
+                  }`}>
                   {opp.type}
                 </span>
                 {opp.is_remote && (
@@ -157,13 +154,33 @@ export default function OpportunitiesPage() {
               {/* Title & Company */}
               <h3 className="font-semibold text-gray-900 mb-1">{opp.title}</h3>
               <p className="text-sm text-gray-500 mb-3">
-                {opp.company.name} · {opp.location}
+                {opp.company} · {opp.location}
               </p>
 
               {/* Footer */}
-              <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
-                <span>Posted by {opp.posted_by.display_name}</span>
-                <span>
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  {opp.posted_by?.profile_picture ? (
+                    <img
+                      src={opp.posted_by.profile_picture}
+                      alt={opp.posted_by.display_name}
+                      className="w-5 h-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-800 text-xs font-semibold flex-shrink-0">
+                      {opp.posted_by?.display_name?.charAt(0) ?? "A"}
+                    </div>
+                  )}
+                  <div className="">
+                    <div className="text-sm text-gray-400">
+                      {opp.posted_by?.display_name ?? "Unknown"}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      @{opp.posted_by?.username ?? "Unknown"}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400">
                   Deadline:{" "}
                   {new Date(opp.deadline).toLocaleDateString("en-PK", {
                     month: "short",

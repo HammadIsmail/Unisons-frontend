@@ -7,15 +7,19 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { studentConnectWithAlumni } from "@/lib/api/student.api";
 import Link from "next/link";
 
-const CONNECTION_TYPES = ["batchmate", "colleague", "mentor"] as const;
+const CONNECTION_TYPES_ALUMNI = ["batchmate", "colleague", "mentor"] as const;
+const CONNECTION_TYPES_STUDENT = ["mentor"] as const;
 
 export default function AlumniProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { profile, role } = useAuthStore();
   const queryClient = useQueryClient();
-  const [selectedType, setSelectedType] = useState<string>("batchmate");
+  const [selectedType, setSelectedType] = useState<string>(
+    role === "student" ? "mentor" : "batchmate"
+  );
   const [connected, setConnected] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -29,6 +33,9 @@ export default function AlumniProfilePage() {
   const connectMutation = useMutation({
     mutationFn: () => {
       if (!alumni?.id) throw new Error("Alumni ID not found");
+      if (role === "student") {
+        return studentConnectWithAlumni(alumni.id);
+      }
       return connectWithAlumni(alumni.id, selectedType);
     },
     onSuccess: () => {
@@ -106,7 +113,7 @@ export default function AlumniProfilePage() {
               </h1>
               <p className="text-sm text-gray-400">@{alumni.username}</p>
               <p className="text-sm text-gray-500 mt-0.5">
-                {alumni.job_role} · {alumni.company}
+                {alumni.job_role ?? "Job role not specified"} · {alumni.company ?? "Company not specified"}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {alumni.degree} · Class of {alumni.graduation_year}
@@ -114,8 +121,8 @@ export default function AlumniProfilePage() {
             </div>
           </div>
 
-          {/* Connect — alumni only, not own profile */}
-          {role === "alumni" && !isOwnProfile && (
+          {/* Connect — alumni and students can connect with alumni, not own profile */}
+          {(role === "alumni" || role === "student") && !isOwnProfile && alumni.role === "alumni" && (
             <div className="flex flex-col gap-2">
               {!connected ? (
                 <>
@@ -124,7 +131,7 @@ export default function AlumniProfilePage() {
                     onChange={(e) => setSelectedType(e.target.value)}
                     className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-600 bg-white"
                   >
-                    {CONNECTION_TYPES.map((t) => (
+                    {(role === "alumni" ? CONNECTION_TYPES_ALUMNI : CONNECTION_TYPES_STUDENT).map((t) => (
                       <option key={t} value={t} className="capitalize">
                         {t}
                       </option>

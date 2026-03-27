@@ -32,6 +32,15 @@ export default function SearchPage() {
 
   const debouncedQuery = useDebounce(query, 300);
 
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const usernameQuery = query.startsWith("@") ? query.slice(1) : "";
+
+  const { data: suggestions } = useQuery({
+    queryKey: ["search", "suggestions", usernameQuery],
+    queryFn: () => searchAlumni({ display_name: usernameQuery }),
+    enabled: query.startsWith("@") && usernameQuery.length > 0 && tab === "alumni",
+  });
+
   const { data: skills } = useQuery({
     queryKey: ["skills"],
     queryFn: getAllSkills,
@@ -81,18 +90,27 @@ export default function SearchPage() {
       <div className="flex gap-2 mb-4">
         <div className="relative flex-1">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-            {query.startsWith("@") ? "@" : "⌕"}
+            {query.startsWith("@") ? "" : "⌕"}
           </span>
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && query.startsWith("@")) {
                 const username = query.slice(1).trim();
-                if (username) router.push(`/alumni/${username}`);
+                if (username) {
+                  router.push(`/alumni/${username}`);
+                  setShowSuggestions(false);
+                }
               }
+              if (e.key === "Escape") setShowSuggestions(false);
             }}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onFocus={() => setShowSuggestions(true)}
             placeholder={
               tab === "alumni"
                 ? "Search by name, or @username for exact lookup..."
@@ -100,9 +118,40 @@ export default function SearchPage() {
             }
             className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 text-sm transition"
           />
+
+          {/* Username suggestions dropdown */}
+          {query.startsWith("@") && showSuggestions && suggestions && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              {suggestions.slice(0, 5).map((s) => (
+                <button
+                  key={s.id}
+                  onMouseDown={() => {
+                    router.push(`/alumni/${s.username}`);
+                    setShowSuggestions(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-left"
+                >
+                  <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-green-800 text-xs font-semibold flex-shrink-0">
+                    {s.display_name?.charAt(0) ?? "A"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {s.display_name}
+                    </p>
+                    <p className="text-xs text-gray-400">@{s.username}</p>
+                  </div>
+                </button>
+              ))}
+              <div className="px-4 py-2 border-t border-gray-100">
+                <p className="text-xs text-gray-400">
+                  Press Enter to go directly to @{query.slice(1)}'s profile
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Username lookup button — only shows when query starts with @ */}
+        {/* Go to profile button */}
         {query.startsWith("@") && tab === "alumni" && (
           <button
             onClick={() => {

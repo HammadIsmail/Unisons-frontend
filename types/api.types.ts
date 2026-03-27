@@ -84,38 +84,27 @@ export interface LoginResponse {
 }
 
 // ── Opportunities ─────────────────────────────────
+export interface OpportunityPoster {
+  id: string;
+  display_name: string;
+  role: string;
+  username: string;
+  profile_picture: string | null;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
-
-  // backend mismatch — confirm this!
-  type: string; // safer for now
-
-  description: string;
-  requirements: string;
-
+  type: "job" | "internship" | "freelance";
+  company: string;
   location: string;
   is_remote: boolean;
   apply_link: string;
+  posted_by: OpportunityPoster;
+  posted_at: string;
   deadline: string;
-
-  company: {
-    name: string;
-  };
-
-  required_skills: string[];
-
-  posted_by: {
-    id: string;
-    display_name: string;
-    username: string;
-    profile_picture: string;
-    role: string;
-  };
-
   media: string[];
 }
-
 export interface OpportunityDetail {
   id: string;
   title: string;

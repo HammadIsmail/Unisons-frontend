@@ -26,11 +26,11 @@ export default function MyNetworkPage() {
   });
 
   const respondMutation = useMutation({
-    mutationFn: ({ senderId, action }: { senderId: string; action: "approve" | "reject" }) =>
+    mutationFn: ({ senderId, action }: { senderId: string; action: "accept" | "reject" }) =>
       respondToRequest(senderId, action),
     onSuccess: (_, vars) => {
       setActionMsg(
-        vars.action === "approve"
+        vars.action === "accept"
           ? "Connection accepted."
           : "Connection declined."
       );
@@ -225,7 +225,7 @@ export default function MyNetworkPage() {
                       onClick={() =>
                         respondMutation.mutate({
                           senderId: r.sender_id,
-                          action: "approve",
+                          action: "accept",
                         })
                       }
                       disabled={respondMutation.isPending}
