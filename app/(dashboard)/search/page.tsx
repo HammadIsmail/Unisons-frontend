@@ -289,6 +289,9 @@ export default function SearchPage() {
                       <div>
                         <p className="text-sm font-medium text-gray-900">{a.display_name}</p>
                         <p className="text-xs text-gray-500">
+                          @{a.username}
+                        </p>
+                        <p className="text-xs text-gray-500">
                           {a.role} · {a.current_company}
                         </p>
                       </div>
