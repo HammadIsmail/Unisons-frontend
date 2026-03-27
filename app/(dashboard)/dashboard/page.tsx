@@ -129,7 +129,7 @@ export default function DashboardPage() {
                         {opp.title}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {opp.company} · {opp.location}
+                        {opp.company?.name} · {opp.location}
                         {opp.is_remote && " · Remote"}
                       </p>
                     </div>

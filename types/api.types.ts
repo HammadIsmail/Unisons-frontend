@@ -274,6 +274,7 @@ export interface Notification {
 
 // ── Search ────────────────────────────────────────
 export interface AlumniSearchResult {
+  profile_picture: string | Blob | undefined;
   id: string;
   display_name: string;
   username: string;

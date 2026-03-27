@@ -7,6 +7,9 @@ import { getAllSkills } from "@/lib/api/alumni.api";
 import { useDebounce } from "@/hooks/useDebounce";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils";
+import { profile } from "console";
 
 type Tab = "alumni" | "opportunities";
 
@@ -277,9 +280,12 @@ export default function SearchPage() {
                     className="bg-white rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-4 hover:border-green-300 transition block"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-semibold text-sm flex-shrink-0">
-                        {a.display_name.charAt(0)}
-                      </div>
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={a.profile_picture} />
+                        <AvatarFallback className="bg-green-100 text-green-800 text-xs font-semibold">
+                          {a.display_name ? getInitials(a.display_name) : "U"}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{a.display_name}</p>
                         <p className="text-xs text-gray-500">
