@@ -6,12 +6,99 @@ import useAuthStore from "@/store/authStore";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { studentConnectWithAlumni } from "@/lib/api/student.api";
+import { getInitials } from "@/lib/utils";
 import Link from "next/link";
+
+import {
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  GraduationCap,
+  Tag,
+  Linkedin,
+  UserPlus,
+  CheckCircle2,
+  Pencil,
+  AlertTriangle,
+  UserSearch,
+  ExternalLink,
+} from "lucide-react";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 const CONNECTION_TYPES_ALUMNI = ["batchmate", "colleague", "mentor"] as const;
 const CONNECTION_TYPES_STUDENT = ["mentor"] as const;
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function ProfileSkeleton() {
+  return (
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+      <Skeleton className="h-4 w-28 rounded" />
+      <Card className="border-border/60 overflow-hidden">
+        <div className="h-24 bg-gradient-to-r from-blue-600/20 to-violet-600/10" />
+        <CardContent className="px-6 pb-6">
+          <div className="flex items-end justify-between -mt-10 mb-5">
+            <Skeleton className="h-20 w-20 rounded-full ring-4 ring-background" />
+            <Skeleton className="h-8 w-28 rounded-xl" />
+          </div>
+          <Skeleton className="h-6 w-40 rounded mb-2" />
+          <Skeleton className="h-4 w-24 rounded mb-3" />
+          <Skeleton className="h-4 w-56 rounded mb-1" />
+          <Skeleton className="h-4 w-44 rounded" />
+        </CardContent>
+      </Card>
+      <Card className="border-border/60">
+        <CardContent className="p-6 space-y-3">
+          <Skeleton className="h-5 w-24 rounded" />
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-7 w-20 rounded-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Section wrapper ───────────────────────────────────────────────────────────
+
+function Section({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="border-border/60">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+            {icon}
+          </div>
+          <h2 className="font-semibold text-foreground text-[15px]">{title}</h2>
+        </div>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function AlumniProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -33,9 +120,7 @@ export default function AlumniProfilePage() {
   const connectMutation = useMutation({
     mutationFn: () => {
       if (!alumni?.id) throw new Error("Alumni ID not found");
-      if (role === "student") {
-        return studentConnectWithAlumni(alumni.id);
-      }
+      if (role === "student") return studentConnectWithAlumni(alumni.id);
       return connectWithAlumni(alumni.id, selectedType);
     },
     onSuccess: () => {
@@ -44,170 +129,191 @@ export default function AlumniProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["alumni", "network"] });
     },
     onError: (error: any) => {
-      setErrorMsg(
-        error.response?.data?.message || "Failed to connect. Try again."
-      );
+      setErrorMsg(error.response?.data?.message || "Failed to connect. Try again.");
     },
   });
 
   const isOwnProfile = (profile as any)?.username === username;
+  const canConnect =
+    (role === "alumni" || role === "student") &&
+    !isOwnProfile &&
+    alumni?.role === "alumni";
 
-  if (isLoading) {
-    return (
-      <div className="max-w-3xl mx-auto animate-pulse space-y-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex gap-4 items-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-gray-100" />
-            <div className="space-y-2 flex-1">
-              <div className="h-5 bg-gray-100 rounded w-1/3" />
-              <div className="h-4 bg-gray-100 rounded w-1/2" />
-            </div>
-          </div>
-          <div className="h-4 bg-gray-100 rounded w-full mb-2" />
-          <div className="h-4 bg-gray-100 rounded w-3/4" />
-        </div>
-      </div>
-    );
-  }
+  const connectionTypes =
+    role === "alumni" ? CONNECTION_TYPES_ALUMNI : CONNECTION_TYPES_STUDENT;
+
+  if (isLoading) return <ProfileSkeleton />;
 
   if (!alumni) {
     return (
-      <div className="max-w-3xl mx-auto text-center py-20">
-        <p className="text-gray-400">Alumni profile not found.</p>
-        <Link href="/search" className="text-green-700 text-sm mt-2 block">
-          ← Back to search
-        </Link>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <Card className="border-border/60 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <UserSearch className="h-6 w-6 text-muted-foreground/50" />
+            </div>
+            <p className="text-[15px] font-semibold text-foreground mb-1">Profile not found</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              This alumni profile doesn't exist or may have been removed.
+            </p>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
+              <Link href="/search">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to search
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* Back */}
       <Link
         href="/search"
-        className="text-sm text-gray-400 hover:text-gray-600 block"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
       >
-        ← Back to search
+        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+        Back to search
       </Link>
 
-      {/* Profile Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            {alumni.profile_picture ? (
-              <img
-                src={alumni.profile_picture}
-                alt={alumni.display_name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-bold text-xl">
-                {alumni.display_name?.charAt(0)}
-              </div>
+      {/* ── Profile hero card ────────────────────────────────────────────── */}
+      <Card className="border-border/60 overflow-hidden bg-gradient-to-b from-blue-400/20 via-transparent to-transparent">
+        <CardContent className="px-6 pb-6 pt-12">
+          {/* Avatar row */}
+          <div className="flex items-end justify-between mb-5 gap-3 flex-wrap">
+            <Avatar className="h-20 w-20 ring-4 ring-blue-100 shadow-md flex-shrink-0">
+              <AvatarImage src={alumni.profile_picture} alt={alumni.display_name} />
+              <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">
+                {alumni.display_name ? getInitials(alumni.display_name) : "A"}
+              </AvatarFallback>
+            </Avatar>
+            {/* Action area */}
+            <div className="flex flex-col gap-2 pb-1 flex-shrink-0">
+              {isOwnProfile ? (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs border-border/60" asChild>
+                  <Link href="/profile/me">
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit Profile
+                  </Link>
+                </Button>
+              ) : canConnect ? (
+                connected ? (
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Request Sent
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {connectionTypes.length > 1 && (
+                      <Select value={selectedType} onValueChange={setSelectedType}>
+                        <SelectTrigger className="h-8 w-[120px] text-xs border-border/60 bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {connectionTypes.map((t) => (
+                            <SelectItem key={t} value={t} className="capitalize text-xs">
+                              {t.charAt(0).toUpperCase() + t.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={() => connectMutation.mutate()}
+                      disabled={connectMutation.isPending}
+                      className="h-8 gap-1.5 cursor-pointer text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      {connectMutation.isPending ? "Connecting…" : "Connect"}
+                    </Button>
+                  </div>
+                )
+              ) : null}
+            </div>
+          </div>
+
+          {/* Name + handle */}
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            {alumni.display_name}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">@{alumni.username}</p>
+
+          {/* Rest of your content remains the same... */}
+
+          {/* Role + company */}
+          <div className="flex items-center gap-3 mt-3 flex-wrap">
+            {(alumni.job_role || alumni.company) && (
+              <span className="flex items-center gap-1.5 text-sm text-foreground">
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                {[alumni.job_role, alumni.company].filter(Boolean).join(" · ")}
+              </span>
             )}
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {alumni.display_name}
-              </h1>
-              <p className="text-sm text-gray-400">@{alumni.username}</p>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {alumni.job_role ?? "Job role not specified"} · {alumni.company ?? "Company not specified"}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {alumni.degree} · Class of {alumni.graduation_year}
-              </p>
-            </div>
           </div>
 
-          {/* Connect — alumni and students can connect with alumni, not own profile */}
-          {(role === "alumni" || role === "student") && !isOwnProfile && alumni.role === "alumni" && (
-            <div className="flex flex-col gap-2">
-              {!connected ? (
-                <>
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-600 bg-white"
-                  >
-                    {(role === "alumni" ? CONNECTION_TYPES_ALUMNI : CONNECTION_TYPES_STUDENT).map((t) => (
-                      <option key={t} value={t} className="capitalize">
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    onClick={() => connectMutation.mutate()}
-                    disabled={connectMutation.isPending}
-                    className="bg-green-800 hover:bg-green-900 text-xs"
-                    size="sm"
-                  >
-                    {connectMutation.isPending ? "Connecting..." : "Connect"}
-                  </Button>
-                </>
-              ) : (
-                <span className="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg font-medium">
-                  ✓ Request Sent
-                </span>
-              )}
+          {/* Degree */}
+          {(alumni.degree || alumni.graduation_year) && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                {[alumni.degree, alumni.graduation_year ? `Class of ${alumni.graduation_year}` : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
             </div>
           )}
 
-          {isOwnProfile && (
-            <Link
-              href="/profile/me"
-              className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"
-            >
-              Edit Profile
-            </Link>
+          {/* Alerts */}
+          {successMsg && (
+            <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+              <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-700 dark:text-blue-300">{successMsg}</p>
+            </div>
           )}
-        </div>
+          {errorMsg && (
+            <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30">
+              <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-rose-700 dark:text-rose-300">{errorMsg}</p>
+            </div>
+          )}
 
-        {/* Alerts */}
-        {successMsg && (
-          <Alert className="mt-4 border-green-200 bg-green-50">
-            <AlertDescription className="text-green-800">
-              {successMsg}
-            </AlertDescription>
-          </Alert>
-        )}
-        {errorMsg && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertDescription>{errorMsg}</AlertDescription>
-          </Alert>
-        )}
+          {/* LinkedIn */}
+          {alumni.linkedin_url && (
+            <>
+              <Separator className="my-4 opacity-60" />
+              <a
+                href={alumni.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                <Linkedin className="h-4 w-4" />
+                LinkedIn Profile
+                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+              </a>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* LinkedIn */}
-        {alumni.linkedin_url && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-
-            <a href={alumni.linkedin_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-            >
-              LinkedIn ↗
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Skills */}
+      {/* ── Skills ──────────────────────────────────────────────────────── */}
       {alumni.skills?.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-3">Skills</h2>
+        <Section icon={<Tag className="h-3.5 w-3.5" />} title="Skills">
           <div className="flex flex-wrap gap-2">
             {alumni.skills.map((skill: string) => (
               <span
                 key={skill}
-                className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full font-medium"
+                className="text-xs px-3 py-1.5 rounded-full font-medium bg-muted text-foreground border border-border/60 hover:bg-muted/80 transition-colors"
               >
                 {skill}
               </span>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
     </div>
