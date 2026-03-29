@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 // ── Auth ──────────────────────────────────────────
 export interface OTPResponse {
   message: string;
@@ -132,6 +134,7 @@ export interface OpportunityDetail {
   };
 }
 export interface MyOpportunity {
+  type: string;
   id: string;
   title: string;
   company: string;

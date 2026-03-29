@@ -7,7 +7,83 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  CheckCircle2,
+  CalendarClock,
+  Building2,
+  Briefcase,
+  GraduationCap,
+  Zap,
+  Loader2,
+  FileText,
+  X,
+} from "lucide-react";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const TYPE_META: Record<string, { badge: string; icon: React.ReactNode }> = {
+  job: {
+    badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
+    icon: <Briefcase className="h-3 w-3" />,
+  },
+  internship: {
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
+    icon: <GraduationCap className="h-3 w-3" />,
+  },
+  freelance: {
+    badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+    icon: <Zap className="h-3 w-3" />,
+  },
+};
+
+function getTypeMeta(type: string) {
+  return TYPE_META[type] ?? TYPE_META.job;
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-PK", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function OppSkeleton() {
+  return (
+    <Card className="border-border/60">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2 flex-1">
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-14 rounded-full" />
+            </div>
+            <Skeleton className="h-5 w-3/5 rounded" />
+            <Skeleton className="h-4 w-2/5 rounded" />
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <Skeleton className="h-8 w-16 rounded-lg" />
+            <Skeleton className="h-8 w-16 rounded-lg" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function MyOpportunitiesPage() {
   const queryClient = useQueryClient();
@@ -26,18 +102,19 @@ export default function MyOpportunitiesPage() {
     mutationFn: deleteOpportunity,
     onSuccess: () => {
       setDeleteId(null);
-      setSuccessMsg("Opportunity deleted.");
+      setSuccessMsg("Opportunity deleted successfully.");
+      setTimeout(() => setSuccessMsg(""), 3000);
       queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) =>
-      updateOpportunity(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: any }) => updateOpportunity(id, payload),
     onSuccess: () => {
       setEditId(null);
-      setSuccessMsg("Opportunity updated.");
+      setSuccessMsg("Opportunity updated successfully.");
+      setTimeout(() => setSuccessMsg(""), 3000);
       queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
@@ -47,177 +124,259 @@ export default function MyOpportunitiesPage() {
     setEditId(opp.id);
     setEditDeadline(opp.deadline?.split("T")[0] ?? "");
     setEditStatus(opp.status);
+    setDeleteId(null);
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">My Opportunities</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {opportunities?.length ?? "—"} posted
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Opportunities</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {opportunities?.length
+              ? `${opportunities.length} posting${opportunities.length !== 1 ? "s" : ""}`
+              : "Manage your posted opportunities"}
           </p>
         </div>
-        <Link
-          href="/post-opportunity"
-          className="px-4 py-2 bg-green-800 hover:bg-green-900 text-white text-sm font-medium rounded-lg transition"
+        <Button
+          className="h-9 gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 flex-shrink-0"
+          asChild
         >
-          + Post New
-        </Link>
+          <Link href="/post-opportunity">
+            <Plus className="h-4 w-4" />
+            Post New
+          </Link>
+        </Button>
       </div>
 
+      {/* ── Success toast ────────────────────────────────────────────────── */}
       {successMsg && (
-        <Alert className="mb-4 border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">{successMsg}</AlertDescription>
-        </Alert>
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm font-medium text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-300">
+          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+          {successMsg}
+        </div>
       )}
 
+      {/* ── List ────────────────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
-              <div className="h-4 bg-gray-100 rounded w-1/2 mb-2" />
-              <div className="h-3 bg-gray-100 rounded w-1/3" />
-            </div>
-          ))}
+          {[1, 2, 3].map((i) => <OppSkeleton key={i} />)}
         </div>
       ) : opportunities?.length ? (
         <div className="space-y-3">
-          {opportunities.map((opp) => (
-            <div
-              key={opp.id}
-              className="bg-white rounded-xl border border-gray-200 p-5"
-            >
-              {/* Edit form */}
-              {editId === opp.id ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-gray-900">{opp.title}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Deadline</Label>
-                      <Input
-                        type="date"
-                        value={editDeadline}
-                        onChange={(e) => setEditDeadline(e.target.value)}
-                        min={new Date().toISOString().split("T")[0]}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Status</Label>
-                      <select
-                        value={editStatus}
-                        onChange={(e) => setEditStatus(e.target.value as "open" | "closed")}
-                        className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-green-600 bg-white"
-                      >
-                        <option value="open">Open</option>
-                        <option value="closed">Closed</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="bg-green-800 hover:bg-green-900"
-                      onClick={() =>
-                        updateMutation.mutate({
-                          id: opp.id,
-                          payload: { deadline: editDeadline, status: editStatus },
-                        })
-                      }
-                      disabled={updateMutation.isPending}
-                    >
-                      {updateMutation.isPending ? "Saving..." : "Save"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditId(null)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                          opp.status === "open"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}>
-                          {opp.status}
-                        </span>
+          {opportunities.map((opp) => {
+            const meta = getTypeMeta(opp.type);
+            const isEditing = editId === opp.id;
+            const isDeleting = deleteId === opp.id;
+            const isExpired = opp.deadline ? new Date(opp.deadline) < new Date() : false;
+
+            return (
+              <Card
+                key={opp.id}
+                className={`border-border/60 transition-all duration-200 ${isEditing ? "border-blue-500/40 shadow-md shadow-blue-500/5" : ""}`}
+              >
+                <CardContent className="p-5">
+                  {isEditing ? (
+                    /* ── Edit form ── */
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground line-clamp-1">{opp.title}</p>
+                        <button
+                          onClick={() => setEditId(null)}
+                          className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       </div>
-                      <h3 className="font-semibold text-gray-900">{opp.title}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {opp.company} · Posted {new Date(opp.posted_at).toLocaleDateString()} ·
-                        Deadline {new Date(opp.deadline).toLocaleDateString()}
-                      </p>
-                    </div>
 
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => openEdit(opp)}
-                        className="text-xs px-3 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-lg transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(opp.id)}
-                        className="text-xs px-3 py-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Deadline
+                          </Label>
+                          <Input
+                            type="date"
+                            value={editDeadline}
+                            onChange={(e) => setEditDeadline(e.target.value)}
+                            min={new Date().toISOString().split("T")[0]}
+                            className="h-9 text-sm border-border/60"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Status
+                          </Label>
+                          <Select value={editStatus} onValueChange={(v) => setEditStatus(v as "open" | "closed")}>
+                            <SelectTrigger className="h-9 text-sm border-border/60">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-                  {/* Delete confirm */}
-                  {deleteId === opp.id && (
-                    <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                      <p className="text-sm text-red-700 mb-2">
-                        Delete this opportunity? This cannot be undone.
-                      </p>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant="destructive"
-                          onClick={() => deleteMutation.mutate(opp.id)}
-                          disabled={deleteMutation.isPending}
+                          className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
+                          onClick={() => updateMutation.mutate({ id: opp.id, payload: { deadline: editDeadline, status: editStatus } })}
+                          disabled={updateMutation.isPending}
                         >
-                          {deleteMutation.isPending ? "Deleting..." : "Yes, delete"}
+                          {updateMutation.isPending
+                            ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+                            : "Save changes"
+                          }
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setDeleteId(null)}
+                          className="h-8 text-xs border-border/60"
+                          onClick={() => setEditId(null)}
                         >
                           Cancel
                         </Button>
                       </div>
                     </div>
+                  ) : (
+                    /* ── Normal view ── */
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          {/* Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${meta.badge}`}>
+                              {meta.icon}
+                              {opp.type}
+                            </span>
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                              opp.status === "open"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                : "bg-muted text-muted-foreground border-border/60"
+                            }`}>
+                              {opp.status}
+                            </span>
+                            {isExpired && (
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800">
+                                Expired
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Title */}
+                          <Link
+                            href={`/opportunities/${opp.id}`}
+                            className="text-[15px] font-semibold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1"
+                          >
+                            {opp.title}
+                          </Link>
+
+                          {/* Meta */}
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {opp.company && (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Building2 className="h-3 w-3" />
+                                {opp.company}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <CalendarClock className={`h-3 w-3 ${isExpired ? "text-rose-500" : ""}`} />
+                              <span className={isExpired ? "text-rose-600 dark:text-rose-400 font-medium" : ""}>
+                                Deadline {formatDate(opp.deadline)}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs gap-1.5 border-border/60"
+                            onClick={() => openEdit(opp)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs gap-1.5 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                            onClick={() => { setDeleteId(opp.id); setEditId(null); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Delete confirm */}
+                      {isDeleting && (
+                        <div className="mt-2 p-4 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="flex items-start gap-2.5 mb-3">
+                            <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Delete this opportunity?</p>
+                              <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">This action cannot be undone.</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="h-8 text-xs gap-1.5"
+                              onClick={() => deleteMutation.mutate(opp.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              {deleteMutation.isPending
+                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting…</>
+                                : <><Trash2 className="h-3.5 w-3.5" /> Yes, delete</>
+                              }
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                              onClick={() => setDeleteId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </>
-              )}
-            </div>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <p className="text-3xl mb-3">📋</p>
-          <p className="text-gray-400 text-sm mb-3">
-            You haven&apos;t posted any opportunities yet
-          </p>
-          <Link
-            href="/post-opportunity"
-            className="text-xs text-green-700 hover:text-green-800 font-medium"
-          >
-            Post your first opportunity →
-          </Link>
-        </div>
+        <Card className="border-border/60 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <FileText className="h-6 w-6 text-muted-foreground/40" />
+            </div>
+            <p className="text-[15px] font-semibold text-foreground mb-1">No opportunities posted yet</p>
+            <p className="text-sm text-muted-foreground mb-5 max-w-xs">
+              Share jobs, internships, or freelance opportunities with the alumni network.
+            </p>
+            <Button
+              className="h-9 gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
+              asChild
+            >
+              <Link href="/post-opportunity">
+                <Plus className="h-4 w-4" />
+                Post your first opportunity
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
     </div>

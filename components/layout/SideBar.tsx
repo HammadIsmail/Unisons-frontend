@@ -30,7 +30,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",     href: "/dashboard",        icon: <LayoutDashboard className="h-4 w-4" />, roles: ["alumni", "student"] },
   { label: "Opportunities", href: "/opportunities",    icon: <Briefcase className="h-4 w-4" />,       roles: ["alumni", "student"] },
-  { label: "Network",       href: "/network",          icon: <Globe className="h-4 w-4" />,           roles: ["alumni", "student"] },
   { label: "Search",        href: "/search",           icon: <Search className="h-4 w-4" />,          roles: ["alumni", "student"] },
   { label: "My Network",    href: "/my-network",       icon: <Network className="h-4 w-4" />,         roles: ["alumni"] },
   { label: "Batch Mates",   href: "/batch-mates",      icon: <Users className="h-4 w-4" />,           roles: ["alumni"] },
