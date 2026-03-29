@@ -36,6 +36,8 @@ export const connectWithAlumni = async (
 };
 
 export const getPendingRequests = async (): Promise<{
+  profile_picture: string | Blob | undefined;
+  display_name: string | undefined;
   sender_id: string;
   sender_display_name: string;
   connection_type: string;

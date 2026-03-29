@@ -1,27 +1,25 @@
 import ForgotPasswordWizard from "@/components/features/auth/ForgotPasswordWizard";
+import { AuthShell } from "@/components/features/auth/AuthShell";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-
-        <div className="mb-8 text-center">
-          <span className="text-2xl font-bold text-green-800 tracking-tight">
-            UNISON
-          </span>
-        </div>
-
-        <ForgotPasswordWizard />
-
-        <p className="mt-6 text-center text-sm text-gray-500">
+    <AuthShell
+      heading="Reset your password"
+      subheading="We'll send you a link to get back in"
+      footer={
+        <p className="text-sm text-muted-foreground">
           Remember your password?{" "}
-          <Link href="/login" className="text-green-700 font-medium hover:text-green-800">
-            Sign in
+          <Link
+            href="/login"
+            className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+          >
+            Back to sign in
           </Link>
         </p>
-
-      </div>
-    </main>
+      }
+    >
+      <ForgotPasswordWizard />
+    </AuthShell>
   );
 }

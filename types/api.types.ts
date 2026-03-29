@@ -148,6 +148,8 @@ export interface PaginatedOpportunities {
 
 // ── Network ───────────────────────────────────────
 export interface Connection {
+  profile_picture: string | Blob | undefined;
+  username: ReactNode;
   id: string;
   display_name: string;
   company: string;
@@ -156,6 +158,8 @@ export interface Connection {
 }
 
 export interface BatchMate {
+  username: any;
+  profile_picture: string | Blob | undefined;
   id: string;
   display_name: string;
   company: string | null;
@@ -164,6 +168,8 @@ export interface BatchMate {
 }
 
 export interface Mentor {
+  username: ReactNode;
+  profile_picture: string | Blob | undefined;
   alumni_id: string;
   display_name: string;
   domain: string;
@@ -286,6 +292,7 @@ export interface OpportunitySearchResult {
 }
 
 export interface UserByUsername {
+  bio: ReactNode;
   id: string;
   username: string;
   display_name: string;

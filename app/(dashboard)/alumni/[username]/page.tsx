@@ -243,7 +243,7 @@ export default function AlumniProfilePage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">@{alumni.username}</p>
 
-          {/* Rest of your content remains the same... */}
+          <p className="text-md mt-4">{alumni.bio}</p>
 
           {/* Role + company */}
           <div className="flex items-center gap-3 mt-3 flex-wrap">

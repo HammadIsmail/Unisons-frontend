@@ -1,18 +1,25 @@
 import LoginForm from "@/components/features/auth/LoginForm";
+import { AuthShell } from "@/components/features/auth/AuthShell";
+import Link from "next/link";
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <span className="text-2xl font-bold text-green-800 tracking-tight">
-            UNISON
-          </span>
-        </div>
-
-        <LoginForm />
-      </div>
-    </main>
+    <AuthShell
+      heading="Welcome back"
+      subheading="Sign in to your UNISON account"
+      footer={
+        <p className="text-sm text-muted-foreground">
+          Don't have an account?{" "}
+          <Link
+            href="/register"
+            className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+          >
+            Create one
+          </Link>
+        </p>
+      }
+    >
+      <LoginForm />
+    </AuthShell>
   );
 }
