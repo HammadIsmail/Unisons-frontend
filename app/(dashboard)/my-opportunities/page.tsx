@@ -32,6 +32,7 @@ import {
   FileText,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -91,19 +92,26 @@ export default function MyOpportunitiesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editDeadline, setEditDeadline] = useState("");
   const [editStatus, setEditStatus] = useState<"open" | "closed">("open");
-  const [successMsg, setSuccessMsg] = useState("");
 
   const { data: opportunities, isLoading } = useQuery({
     queryKey: ["my-opportunities"],
     queryFn: getMyOpportunities,
   });
 
+  const flash = (msg: string) => {
+    toast.success(msg, {
+      action: {
+        label: "OK",
+        onClick: () => {},
+      },
+    })
+  };
+
   const deleteMutation = useMutation({
     mutationFn: deleteOpportunity,
     onSuccess: () => {
       setDeleteId(null);
-      setSuccessMsg("Opportunity deleted successfully.");
-      setTimeout(() => setSuccessMsg(""), 3000);
+      flash("Opportunity deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
@@ -113,8 +121,7 @@ export default function MyOpportunitiesPage() {
     mutationFn: ({ id, payload }: { id: string; payload: any }) => updateOpportunity(id, payload),
     onSuccess: () => {
       setEditId(null);
-      setSuccessMsg("Opportunity updated successfully.");
-      setTimeout(() => setSuccessMsg(""), 3000);
+      flash("Opportunity updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
@@ -150,14 +157,6 @@ export default function MyOpportunitiesPage() {
           </Link>
         </Button>
       </div>
-
-      {/* ── Success toast ────────────────────────────────────────────────── */}
-      {successMsg && (
-        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm font-medium text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-300">
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-          {successMsg}
-        </div>
-      )}
 
       {/* ── List ────────────────────────────────────────────────────────── */}
       {isLoading ? (

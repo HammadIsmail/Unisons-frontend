@@ -31,6 +31,7 @@ import {
   Linkedin, Phone, Network, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -72,9 +73,9 @@ function SectionHeader({
 }
 
 const PROFICIENCY_META: Record<string, { badge: string }> = {
-  expert:       { badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
+  expert: { badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
   intermediate: { badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800" },
-  beginner:     { badge: "bg-muted text-muted-foreground border-border/60" },
+  beginner: { badge: "bg-muted text-muted-foreground border-border/60" },
 };
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
@@ -157,8 +158,12 @@ export default function MyProfilePage() {
   const isCurrentJob = workForm.watch("is_current");
 
   const flash = (msg: string) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(""), 3000);
+    toast.success(msg, {
+      action: {
+        label: "OK",
+        onClick: () => {},
+      },
+    })
   };
 
   const profileMutation = useMutation({
@@ -539,11 +544,10 @@ export default function MyProfilePage() {
                   onClick={() => workForm.setValue("is_current", !isCurrentJob)}
                   className="flex items-center gap-2 group"
                 >
-                  <div className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${
-                    isCurrentJob
+                  <div className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${isCurrentJob
                       ? "bg-blue-600 border-blue-600"
                       : "border-border/60 group-hover:border-border"
-                  }`}>
+                    }`}>
                     {isCurrentJob && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">

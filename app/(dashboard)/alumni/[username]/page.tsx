@@ -20,6 +20,7 @@ import {
 import { studentConnectWithAlumni } from "@/lib/api/student.api";
 import { getInitials } from "@/lib/utils";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import {
   ArrowLeft,
@@ -34,6 +35,7 @@ import {
   AlertTriangle,
   UserSearch,
   ExternalLink,
+  User,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -233,7 +235,21 @@ export default function AlumniProfilePage() {
                     </Button>
                   </div>
                 )
-              ) : null}
+              ) : <Button
+                onClick={() =>
+                  toast.error("You can only connect with alumni", {
+                    action: {
+                      label: "OK",
+                      onClick: () => { },
+                    },
+                  })
+                }
+                size="sm"
+                className="h-8 gap-1.5 text-xs bg-blue-600 text-white shadow-sm shadow-blue-600/20 hover:bg-blue-600"
+              >
+                <User className="h-3.5 w-3.5" />
+                Student
+              </Button>}
             </div>
           </div>
 

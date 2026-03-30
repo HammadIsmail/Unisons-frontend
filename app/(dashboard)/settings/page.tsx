@@ -17,6 +17,7 @@ import {
   Camera, Loader2, CheckCircle2, User, AtSign, Mail,
   FileText, Phone, Linkedin, Lock, AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -137,8 +138,12 @@ export default function SettingsPage() {
   }, [profile]);
 
   const flash = (msg: string) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(""), 3000);
+    toast.success(msg, {
+      action: {
+        label: "OK",
+        onClick: () => {},
+      },
+    })
   };
 
   const updateMutation = useMutation({

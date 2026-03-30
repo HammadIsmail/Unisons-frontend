@@ -171,7 +171,13 @@ export default function PostOpportunityPage() {
                   </button>
                 ))}
               </div>
-              <FieldError message={errors.type?.message} />
+              <FieldError
+                message={
+                  errors.type?.message === 'Invalid option: expected one of "job"|"internship"|"freelance"'
+                    ? "Please pick a type"
+                    : errors.type?.message
+                }
+              />
             </div>
 
             {/* Title */}
@@ -230,13 +236,11 @@ export default function PostOpportunityPage() {
                     onClick={() => setValue("is_remote", !isRemote, { shouldValidate: true })}
                     role="switch"
                     aria-checked={isRemote}
-                    className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
-                      isRemote ? "bg-blue-600" : "bg-muted border border-border/60"
-                    }`}
+                    className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${isRemote ? "bg-blue-600" : "bg-muted border border-border/60"
+                      }`}
                   >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                      isRemote ? "translate-x-5" : "translate-x-0"
-                    }`} />
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${isRemote ? "translate-x-5" : "translate-x-0"
+                      }`} />
                   </button>
                   <span className={`text-sm font-medium transition-colors ${isRemote ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
                     <span className="flex items-center gap-1.5">
@@ -297,9 +301,8 @@ export default function PostOpportunityPage() {
           <CardContent className="p-6">
             <SectionLabel icon={<Tag className="h-3.5 w-3.5" />}>Required Skills</SectionLabel>
 
-            <div className={`flex flex-wrap gap-2 p-4 border rounded-xl min-h-[56px] transition-all ${
-              errors.required_skills ? "border-rose-400" : "border-border/60"
-            }`}>
+            <div className={`flex flex-wrap gap-2 p-4 border rounded-xl min-h-[56px] transition-all ${errors.required_skills ? "border-rose-400" : "border-border/60"
+              }`}>
               {skills?.map((skill) => {
                 const active = selectedSkills.includes(skill);
                 return (

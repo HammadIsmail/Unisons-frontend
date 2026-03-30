@@ -3,6 +3,7 @@ import "./globals.css";
 import Providers from "@/components/layout/Providers";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { Toaster } from "sonner";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -21,6 +22,7 @@ export default function RootLayout({
       <body>
         <Providers>
           {children}
+          <Toaster position="top-center"/>
         </Providers>
       </body>
     </html>
