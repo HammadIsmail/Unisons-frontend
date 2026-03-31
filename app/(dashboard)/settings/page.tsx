@@ -104,7 +104,7 @@ function SettingsSkeleton() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const { role } = useAuthStore();
+  const { role, updateProfile } = useAuthStore();
   const queryClient = useQueryClient();
   const isAlumni = role === "alumni";
   const [successMsg, setSuccessMsg] = useState("");
@@ -134,8 +134,9 @@ export default function SettingsPage() {
       setBio(p?.bio ?? "");
       setPhone(p?.phone ?? "");
       setLinkedinUrl(p?.linkedin_url ?? "");
+      updateProfile(p);
     }
-  }, [profile]);
+  }, [profile, p, updateProfile]);
 
   const flash = (msg: string) => {
     toast.success(msg, {

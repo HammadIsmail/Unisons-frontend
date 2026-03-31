@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/alumni.api";
 import { getMyStudentProfile, updateStudentProfile, addStudentSkill } from "@/lib/api/student.api";
 import useAuthStore from "@/store/authStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -110,7 +110,7 @@ function ProfileSkeleton() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function MyProfilePage() {
-  const { role } = useAuthStore();
+  const { role, updateProfile } = useAuthStore();
   const queryClient = useQueryClient();
   const [editMode, setEditMode] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
@@ -134,6 +134,12 @@ export default function MyProfilePage() {
 
   const profile = isAlumni ? alumniProfile : studentProfile;
   const isLoading = isAlumni ? alumniLoading : studentLoading;
+
+  useEffect(() => {
+    if (profile) {
+      updateProfile(profile as any);
+    }
+  }, [profile, updateProfile]);
 
   const { data: allSkills } = useQuery({
     queryKey: ["skills"],
