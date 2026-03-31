@@ -224,6 +224,7 @@ export interface PendingAccount {
   email: string;
   role: "alumni" | "student";
   registered_at: string;
+  student_card_url?: string;
 }
 
 export interface AdminStats {
@@ -262,12 +263,23 @@ export interface PaginatedAdminStudents {
 }
 
 // ── Notifications ─────────────────────────────────
+export type NotificationType =
+  | "connection_request"
+  | "connection_accepted"
+  | "account_approved"
+  | "account_rejected"
+  | "new_opportunity";
+
 export interface Notification {
   id: string;
   message: string;
-  type: "account_approval" | "new_opportunity" | "connection_request";
+  type: NotificationType;
   created_at: string;
   is_read: boolean;
+  sender_username?: string | null;
+  sender_display_name?: string | null;
+  sender_profile_picture?: string | null;
+  reference_link?: string | null;
 }
 
 // ── Search ────────────────────────────────────────

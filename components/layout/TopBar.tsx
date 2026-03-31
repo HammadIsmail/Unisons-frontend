@@ -4,10 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import useAuthStore from "@/store/authStore";
-import useUIStore from "@/store/uiStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { getInitials } from "@/lib/utils";
+import { useNotifications } from "@/hooks/useNotifications";
 
 import {
   Bell,
@@ -41,7 +41,7 @@ export default function TopBar() {
   const router = useRouter();
   const pathname = usePathname();
   const { profile, role, clearAuth } = useAuthStore();
-  const { notificationCount } = useUIStore();
+  const { notificationCount } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

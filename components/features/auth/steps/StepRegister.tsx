@@ -33,7 +33,9 @@ import {
   Users,
   CalendarDays,
   Layers,
+  IdCard,
 } from "lucide-react";
+import { StudentCardUpload } from "@/components/layout/StudentCardUpload";
 
 const DEGREES = ["BSCS", "BSIT", "BSSE", "BSEE", "BSME", "BSCE", "MBA", "MS", "PhD"];
 
@@ -69,6 +71,8 @@ export default function StepRegister() {
   const { email, verifiedToken, reset } = useRegistrationStore();
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [studentCardFile, setStudentCardFile] = useState<File | null>(null);
+  const [studentCardError, setStudentCardError] = useState("");
 
   const {
     register,
@@ -76,15 +80,34 @@ export default function StepRegister() {
     watch,
     setValue,
     formState: { errors, isSubmitting },
+    trigger, // Add this to manually trigger validation
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email },
+    mode: "onChange", // Add this to validate on change
   });
 
   const selectedRole = watch("role");
 
   const onSubmit = async (formData: RegisterInput) => {
+    // Clear previous errors
     setServerError("");
+    setStudentCardError("");
+    
+    // Manually trigger form validation first
+    const isValid = await trigger();
+    
+    if (!isValid) {
+      console.log("Form validation failed:", errors);
+      return;
+    }
+    
+    // Check student card after form validation
+    if (!studentCardFile) {
+      setStudentCardError("Please upload your student or alumni card.");
+      return;
+    }
+    
     try {
       await registerUser({
         verified_token: verifiedToken,
@@ -97,12 +120,38 @@ export default function StepRegister() {
         degree: formData.degree,
         graduation_year: formData.graduation_year,
         semester: formData.semester,
+        student_card: studentCardFile,
       });
       reset();
       router.push("/pending");
     } catch (error: any) {
-      setServerError(error.response?.data?.message || "Registration failed. Please try again.");
+      console.error("Registration error:", error);
+      
+      // Check if it's a validation error from the API
+      if (error.response?.data?.errors) {
+        // Handle field-specific errors from API
+        const apiErrors = error.response.data.errors;
+        Object.keys(apiErrors).forEach((field) => {
+          // You might want to set these errors in react-hook-form
+          console.log(`${field}: ${apiErrors[field]}`);
+        });
+        setServerError(apiErrors.message || "Please check your input and try again.");
+      } else {
+        setServerError(
+          error.response?.data?.message || "Registration failed. Please try again."
+        );
+      }
     }
+  };
+
+  // Helper to handle degree selection with validation
+  const handleDegreeChange = (value: string) => {
+    setValue("degree", value, { shouldValidate: true });
+  };
+
+  // Helper to handle semester selection with validation
+  const handleSemesterChange = (value: string) => {
+    setValue("semester", parseInt(value), { shouldValidate: true });
   };
 
   return (
@@ -249,7 +298,7 @@ export default function StepRegister() {
         {/* ── Degree ── */}
         <div className="space-y-1.5">
           <FieldLabel icon={<GraduationCap className="h-3.5 w-3.5" />}>Degree</FieldLabel>
-          <Select onValueChange={(val) => setValue("degree", val, { shouldValidate: true })}>
+          <Select onValueChange={handleDegreeChange}>
             <SelectTrigger className={`h-10 text-sm ${errors.degree ? "border-rose-400" : "border-border/60"}`}>
               <SelectValue placeholder="Select your degree" />
             </SelectTrigger>
@@ -284,7 +333,7 @@ export default function StepRegister() {
         {selectedRole === "student" && (
           <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
             <FieldLabel icon={<Layers className="h-3.5 w-3.5" />}>Current Semester</FieldLabel>
-            <Select onValueChange={(val) => setValue("semester", parseInt(val), { shouldValidate: true })}>
+            <Select onValueChange={handleSemesterChange}>
               <SelectTrigger className={`h-10 text-sm ${errors.semester ? "border-rose-400" : "border-border/60"}`}>
                 <SelectValue placeholder="Select semester" />
               </SelectTrigger>
@@ -297,7 +346,12 @@ export default function StepRegister() {
             <FieldError message={errors.semester?.message} />
           </div>
         )}
-
+        <StudentCardUpload
+          file={studentCardFile}
+          error={studentCardError}
+          onFileChange={(file) => { setStudentCardFile(file); setStudentCardError(""); }}
+          onRemove={() => setStudentCardFile(null)}
+        />
         {/* ── Submit ── */}
         <Button
           type="submit"
