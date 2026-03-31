@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import useUIStore from "@/store/uiStore";
 import { getOpportunities } from "@/lib/api/opportunities.api";
-import { getNotifications } from "@/lib/api/notifications.api";
 import { getMyNetwork } from "@/lib/api/alumni.api";
 import { getMyMentors } from "@/lib/api/student.api";
 import Link from "next/link";
@@ -35,6 +34,7 @@ import {
   Info,
   Sparkles,
 } from "lucide-react";
+import { useNotifications } from "@/hooks/useNotifications";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -140,18 +140,13 @@ function NotificationSkeleton() {
 
 export default function DashboardPage() {
   const { profile, role } = useAuthStore();
-  const { setNotificationCount } = useUIStore();
 
   const { data: opportunities, isLoading: oppsLoading } = useQuery({
     queryKey: ["opportunities", { limit: 5 }],
     queryFn: () => getOpportunities({ limit: 5 }),
   });
 
-  const { data: notifications } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: getNotifications,
-    refetchInterval: 30000,
-  });
+  const { notifications } = useNotifications();
 
   const { data: network } = useQuery({
     queryKey: ["alumni", "network"],
@@ -164,13 +159,6 @@ export default function DashboardPage() {
     queryFn: getMyMentors,
     enabled: role === "student",
   });
-
-  useEffect(() => {
-    if (notifications) {
-      const unread = notifications.filter((n) => !n.is_read).length;
-      setNotificationCount(unread);
-    }
-  }, [notifications, setNotificationCount]);
 
   const unreadCount = notifications?.filter((n) => !n.is_read).length ?? 0;
   const firstName = profile?.display_name?.split(" ")[0] ?? "there";
@@ -474,8 +462,8 @@ export default function DashboardPage() {
                     >
                       {/* Icon bubble */}
                       <div className={`h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${!n.is_read
-                          ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/25"
-                          : "bg-muted text-muted-foreground"
+                        ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/25"
+                        : "bg-muted text-muted-foreground"
                         }`}>
                         {getNotificationIcon(n.message)}
                       </div>

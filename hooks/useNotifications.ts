@@ -20,14 +20,18 @@ export function useNotifications() {
   const queryClient = useQueryClient();
 
   // ── Fetch history on load ──
-  const { isLoading } = useQuery({
+  const { data: fetchedNotifications, isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: getNotifications,
     enabled: isAuthenticated,
-    onSuccess: (data: Notification[]) => {
-      setNotifications(data);
-    },
-  } as any);
+  });
+
+  // ── Sync fetched data into Zustand ──
+  useEffect(() => {
+    if (fetchedNotifications) {
+      setNotifications(fetchedNotifications);
+    }
+  }, [fetchedNotifications]);
 
   // ── Socket connection ──
   useEffect(() => {
@@ -37,7 +41,6 @@ export function useNotifications() {
 
     socket.on("notification", (newNotification: Notification) => {
       prependNotification(newNotification);
-      // Invalidate so notifications page also updates
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     });
 
@@ -50,11 +53,9 @@ export function useNotifications() {
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
     onMutate: (id: string) => {
-      // Optimistic update
       markReadLocally(id);
     },
     onError: () => {
-      // Refetch on error to restore correct state
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
