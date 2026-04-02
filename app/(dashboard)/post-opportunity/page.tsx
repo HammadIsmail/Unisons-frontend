@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { postOpportunitySchema, PostOpportunityInput } from "@/schemas/opportunity.schemas";
 import { postOpportunity } from "@/lib/api/opportunities.api";
-import { getAllSkills } from "@/lib/api/alumni.api";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -68,13 +67,8 @@ export default function PostOpportunityPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
   const [serverError, setServerError] = useState("");
-
-  const { data: skills } = useQuery({
-    queryKey: ["skills"],
-    queryFn: getAllSkills,
-    staleTime: Infinity,
-  });
 
   const {
     register,
@@ -90,10 +84,21 @@ export default function PostOpportunityPage() {
   const isRemote = watch("is_remote");
   const selectedType = watch("type");
 
-  const toggleSkill = (skill: string) => {
-    const updated = selectedSkills.includes(skill)
-      ? selectedSkills.filter((s) => s !== skill)
-      : [...selectedSkills, skill];
+  const addSkill = () => {
+    const trimmed = skillInput.trim();
+    if (!trimmed) return;
+    if (selectedSkills.includes(trimmed)) {
+      setSkillInput("");
+      return; 
+    }
+    const updated = [...selectedSkills, trimmed];
+    setSelectedSkills(updated);
+    setValue("required_skills", updated, { shouldValidate: true });
+    setSkillInput("");
+  };
+
+  const removeSkill = (skill: string) => {
+    const updated = selectedSkills.filter((s) => s !== skill);
     setSelectedSkills(updated);
     setValue("required_skills", updated, { shouldValidate: true });
   };
@@ -301,35 +306,56 @@ export default function PostOpportunityPage() {
           <CardContent className="p-6">
             <SectionLabel icon={<Tag className="h-3.5 w-3.5" />}>Required Skills</SectionLabel>
 
-            <div className={`flex flex-wrap gap-2 p-4 border rounded-xl min-h-[56px] transition-all ${errors.required_skills ? "border-rose-400" : "border-border/60"
-              }`}>
-              {skills?.map((skill) => {
-                const active = selectedSkills.includes(skill);
-                return (
-                  <button
-                    key={skill}
-                    type="button"
-                    onClick={() => toggleSkill(skill)}
-                    className={`
-                      flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium transition-all duration-150 border
-                      ${active
-                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                        : "bg-muted/60 text-muted-foreground border-border/60 hover:border-border hover:text-foreground"
+            <div className="space-y-4">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 space-y-1.5">
+                  <Input
+                    value={skillInput}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSkill();
                       }
-                    `}
+                    }}
+                    placeholder="Type a skill and press Enter"
+                    className={`h-10 text-sm ${errors.required_skills ? "border-rose-400" : "border-border/60"}`}
+                  />
+                  <FieldError message={errors.required_skills?.message as string} />
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={addSkill}
+                  className="h-10 px-5 bg-muted text-foreground border border-border/60 hover:bg-muted/80 shadow-sm"
+                >
+                  Add
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 min-h-[40px] items-center">
+                {selectedSkills.map((skill) => (
+                  <div
+                    key={skill}
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium transition-all duration-150 border bg-blue-600 text-white border-blue-600 shadow-sm"
                   >
                     {skill}
-                    {active && <X className="h-2.5 w-2.5" />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between mt-2">
-              <FieldError message={errors.required_skills?.message as string} />
+                    <button
+                      type="button"
+                      onClick={() => removeSkill(skill)}
+                      className="hover:bg-white/20 rounded-full p-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {selectedSkills.length === 0 && (
+                  <span className="text-sm text-muted-foreground/70">No skills added yet</span>
+                )}
+              </div>
+              
               {selectedSkills.length > 0 && (
-                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-auto">
-                  {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} selected
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium text-right mt-1">
+                  {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} added
                 </p>
               )}
             </div>
