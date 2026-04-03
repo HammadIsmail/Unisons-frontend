@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import {
   AlertCircle,
   Eye,
@@ -33,42 +32,17 @@ import {
   Users,
   CalendarDays,
   Layers,
-  IdCard,
+  ArrowLeft,
+  CheckCircle2,
 } from "lucide-react";
 import { StudentCardUpload } from "@/components/layout/StudentCardUpload";
+import { motion, AnimatePresence } from "framer-motion";
 
 const DEGREES = ["BSCS", "BSIT", "BSSE", "BSEE", "BSME", "BSCE", "MBA", "MS", "PhD"];
 
-// ── Reusable field components ─────────────────────────────────────────────────
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-1">
-      <AlertCircle className="h-3 w-3 flex-shrink-0" />
-      {message}
-    </p>
-  );
-}
-
-function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] text-muted-foreground/70 mt-1">{children}</p>;
-}
-
-function FieldLabel({ icon, children, htmlFor }: { icon: React.ReactNode; children: React.ReactNode; htmlFor?: string }) {
-  return (
-    <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-      <span className="text-muted-foreground/60">{icon}</span>
-      {children}
-    </Label>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 export default function StepRegister() {
   const router = useRouter();
-  const { email, verifiedToken, reset } = useRegistrationStore();
+  const { email, verifiedToken, reset, setStep } = useRegistrationStore();
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [studentCardFile, setStudentCardFile] = useState<File | null>(null);
@@ -80,29 +54,22 @@ export default function StepRegister() {
     watch,
     setValue,
     formState: { errors, isSubmitting },
-    trigger, // Add this to manually trigger validation
+    trigger,
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email },
-    mode: "onChange", // Add this to validate on change
+    mode: "onChange",
   });
 
   const selectedRole = watch("role");
 
   const onSubmit = async (formData: RegisterInput) => {
-    // Clear previous errors
     setServerError("");
     setStudentCardError("");
     
-    // Manually trigger form validation first
     const isValid = await trigger();
+    if (!isValid) return;
     
-    if (!isValid) {
-      console.log("Form validation failed:", errors);
-      return;
-    }
-    
-    // Check student card after form validation
     if (!studentCardFile) {
       setStudentCardError("Please upload your student or alumni card.");
       return;
@@ -125,245 +92,265 @@ export default function StepRegister() {
       reset();
       router.push("/pending");
     } catch (error: any) {
-      console.error("Registration error:", error);
-      
-      // Check if it's a validation error from the API
-      if (error.response?.data?.errors) {
-        // Handle field-specific errors from API
-        const apiErrors = error.response.data.errors;
-        Object.keys(apiErrors).forEach((field) => {
-          // You might want to set these errors in react-hook-form
-          console.log(`${field}: ${apiErrors[field]}`);
-        });
-        setServerError(apiErrors.message || "Please check your input and try again.");
-      } else {
-        setServerError(
-          error.response?.data?.message || "Registration failed. Please try again."
-        );
-      }
+      setServerError(
+        error.response?.data?.message || "Registration failed. Please try again."
+      );
     }
   };
 
-  // Helper to handle degree selection with validation
-  const handleDegreeChange = (value: string) => {
-    setValue("degree", value, { shouldValidate: true });
-  };
-
-  // Helper to handle semester selection with validation
-  const handleSemesterChange = (value: string) => {
-    setValue("semester", parseInt(value), { shouldValidate: true });
-  };
-
   return (
-    <div className="space-y-5">
-
-      {/* Step header */}
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center ring-1 ring-emerald-500/20 flex-shrink-0">
-          <UserCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-6"
+    >
+      <div className="flex items-center gap-4 p-4 rounded-xl bg-emerald-50/50 border border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30">
+        <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-foreground">Create your account</p>
-          <p className="text-xs text-muted-foreground">Fill in your details to complete registration.</p>
+          <h3 className="text-sm font-bold text-foreground">Email Verified</h3>
+          <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+            Step 3 of 3: Complete your profile to join the community.
+          </p>
         </div>
       </div>
 
-      {/* Server error */}
-      {serverError && (
-        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800">
-          <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-rose-700 dark:text-rose-300">{serverError}</p>
-        </div>
-      )}
+      <AnimatePresence mode="wait">
+        {serverError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30"
+          >
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700 dark:text-red-300 leading-tight">
+              {serverError}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
-        {/* ── Role selector — first so it shapes the rest ── */}
-        <div className="space-y-2">
-          <FieldLabel icon={<Users className="h-3.5 w-3.5" />}>I am a</FieldLabel>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Role Selection */}
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+            <Users className="h-3.5 w-3.5 text-[#0a66c2]" />
+            I am a
+          </Label>
           <div className="grid grid-cols-2 gap-3">
-            {(["alumni", "student"] as const).map((r) => (
+            {(["student", "alumni"] as const).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setValue("role", r, { shouldValidate: true })}
                 className={`
-                  flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-semibold capitalize transition-all duration-150
+                  flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200
                   ${selectedRole === r
-                    ? "border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground bg-background"
+                    ? "border-[#0a66c2] bg-blue-50/50 text-[#0a66c2] ring-4 ring-blue-500/5 shadow-sm"
+                    : "border-border/60 text-muted-foreground hover:border-border hover:bg-muted/30"
                   }
                 `}
               >
-                {r === "alumni"
-                  ? <GraduationCap className="h-4 w-4" />
-                  : <BookOpen className="h-4 w-4" />
-                }
-                {r}
+                {r === "alumni" ? <GraduationCap className="h-6 w-6" /> : <BookOpen className="h-6 w-6" />}
+                <span className="text-sm font-bold capitalize">{r}</span>
               </button>
             ))}
           </div>
-          <FieldError message={errors.role?.message} />
+          {errors.role && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.role.message}</p>}
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-border/50" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Display Name */}
+          <div className="space-y-2">
+            <Label htmlFor="display_name" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+              <UserCircle2 className="h-3.5 w-3.5 text-[#0a66c2]" />
+              Full Name
+            </Label>
+            <Input
+              {...register("display_name")}
+              id="display_name"
+              placeholder="e.g. Hammad Ismail"
+              className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                errors.display_name ? "border-red-400" : ""
+              }`}
+            />
+            {errors.display_name && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.display_name.message}</p>}
+          </div>
 
-        {/* ── Display Name ── */}
-        <div className="space-y-1.5">
-          <FieldLabel icon={<UserCircle2 className="h-3.5 w-3.5" />} htmlFor="display_name">
-            Display Name
-          </FieldLabel>
-          <Input
-            {...register("display_name")}
-            id="display_name"
-            placeholder="Ahmed The Dev"
-            className={`h-10 text-sm ${errors.display_name ? "border-rose-400 focus-visible:ring-rose-500/20" : ""}`}
-          />
-          <FieldHint>This is how your name appears across the platform.</FieldHint>
-          <FieldError message={errors.display_name?.message} />
-        </div>
-
-        {/* ── Username ── */}
-        <div className="space-y-1.5">
-          <FieldLabel icon={<AtSign className="h-3.5 w-3.5" />} htmlFor="username">
-            Username
-          </FieldLabel>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 text-sm select-none">@</span>
+          {/* Username */}
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+              <AtSign className="h-3.5 w-3.5 text-[#0a66c2]" />
+              Username
+            </Label>
             <Input
               {...register("username")}
               id="username"
-              placeholder="ahmed_h"
-              className={`h-10 text-sm pl-7 ${errors.username ? "border-rose-400 focus-visible:ring-rose-500/20" : ""}`}
+              placeholder="hammad_dev"
+              className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                errors.username ? "border-red-400" : ""
+              }`}
             />
+            {errors.username && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.username.message}</p>}
           </div>
-          <FieldHint>Lowercase letters, numbers, and underscores only.</FieldHint>
-          <FieldError message={errors.username?.message} />
         </div>
 
-        {/* ── Email (read-only) ── */}
-        <div className="space-y-1.5">
-          <FieldLabel icon={<Mail className="h-3.5 w-3.5" />} htmlFor="email">
-            Email
-          </FieldLabel>
-          <Input
-            {...register("email")}
-            id="email"
-            type="email"
-            readOnly
-            className="h-10 text-sm bg-muted/50 text-muted-foreground cursor-not-allowed border-border/40"
-          />
-        </div>
-
-        {/* ── Password ── */}
-        <div className="space-y-1.5">
-          <FieldLabel icon={<Lock className="h-3.5 w-3.5" />} htmlFor="password">
+        {/* Password */}
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+            <Lock className="h-3.5 w-3.5 text-[#0a66c2]" />
             Password
-          </FieldLabel>
-          <div className="relative">
+          </Label>
+          <div className="relative group">
             <Input
               {...register("password")}
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Min 8 chars, uppercase, number, special"
-              className={`h-10 text-sm pr-10 ${errors.password ? "border-rose-400 focus-visible:ring-rose-500/20" : ""}`}
+              placeholder="Create a strong password"
+              className={`h-11 pr-10 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                errors.password ? "border-red-400" : ""
+              }`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <FieldError message={errors.password?.message} />
+          {errors.password && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.password.message}</p>}
         </div>
 
-        {/* ── Roll Number ── */}
-        <div className="space-y-1.5">
-          <FieldLabel icon={<Hash className="h-3.5 w-3.5" />} htmlFor="roll_number">
-            Roll Number
-          </FieldLabel>
-          <Input
-            {...register("roll_number")}
-            id="roll_number"
-            placeholder="UET-2020-CS-045"
-            className={`h-10 text-sm ${errors.roll_number ? "border-rose-400 focus-visible:ring-rose-500/20" : ""}`}
-          />
-          <FieldError message={errors.roll_number?.message} />
-        </div>
-
-        {/* ── Degree ── */}
-        <div className="space-y-1.5">
-          <FieldLabel icon={<GraduationCap className="h-3.5 w-3.5" />}>Degree</FieldLabel>
-          <Select onValueChange={handleDegreeChange}>
-            <SelectTrigger className={`h-10 text-sm ${errors.degree ? "border-rose-400" : "border-border/60"}`}>
-              <SelectValue placeholder="Select your degree" />
-            </SelectTrigger>
-            <SelectContent>
-              {DEGREES.map((d) => (
-                <SelectItem key={d} value={d}>{d}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldError message={errors.degree?.message} />
-        </div>
-
-        {/* ── Conditional fields ── */}
-        {selectedRole === "alumni" && (
-          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-            <FieldLabel icon={<CalendarDays className="h-3.5 w-3.5" />} htmlFor="graduation_year">
-              Graduation Year
-            </FieldLabel>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Roll Number */}
+          <div className="space-y-2">
+            <Label htmlFor="roll_number" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+              <Hash className="h-3.5 w-3.5 text-[#0a66c2]" />
+              Roll Number
+            </Label>
             <Input
-              {...register("graduation_year", { valueAsNumber: true })}
-              id="graduation_year"
-              type="number"
-              placeholder="2020"
-              min={1990}
-              max={new Date().getFullYear()}
-              className={`h-10 text-sm ${errors.graduation_year ? "border-rose-400 focus-visible:ring-rose-500/20" : ""}`}
+              {...register("roll_number")}
+              id="roll_number"
+              placeholder="e.g. 2020-CS-45"
+              className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                errors.roll_number ? "border-red-400" : ""
+              }`}
             />
-            <FieldError message={errors.graduation_year?.message} />
+            {errors.roll_number && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.roll_number.message}</p>}
           </div>
-        )}
 
-        {selectedRole === "student" && (
-          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-            <FieldLabel icon={<Layers className="h-3.5 w-3.5" />}>Current Semester</FieldLabel>
-            <Select onValueChange={handleSemesterChange}>
-              <SelectTrigger className={`h-10 text-sm ${errors.semester ? "border-rose-400" : "border-border/60"}`}>
-                <SelectValue placeholder="Select semester" />
+          {/* Degree */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+              <GraduationCap className="h-3.5 w-3.5 text-[#0a66c2]" />
+              Degree
+            </Label>
+            <Select onValueChange={(v) => setValue("degree", v, { shouldValidate: true })}>
+              <SelectTrigger className={`h-11 bg-muted/30 border-border/60 rounded-xl ${errors.degree ? "border-red-400" : ""}`}>
+                <SelectValue placeholder="Select Degree" />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                  <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                {DEGREES.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <FieldError message={errors.semester?.message} />
+            {errors.degree && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.degree.message}</p>}
           </div>
-        )}
+        </div>
+
+        {/* Role Specific Fields */}
+        <AnimatePresence mode="wait">
+          {selectedRole === "alumni" && (
+            <motion.div
+              key="alumni-fields"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-2 overflow-hidden"
+            >
+              <Label htmlFor="graduation_year" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                <CalendarDays className="h-3.5 w-3.5 text-[#0a66c2]" />
+                Graduation Year
+              </Label>
+              <Input
+                {...register("graduation_year", { valueAsNumber: true })}
+                id="graduation_year"
+                type="number"
+                placeholder="e.g. 2024"
+                className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                  errors.graduation_year ? "border-red-400" : ""
+                }`}
+              />
+              {errors.graduation_year && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.graduation_year.message}</p>}
+            </motion.div>
+          )}
+
+          {selectedRole === "student" && (
+            <motion.div
+              key="student-fields"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-2 overflow-hidden"
+            >
+              <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                <Layers className="h-3.5 w-3.5 text-[#0a66c2]" />
+                Current Semester
+              </Label>
+              <Select onValueChange={(v) => setValue("semester", parseInt(v), { shouldValidate: true })}>
+                <SelectTrigger className={`h-11 bg-muted/30 border-border/60 rounded-xl ${errors.semester ? "border-red-400" : ""}`}>
+                  <SelectValue placeholder="Select Semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                    <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.semester && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.semester.message}</p>}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <StudentCardUpload
           file={studentCardFile}
           error={studentCardError}
           onFileChange={(file) => { setStudentCardFile(file); setStudentCardError(""); }}
           onRemove={() => setStudentCardFile(null)}
         />
-        {/* ── Submit ── */}
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm shadow-blue-600/20 gap-2 mt-2"
-        >
-          {isSubmitting ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Creating account…</>
-          ) : "Create account"}
-        </Button>
 
+        <div className="flex flex-col gap-4 pt-2">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full h-12 bg-[#0a66c2] hover:bg-[#004182] text-white font-bold rounded-full transition-all active:scale-[0.98] shadow-md shadow-blue-500/10"
+          >
+            {isSubmitting ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Creating Account...</span>
+              </div>
+            ) : (
+              "Complete Registration"
+            )}
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Go back to OTP
+          </button>
+        </div>
       </form>
-    </div>
+    </motion.div>
   );
 }

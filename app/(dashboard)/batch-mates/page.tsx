@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBatchMates, connectWithAlumni } from "@/lib/api/alumni.api";
+import { getBatchMates } from "@/lib/api/alumni.api";
+import { sendConnectionRequest } from "@/lib/api/connections.api";
 import useAuthStore from "@/store/authStore";
 import { useState } from "react";
 import Link from "next/link";
@@ -68,7 +69,7 @@ export default function BatchMatesPage() {
   });
 
   const connectMutation = useMutation({
-    mutationFn: (id: string) => connectWithAlumni(id, "batchmate"),
+    mutationFn: (id: string) => sendConnectionRequest(id, "batchmate"),
     onSuccess: (_, id) => {
       setConnected((prev) => ({ ...prev, [id]: true }));
       queryClient.invalidateQueries({ queryKey: ["alumni", "network"] });

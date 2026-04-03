@@ -25,39 +25,6 @@ export const getMyNetwork = async (): Promise<Connection[]> => {
   return data;
 };
 
-export const connectWithAlumni = async (
-  targetId: string,
-  connectionType: string
-): Promise<{ message: string }> => {
-  const { data } = await api.post(`/api/alumni/connect/${targetId}`, {
-    connection_type: connectionType,
-  });
-  return data;
-};
-
-export const getPendingRequests = async (): Promise<{
-  profile_picture: string | Blob | undefined;
-  display_name: string | undefined;
-  sender_id: string;
-  sender_display_name: string;
-  connection_type: string;
-  requested_at: string;
-}[]> => {
-  const { data } = await api.get("/api/alumni/connections/requests");
-  return data;
-};
-
-export const respondToRequest = async (
-  senderId: string,
-  action: "accept" | "reject"
-): Promise<{ message: string }> => {
-  const { data } = await api.patch(
-    `/api/alumni/connections/requests/${senderId}/respond`,
-    { action }
-  );
-  return data;
-};
-
 export const getBatchMates = async (): Promise<BatchMate[]> => {
   const { data } = await api.get("/api/alumni/batch-mates");
   return data;
@@ -120,5 +87,10 @@ export const getAlumniByUsername = async (
   username: string
 ): Promise<UserByUsername> => {
   const { data } = await api.get(`/api/search/user/${username}`);
+  return data;
+};
+
+export const searchAlumni = async (params?: Record<string, string>): Promise<any[]> => {
+  const { data } = await api.get("/api/search/alumni", { params });
   return data;
 };

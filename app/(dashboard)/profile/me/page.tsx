@@ -5,7 +5,8 @@ import {
   getMyAlumniProfile, updateAlumniProfile, addSkill, deleteSkill,
   addWorkExperience, deleteWorkExperience, getAllSkills,
 } from "@/lib/api/alumni.api";
-import { getMyStudentProfile, updateStudentProfile, addStudentSkill } from "@/lib/api/student.api";
+import { getMyStudentProfile, updateStudentProfile, addStudentSkill, getMyNetwork as getStudentNetwork } from "@/lib/api/student.api";
+import { getMyOpportunities } from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -25,11 +26,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
 
 import {
   Pencil, Plus, X, Trash2, CheckCircle2, Camera, Loader2,
   Linkedin, Phone, Network, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
+  Activity, ArrowRight, ChevronRight, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -134,6 +137,7 @@ export default function MyProfilePage() {
 
   const profile = isAlumni ? alumniProfile : studentProfile;
   const isLoading = isAlumni ? alumniLoading : studentLoading;
+  const p = profile as any;
 
   useEffect(() => {
     if (profile) {
@@ -147,9 +151,22 @@ export default function MyProfilePage() {
     staleTime: Infinity,
   });
 
+  const { data: myOpportunities } = useQuery({
+    queryKey: ["opportunities", "me"],
+    queryFn: getMyOpportunities,
+    enabled: isAlumni,
+  });
+
+  const { data: studentNetwork } = useQuery({
+    queryKey: ["student", "network"],
+    queryFn: getStudentNetwork,
+    enabled: !isAlumni,
+  });
+
   const profileForm = useForm<any>({
     resolver: zodResolver(isAlumni ? updateAlumniProfileSchema : updateStudentProfileSchema),
     values: {
+      display_name: p?.display_name ?? "",
       bio: profile?.bio ?? "",
       phone: (profile as any)?.phone ?? "",
       ...(isAlumni && { linkedin_url: (profile as any)?.linkedin_url ?? "" }),
@@ -175,6 +192,7 @@ export default function MyProfilePage() {
   const profileMutation = useMutation({
     mutationFn: async (data: any) => {
       const formData = new FormData();
+      if (data.display_name?.trim()) formData.append("display_name", data.display_name.trim());
       if (data.bio?.trim()) formData.append("bio", data.bio.trim());
       if (data.phone?.trim()) formData.append("phone", data.phone.trim());
       if (isAlumni && data.linkedin_url?.trim()) formData.append("linkedin_url", data.linkedin_url.trim());
@@ -234,8 +252,6 @@ export default function MyProfilePage() {
   };
 
   if (isLoading) return <ProfileSkeleton />;
-
-  const p = profile as any;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -331,10 +347,13 @@ export default function MyProfilePage() {
                 </a>
               )}
               {isAlumni && (
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Link
+                  href="/network?tab=connections"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-blue-600 transition-colors"
+                >
                   <Network className="h-3 w-3" />
                   {p?.connections_count ?? 0} connections
-                </span>
+                </Link>
               )}
             </div>
           )}
@@ -345,6 +364,17 @@ export default function MyProfilePage() {
               onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))}
               className="mt-5 pt-5 border-t border-border/60 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200"
             >
+              <div className="space-y-1.5">
+                <Label htmlFor="display_name" className="text-sm font-medium text-foreground">Display Name</Label>
+                <Input
+                  {...profileForm.register("display_name")}
+                  id="display_name"
+                  placeholder="Your professional name"
+                  className="h-10 text-sm border-border/60"
+                />
+                <FieldError message={profileForm.formState.errors.display_name?.message as string} />
+              </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="bio" className="text-sm font-medium text-foreground">Bio</Label>
                 <textarea
@@ -594,7 +624,7 @@ export default function MyProfilePage() {
                           <p className="text-sm text-muted-foreground mt-0.5">{w.company_name}</p>
                           <p className="text-xs text-muted-foreground/60 mt-0.5 flex items-center gap-1">
                             <CalendarDays className="h-3 w-3" />
-                            {w.start_date?.split("T")[0]} — {w.is_current ? "Present" : (w.end_date?.split("T")[0] ?? "—")}
+                            {w.start_date ? new Date(w.start_date).toLocaleDateString() : "—"} — {w.is_current ? "Present" : (w.end_date ? new Date(w.end_date).toLocaleDateString() : "—")}
                           </p>
                         </div>
                       </div>
@@ -613,6 +643,80 @@ export default function MyProfilePage() {
             ) : (
               <p className="text-sm text-muted-foreground">No work experience added yet.</p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Activity / Posts — alumni only ─────────────────────────────────── */}
+      {isAlumni && myOpportunities && myOpportunities.length > 0 && (
+        <Card className="border-border/60">
+          <CardContent className="p-6">
+            <SectionHeader
+              icon={<Activity className="h-3.5 w-3.5" />}
+              title="Recent Activity"
+              action={
+                <Link href="/my-opportunities" className="text-xs font-medium text-blue-600 flex items-center gap-1 hover:underline">
+                  See all <ArrowRight className="h-3 w-3" />
+                </Link>
+              }
+            />
+            <div className="space-y-4">
+              {myOpportunities.slice(0, 3).map((opp: any) => (
+                <div key={opp.id} className="group">
+                  <Link href={`/opportunities/${opp.id}`} className="block">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors truncate">{opp.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{opp.company}</p>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                            opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"
+                          }`}>
+                            {opp.status}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <CalendarDays className="h-2.5 w-2.5" />
+                            Posted {opp.posted_at ? new Date(opp.posted_at).toLocaleDateString() : "—"}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors ml-2 flex-shrink-0" />
+                    </div>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── My Mentors — student only ─────────────────────────────────────── */}
+      {!isAlumni && studentNetwork && studentNetwork.length > 0 && (
+        <Card className="border-border/60">
+          <CardContent className="p-6">
+            <SectionHeader
+              icon={<Users className="h-3.5 w-3.5" />}
+              title="My Mentors"
+              action={
+                <Link href="/network?tab=connections" className="text-xs font-medium text-blue-600 flex items-center gap-1 hover:underline">
+                   View Network <ArrowRight className="h-3 w-3" />
+                </Link>
+              }
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {studentNetwork.map((mentor: any) => (
+                <div key={mentor.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-blue-500/30 hover:shadow-sm transition-all duration-200">
+                  <Avatar className="h-10 w-10 border border-border/60">
+                    <AvatarImage src={mentor.profile_picture} />
+                    <AvatarFallback className="bg-blue-600 text-white text-xs font-bold">{getInitials(mentor.display_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate leading-none mb-1">{mentor.display_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate leading-none">{mentor.role} · {mentor.company}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

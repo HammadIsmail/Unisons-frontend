@@ -258,17 +258,7 @@ export default function OpportunityDetailPage() {
               </div>
             </div>
 
-            {!isExpired && opp.apply_link && (
-              <a
-                href={opp.apply_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-600/25 flex-shrink-0"
-              >
-                Apply Now
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            )}
+         
           </div>
 
           {/* Media */}

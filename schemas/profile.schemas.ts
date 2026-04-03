@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const updateAlumniProfileSchema = z.object({
+  display_name: z.string().min(2, "Name must be at least 2 characters").max(50).optional(),
   bio: z.string().max(300, "Bio must be under 300 characters").optional(),
   phone: z
     .string()
@@ -15,6 +16,7 @@ export const updateAlumniProfileSchema = z.object({
 });
 
 export const updateStudentProfileSchema = z.object({
+  display_name: z.string().min(2, "Name must be at least 2 characters").max(50).optional(),
   bio: z.string().max(300, "Bio must be under 300 characters").optional(),
   phone: z
     .string()

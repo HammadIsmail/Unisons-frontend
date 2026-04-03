@@ -1,4 +1,7 @@
+"use client";
+
 import { Check } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Step {
   number: number;
@@ -12,50 +15,47 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
   return (
-    <div className="flex items-center w-full mb-8">
-      {steps.map((s, index) => {
-        const done = currentStep > s.number;
-        const active = currentStep === s.number;
-        const upcoming = currentStep < s.number;
+    <div className="flex items-center justify-between w-full mb-8 relative px-2">
+      {/* Background Connector Bar */}
+      <div className="absolute top-4 left-0 right-0 h-[2px] bg-muted -z-0 mx-8" />
+      
+      {/* Active Connector Bar */}
+      <motion.div 
+        className="absolute top-4 left-0 h-[2px] bg-[#0a66c2] -z-0 mx-8"
+        initial={{ width: 0 }}
+        animate={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+      />
+
+      {steps.map((s) => {
+        const isDone = currentStep > s.number;
+        const isActive = currentStep === s.number;
 
         return (
-          <div key={s.number} className="flex items-center flex-1 last:flex-none">
-            {/* Step bubble + label */}
-            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-              <div
-                className={`
-                  h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
-                  ${done
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/30"
-                    : active
-                    ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-sm shadow-blue-600/30"
-                    : "bg-muted text-muted-foreground ring-1 ring-border/60"
-                  }
-                `}
-              >
-                {done ? <Check className="h-3.5 w-3.5" /> : s.number}
-              </div>
-              <span
-                className={`text-[11px] font-medium whitespace-nowrap ${
-                  done || active
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {s.label}
-              </span>
-            </div>
-
-            {/* Connector */}
-            {index < steps.length - 1 && (
-              <div className="flex-1 mx-3 mb-5">
-                <div
-                  className={`h-px w-full transition-all duration-300 ${
-                    done ? "bg-blue-600" : "bg-border/60"
-                  }`}
-                />
-              </div>
-            )}
+          <div key={s.number} className="flex flex-col items-center relative z-10">
+            <motion.div
+              initial={false}
+              animate={{
+                backgroundColor: isDone || isActive ? "#0a66c2" : "#f3f4f6",
+                color: isDone || isActive ? "#ffffff" : "#9ca3af",
+                scale: isActive ? 1.1 : 1,
+              }}
+              className={`
+                h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm transition-shadow
+                ${isActive ? "ring-4 ring-blue-500/20 shadow-blue-500/20" : ""}
+              `}
+            >
+              {isDone ? <Check className="h-4 w-4 stroke-[3]" /> : s.number}
+            </motion.div>
+            <motion.span
+              animate={{
+                color: isDone || isActive ? "#0a66c2" : "#9ca3af",
+                fontWeight: isActive ? 700 : 500,
+              }}
+              className="text-[10px] mt-2 whitespace-nowrap uppercase tracking-wider"
+            >
+              {s.label}
+            </motion.span>
           </div>
         );
       })}

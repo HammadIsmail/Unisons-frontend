@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { searchAlumni, searchOpportunities } from "@/lib/api/search.api";
 import { getAllSkills } from "@/lib/api/alumni.api";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useNetwork } from "@/hooks/useNetwork";
+import useAuthStore from "@/store/authStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +23,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getInitials } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 import {
   Search,
@@ -34,10 +52,13 @@ import {
   ArrowRight,
   X,
   SlidersHorizontal,
-  UserSearch,
   SearchX,
   AtSign,
   ChevronRight,
+  Clock,
+  UserPlus,
+  ExternalLink,
+  Filter,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -66,7 +87,7 @@ function getTypeMeta(type: string) {
   return TYPE_META[type] ?? TYPE_META.job;
 }
 
-// ── Filter Field ──────────────────────────────────────────────────────────────
+// ── Filter Components ─────────────────────────────────────────────────────────
 
 function FilterInput({
   label,
@@ -74,23 +95,25 @@ function FilterInput({
   onChange,
   placeholder,
 }: {
-  label: string;
+  label?: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </label>
+    <div className="space-y-1.5 min-w-[120px]">
+      {label && (
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </label>
+      )}
       <div className="relative">
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-8 px-3 text-xs bg-background border border-border/60 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition placeholder:text-muted-foreground/50 text-foreground"
+          className="w-full h-9 px-3 text-xs bg-background border border-border/60 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition placeholder:text-muted-foreground/50 text-foreground"
         />
         {value && (
           <button
@@ -112,19 +135,21 @@ function FilterSelect({
   options,
   placeholder,
 }: {
-  label: string;
+  label?: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </label>
+    <div className="space-y-1.5 min-w-[120px]">
+      {label && (
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </label>
+      )}
       <Select value={value || "_all"} onValueChange={(v) => onChange(v === "_all" ? "" : v)}>
-        <SelectTrigger className="h-8 text-xs border-border/60 bg-background">
+        <SelectTrigger className="h-9 text-xs border-border/60 bg-background rounded-xl">
           <SelectValue placeholder={placeholder ?? "Any"} />
         </SelectTrigger>
         <SelectContent>
@@ -138,54 +163,58 @@ function FilterSelect({
   );
 }
 
-// ── Skeleton rows ─────────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
-function AlumniSkeleton() {
+function ResultSkeleton({ type }: { type: Tab }) {
   return (
     <Card className="border-border/60">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
-          <div className="flex-1">
-            <Skeleton className="h-4 w-32 rounded mb-1.5" />
-            <Skeleton className="h-3 w-20 rounded mb-1" />
-            <Skeleton className="h-3 w-28 rounded" />
+          <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-1/3 rounded" />
+            <Skeleton className="h-3 w-1/4 rounded" />
+            {type === "alumni" && <Skeleton className="h-3 w-1/2 rounded" />}
           </div>
-          <div className="flex gap-1.5">
-            <Skeleton className="h-5 w-14 rounded-full" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-          </div>
+          <Skeleton className="h-8 w-20 rounded-full" />
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function OppSkeleton() {
-  return (
-    <Card className="border-border/60">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <Skeleton className="h-4 w-3/5 rounded mb-2" />
-            <div className="flex gap-3">
-              <Skeleton className="h-3 w-24 rounded" />
-              <Skeleton className="h-3 w-20 rounded" />
-            </div>
-          </div>
-          <Skeleton className="h-5 w-20 rounded-full" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
+  const { role } = useAuthStore();
   const [tab, setTab] = useState<Tab>("alumni");
   const [query, setQuery] = useState("");
   const router = useRouter();
+
+  const {
+    myConnections,
+    sentRequests,
+    connect,
+    isConnecting,
+    cancelRequest,
+    isCancelling,
+    removeOldConnection,
+    isRemoving,
+  } = useNetwork();
+
+  const getStatus = (personId: string) => {
+    if (myConnections?.some((c: any) => c.id === personId || c.alumni_id === personId || c.user_id === personId)) {
+      return "connected";
+    }
+    if (sentRequests?.some((r: any) => r.target_id === personId)) {
+      return "pending";
+    }
+    return "none";
+  };
+
+  const handleConnect = (id: string, type: "batchmate" | "colleague" | "mentor") => {
+    connect({ targetId: id, type });
+  };
 
   // Alumni filters
   const [company, setCompany] = useState("");
@@ -242,11 +271,10 @@ export default function SearchPage() {
   });
 
   const isLoading = tab === "alumni" ? alumniLoading : oppLoading;
-
   const isAtMode = query.startsWith("@") && tab === "alumni";
   const hasAlumniFilters = !!(company || skill || batchYear || degree);
   const hasOppFilters = !!(oppType || oppSkill || oppLocation || isRemote);
-  const hasFilters = hasAlumniFilters || hasOppFilters;
+  const hasFilters = tab === "alumni" ? hasAlumniFilters : hasOppFilters;
 
   const skillOptions = skills?.map((s) => ({ value: s, label: s })) ?? [];
 
@@ -256,186 +284,98 @@ export default function SearchPage() {
     setOppType(""); setOppSkill(""); setOppLocation(""); setIsRemote(undefined);
   };
 
-  const resultCount =
-    tab === "alumni" ? (alumniResults?.length ?? 0) : (oppResults?.length ?? 0);
+  const resultCount = tab === "alumni" ? (alumniResults?.length ?? 0) : (oppResults?.length ?? 0);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+      
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div>
+      <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Search</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Find alumni or opportunities across the network
-        </p>
+        <p className="text-sm text-muted-foreground">Find alumni or opportunities across the network</p>
       </div>
 
-      {/* ── Search bar + tabs ────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        {/* Tabs */}
-        <div className="flex gap-1 bg-muted/60 p-1 rounded-xl w-fit border border-border/50">
-          {(["alumni", "opportunities"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setQuery(""); }}
-              className={`
-                flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 capitalize
-                ${tab === t
-                  ? "bg-background text-foreground shadow-sm border border-border/60"
-                  : "text-muted-foreground hover:text-foreground"
-                }
-              `}
-            >
-              {t === "alumni"
-                ? <Users className="h-3.5 w-3.5" />
-                : <Briefcase className="h-3.5 w-3.5" />
-              }
-              {t}
-            </button>
-          ))}
-        </div>
+      {/* ── Search Bar & Tab Selection ─────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Tabs */}
+          <div className="flex p-1 bg-muted/60 border border-border/50 rounded-xl h-10 w-fit">
+            {(["alumni", "opportunities"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTab(t); setQuery(""); }}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all capitalize ${
+                  tab === t ? "bg-background text-foreground shadow-sm border border-border/60" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "alumni" ? <Users className="h-3.5 w-3.5" /> : <Briefcase className="h-3.5 w-3.5" />}
+                {t}
+              </button>
+            ))}
+          </div>
 
-        {/* Search input */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              {isAtMode
-                ? <AtSign className="h-4 w-4 text-blue-500" />
-                : <Search className="h-4 w-4 text-muted-foreground/60" />
-              }
+          {/* Search Input */}
+          <div className="relative flex-1 group">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
+              {isAtMode ? <AtSign className="h-4 w-4 text-blue-500" /> : <Search className="h-4 w-4 text-muted-foreground/50" />}
             </div>
             <input
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && isAtMode) {
-                  const username = query.slice(1).trim();
-                  if (username) { router.push(`/alumni/${username}`); setShowSuggestions(false); }
-                }
-                if (e.key === "Escape") setShowSuggestions(false);
-              }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              onFocus={() => setShowSuggestions(true)}
-              placeholder={
-                tab === "alumni"
-                  ? "Search by name, or @username for exact lookup…"
-                  : "Search by job title, company…"
-              }
-              className={`
-                w-full pl-10 pr-10 py-2.5 h-10 text-sm rounded-xl border transition-all duration-150
-                bg-background text-foreground placeholder:text-muted-foreground/50
-                outline-none
-                ${isAtMode
-                  ? "border-blue-500 ring-2 ring-blue-500/15"
-                  : "border-border/60 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-                }
-              `}
+              placeholder={tab === "alumni" ? "Search by name, or @username..." : "Search by job title, company..."}
+              className={`w-full h-10 pl-10 pr-10 text-sm rounded-xl border bg-background transition-all outline-none ${
+                isAtMode ? "border-blue-500 ring-2 ring-blue-500/10" : "border-border/60 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+              }`}
             />
             {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition"
-              >
-                <X className="h-3.5 w-3.5" />
+              <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
               </button>
             )}
 
-            {/* Username suggestion dropdown */}
+            {/* Username Suggestions */}
             {isAtMode && showSuggestions && suggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-popover border border-border/70 rounded-xl shadow-xl shadow-black/10 dark:shadow-black/30 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-popover border border-border shadow-xl rounded-xl z-50 overflow-hidden">
                 {suggestions.slice(0, 5).map((s) => (
                   <button
                     key={s.id}
-                    onMouseDown={() => { router.push(`/alumni/${s.username}`); setShowSuggestions(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60 transition-colors text-left"
+                    onMouseDown={() => router.push(`/alumni/${s.username}`)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
                   >
-                    <Avatar className="h-7 w-7 flex-shrink-0">
+                    <Avatar className="h-8 w-8">
                       <AvatarImage src={s.profile_picture} />
-                      <AvatarFallback className="bg-blue-600/10 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
-                        {s.display_name?.charAt(0) ?? "A"}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-blue-600/10 text-blue-600 text-[10px] font-bold">{getInitials(s.display_name)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground truncate">{s.display_name}</p>
+                      <p className="text-sm font-semibold truncate">{s.display_name}</p>
                       <p className="text-xs text-muted-foreground">@{s.username}</p>
                     </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
                   </button>
                 ))}
-                <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
-                  <p className="text-[11px] text-muted-foreground">
-                    Press <kbd className="px-1 py-0.5 text-[10px] bg-background border border-border/60 rounded font-mono">Enter</kbd> to go directly to @{query.slice(1)}'s profile
-                  </p>
-                </div>
               </div>
             )}
           </div>
-
-          {/* Go to profile CTA */}
-          {isAtMode && (
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 gap-1.5 text-sm flex-shrink-0 shadow-sm shadow-blue-600/20"
-              onClick={() => {
-                const username = query.slice(1).trim();
-                if (username) router.push(`/alumni/${username}`);
-              }}
-            >
-              Go to profile
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          )}
         </div>
 
-        {/* @username hint */}
-        {isAtMode && (
-          <p className="text-xs text-muted-foreground pl-1 flex items-center gap-1">
-            <AtSign className="h-3 w-3 text-blue-500" />
-            Press Enter or click "Go to profile" to view @{query.slice(1)}'s profile
-          </p>
-        )}
-      </div>
-
-      {/* ── Body: filters + results ──────────────────────────────────────── */}
-      <div className="flex gap-5 items-start">
-
-        {/* ── Filters sidebar ───────────────────────────────────────────── */}
-        <div className="w-52 flex-shrink-0 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <SlidersHorizontal className="h-3 w-3" />
-              Filters
-            </div>
-            {hasFilters && (
-              <button
-                onClick={clearAll}
-                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors"
-              >
-                <X className="h-3 w-3" />
-                Clear
-              </button>
-            )}
+        {/* ── Filter Bar ──────────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-3 py-1 animate-in fade-in slide-in-from-left-2 duration-300">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 rounded-lg text-[10px] uppercase font-bold tracking-widest text-muted-foreground border border-border/40">
+            <Filter className="h-3 w-3" />
+            Filters
           </div>
 
-          <Separator className="opacity-50" />
-
           {tab === "alumni" ? (
-            <div className="space-y-3">
-              <FilterInput label="Company" value={company} onChange={setCompany} placeholder="e.g. Netsol" />
-              <FilterSelect
-                label="Skill"
-                value={skill}
-                onChange={setSkill}
-                options={skillOptions}
-                placeholder="Any skill"
-              />
-              <FilterInput label="Batch Year" value={batchYear} onChange={setBatchYear} placeholder="e.g. 2020" />
-              <FilterInput label="Degree" value={degree} onChange={setDegree} placeholder="e.g. BSCS" />
-            </div>
+            <>
+              <FilterInput value={company} onChange={setCompany} placeholder="Company" />
+              <FilterSelect value={skill} onChange={setSkill} options={skillOptions} placeholder="Skill" />
+              <FilterInput value={batchYear} onChange={setBatchYear} placeholder="Batch" />
+              <FilterInput value={degree} onChange={setDegree} placeholder="Degree" />
+            </>
           ) : (
-            <div className="space-y-3">
+            <>
               <FilterSelect
-                label="Type"
                 value={oppType}
                 onChange={setOppType}
                 options={[
@@ -443,184 +383,168 @@ export default function SearchPage() {
                   { value: "internship", label: "Internship" },
                   { value: "freelance", label: "Freelance" },
                 ]}
-                placeholder="Any type"
+                placeholder="Job Type"
               />
-              <FilterSelect
-                label="Skill"
-                value={oppSkill}
-                onChange={setOppSkill}
-                options={skillOptions}
-                placeholder="Any skill"
-              />
-              <FilterInput label="Location" value={oppLocation} onChange={setOppLocation} placeholder="e.g. Lahore" />
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Remote
-                </label>
-                <button
-                  onClick={() => setIsRemote(isRemote === true ? undefined : true)}
-                  className={`
-                    w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium border transition-all duration-150
-                    ${isRemote
-                      ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                      : "bg-background text-muted-foreground border-border/60 hover:border-border hover:text-foreground"
-                    }
-                  `}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Wifi className="h-3.5 w-3.5" />
-                    Remote only
-                  </span>
-                  {isRemote && <X className="h-3 w-3 opacity-70" />}
-                </button>
-              </div>
-            </div>
+              <FilterSelect value={oppSkill} onChange={setOppSkill} options={skillOptions} placeholder="Skill" />
+              <FilterInput value={oppLocation} onChange={setOppLocation} placeholder="Location" />
+              <button
+                onClick={() => setIsRemote(isRemote === true ? undefined : true)}
+                className={`h-9 px-4 rounded-xl text-xs font-semibold border transition-all flex items-center gap-2 ${
+                  isRemote ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20" : "bg-background text-muted-foreground border-border/60 hover:border-border"
+                }`}
+              >
+                <Wifi className="h-3.5 w-3.5" />
+                Remote Only
+              </button>
+            </>
+          )}
+
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAll} className="h-9 px-3 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl gap-2">
+              <X className="h-3.5 w-3.5" />
+              Reset
+            </Button>
           )}
         </div>
+      </div>
 
-        {/* ── Results ───────────────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0 space-y-2">
+      <Separator className="opacity-50" />
 
-          {/* Result count header */}
-          {!isLoading && (
-            <div className="flex items-center justify-between mb-1 px-0.5">
-              <p className="text-xs text-muted-foreground">
-                {resultCount > 0
-                  ? `${resultCount} result${resultCount !== 1 ? "s" : ""} found`
-                  : ""}
-              </p>
-            </div>
-          )}
+      {/* ── Results Section ───────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        {!isLoading && resultCount > 0 && (
+          <p className="text-xs font-medium text-muted-foreground pl-1">{resultCount} results matching your search</p>
+        )}
 
+        <div className="grid grid-cols-1 gap-3">
           {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4].map((i) =>
-                tab === "alumni"
-                  ? <AlumniSkeleton key={i} />
-                  : <OppSkeleton key={i} />
-              )}
-            </div>
+            [1, 2, 3, 4].map(i => <ResultSkeleton key={i} type={tab} />)
           ) : tab === "alumni" ? (
             alumniResults?.length ? (
-              <div className="space-y-2">
-                {alumniResults.map((a) => (
-                  <Link key={a.id} href={`/alumni/${a.username}`} className="block group">
-                    <Card className="border-border/60 hover:border-blue-500/40 hover:shadow-sm hover:shadow-blue-500/5 transition-all duration-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          {/* Avatar */}
-                          <Avatar className="h-10 w-10 flex-shrink-0 ring-1 ring-border/60 group-hover:ring-blue-500/30 transition-all">
-                            <AvatarImage src={a.profile_picture} />
-                            <AvatarFallback className="bg-blue-600/10 text-blue-700 dark:text-blue-300 text-xs font-bold">
-                              {a.display_name ? getInitials(a.display_name) : "U"}
-                            </AvatarFallback>
-                          </Avatar>
+              alumniResults.map(a => {
+                const status = getStatus(a.id);
+                const isPending = status === "pending";
+                const isConnected = status === "connected";
 
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                                {a.display_name}
-                              </p>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              @{a.username}
-                              {a.current_company && (
-                                <>
-                                  <span className="mx-1.5 text-muted-foreground/30">·</span>
-                                  <span className="inline-flex items-center gap-1">
-                                    <Building2 className="h-3 w-3" />
-                                    {a.current_company}
-                                  </span>
-                                </>
-                              )}
-                            </p>
-                          </div>
+                return (
+                  <Card key={a.id} className="border-border/60 hover:border-blue-500/40 hover:shadow-sm transition-all duration-200 group">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Link href={`/alumni/${a.username}`}>
+                        <Avatar className="h-12 w-12 border border-border/40 group-hover:scale-105 transition-transform">
+                          <AvatarImage src={a.profile_picture} />
+                          <AvatarFallback className="bg-blue-600/10 text-blue-600 font-bold text-sm">{getInitials(a.display_name)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
 
-                          {/* Skills + arrow */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="hidden sm:flex gap-1.5 flex-wrap justify-end max-w-[160px]">
-                              {a.skills?.slice(0, 3).map((s) => (
-                                <span
-                                  key={s}
-                                  className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50 font-medium"
-                                >
-                                  {s}
-                                </span>
-                              ))}
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
-                          </div>
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/alumni/${a.username}`} className="font-bold text-foreground hover:text-blue-600 transition-colors inline-block">{a.display_name}</Link>
+                        <p className="text-xs text-muted-foreground truncate">
+                          @{a.username} 
+                          {a.current_company && <span className="opacity-50 mx-2">|</span>}
+                          {a.current_company && <span className="inline-flex items-center gap-1 font-medium"><Building2 className="h-3 w-3" /> {a.current_company}</span>}
+                        </p>
+                        <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
+                          {a.skills?.slice(0, 3).map((s: string) => (
+                            <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40 font-medium whitespace-nowrap">{s}</span>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {status !== "none" ? (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant={isPending ? "secondary" : "ghost"} size="sm" className="h-8 rounded-full px-4 text-xs font-bold transition-all">
+                                {isPending ? <><Clock className="h-3.5 w-3.5 mr-1.5" /> Pending</> : "Connected"}
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>{isPending ? "Cancel Request" : "Remove Connection"}</DialogTitle>
+                                <DialogDescription>
+                                  Confirm if you want to {isPending ? "cancel your request to" : "remove"} <span className="font-semibold text-foreground">{a.display_name}</span>.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                                <DialogClose asChild><Button variant="outline" size="sm">Back</Button></DialogClose>
+                                <DialogClose asChild>
+                                  <Button variant="destructive" size="sm" onClick={() => isPending ? cancelRequest(a.id) : removeOldConnection(a.id)} disabled={isCancelling || isRemoving}>
+                                    Confirm
+                                  </Button>
+                                </DialogClose>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        ) : role === "student" ? (
+                          <Button variant="outline" size="sm" className="h-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 px-4 text-xs font-bold" onClick={() => handleConnect(a.id, "mentor")} disabled={isConnecting}>
+                            <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Connect
+                          </Button>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 px-4 text-xs font-bold" disabled={isConnecting}>
+                                <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Connect
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[180px]">
+                              <DropdownMenuItem onClick={() => handleConnect(a.id, "batchmate")} className="text-xs font-medium cursor-pointer">Connect as Batchmate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleConnect(a.id, "colleague")} className="text-xs font-medium cursor-pointer">Connect as Colleague</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        <Link href={`/alumni/${a.username}`}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/30 hover:text-foreground transition-colors">
+                            <ChevronRight className="h-5 w-5" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
             ) : (
-              <EmptyState
-                icon={<UserSearch className="h-6 w-6 text-muted-foreground/40" />}
-                title="No alumni found"
-                description="Try adjusting your search or filters."
-              />
+              <EmptySearch icon={<SearchX className="h-8 w-8 text-muted-foreground/30" />} title="No alumni found" description="Adjust your filters or try a broader search." />
             )
           ) : (
             oppResults?.length ? (
-              <div className="space-y-2">
-                {oppResults.map((o) => {
-                  const meta = getTypeMeta(o.type);
-                  return (
-                    <Link key={o.id} href={`/opportunities/${o.id}`} className="block group">
-                      <Card className="border-border/60 hover:border-blue-500/40 hover:shadow-sm hover:shadow-blue-500/5 transition-all duration-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            {/* Icon */}
-                            <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.badge}`}>
-                              {meta.icon}
-                            </div>
+              oppResults.map(o => {
+                const meta = getTypeMeta(o.type);
+                return (
+                  <Card key={o.id} className="border-border/60 hover:border-blue-500/40 hover:shadow-sm transition-all duration-200 group">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Link href={`/opportunities/${o.id}`}>
+                        <div className={`h-11 w-11 rounded-xl flex items-center justify-center border shadow-inner transition-transform group-hover:scale-105 ${meta.badge}`}>
+                          {meta.icon}
+                        </div>
+                      </Link>
 
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                                {o.title}
-                              </p>
-                              <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                                {o.company && (
-                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Building2 className="h-3 w-3" />
-                                    {typeof o.company === "string" ? o.company : o.company}
-                                  </span>
-                                )}
-                                {o.location && o.location.toLowerCase() !== "none" && (
-                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <MapPin className="h-3 w-3" />
-                                    {o.location}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/opportunities/${o.id}`} className="font-bold text-foreground hover:text-blue-600 transition-colors truncate block">{o.title}</Link>
+                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 mt-1">
+                          {o.company && <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium"><Building2 className="h-3 w-3 opacity-70" /> {o.company}</span>}
+                          {o.location && o.location.toLowerCase() !== "none" && <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium"><MapPin className="h-3 w-3 opacity-70" /> {o.location}</span>}
+                          <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold h-5 px-2 bg-muted/40">{meta.label}</Badge>
+                        </div>
+                      </div>
 
-                            {/* Badge + arrow */}
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${meta.badge}`}>
-                                {meta.icon}
-                                {meta.label}
-                              </span>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs px-5 shadow-lg shadow-blue-600/5 group/btn"
+                          asChild
+                        >
+                          <Link href={`/opportunities/${o.id}`}>
+                            Details <ChevronRight className="ml-1 h-3.5 w-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
             ) : (
-              <EmptyState
-                icon={<SearchX className="h-6 w-6 text-muted-foreground/40" />}
-                title="No opportunities found"
-                description="Try a different title or adjust your filters."
-              />
+              <EmptySearch icon={<SearchX className="h-8 w-8 text-muted-foreground/30" />} title="No opportunities found" description="Try a different job title or broader location." />
             )
           )}
         </div>
@@ -629,26 +553,12 @@ export default function SearchPage() {
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-function EmptyState({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
+function EmptySearch({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <Card className="border-border/60 border-dashed">
-      <CardContent className="flex flex-col items-center justify-center py-14 text-center">
-        <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
-          {icon}
-        </div>
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">{description}</p>
-      </CardContent>
-    </Card>
+    <div className="py-20 flex flex-col items-center text-center bg-muted/20 border-2 border-dashed border-border/40 rounded-3xl">
+      <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-300">{icon}</div>
+      <h3 className="text-lg font-bold text-foreground">{title}</h3>
+      <p className="text-sm text-muted-foreground mt-1 max-w-[280px] leading-relaxed">{description}</p>
+    </div>
   );
 }

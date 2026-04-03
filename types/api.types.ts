@@ -22,6 +22,7 @@ export interface ResetPasswordResponse {
 // ── Profiles ──────────────────────────────────────
 export interface AlumniProfile {
   id: string;
+  role: "alumni";
   username: string;
   display_name: string;
   email: string;
@@ -62,6 +63,7 @@ export interface DetailedSkill {
 
 export interface StudentProfile {
   id: string;
+  role: "student";
   username: string;
   display_name: string;
   email: string;
@@ -106,6 +108,7 @@ export interface Opportunity {
   posted_at: string;
   deadline: string;
   media: string[];
+  required_skills?: string[];
 }
 export interface OpportunityDetail {
   id: string;
@@ -151,32 +154,33 @@ export interface PaginatedOpportunities {
 
 // ── Network ───────────────────────────────────────
 export interface Connection {
-  profile_picture: string | Blob | undefined;
-  username: ReactNode;
   id: string;
   display_name: string;
-  company: string;
-  role: string;
+  username: string;
+  profile_picture?: string;
+  company?: string;
+  role?: string;
   connection_type: "batchmate" | "colleague" | "mentor";
 }
 
 export interface BatchMate {
-  username: any;
-  profile_picture: string | Blob | undefined;
   id: string;
   display_name: string;
-  company: string | null;
-  role: string | null;
-  connection_type: string | null;
+  username: string;
+  profile_picture?: string;
+  company?: string | null;
+  role?: string | null;
+  connection_type?: string | null;
 }
 
 export interface Mentor {
-  username: ReactNode;
-  profile_picture: string | Blob | undefined;
   alumni_id: string;
   display_name: string;
+  username: string;
+  profile_picture?: string;
   domain: string;
   company: string;
+  common_skills?: number;
 }
 
 export interface CentralityScore {
@@ -307,16 +311,16 @@ export interface OpportunitySearchResult {
 }
 
 export interface UserByUsername {
-  bio: ReactNode;
   id: string;
   username: string;
   display_name: string;
+  profile_picture?: string;
+  bio?: string;
   role: string;
   degree: string;
-  graduation_year: number;
-  company: string;
-  job_role: string;
+  graduation_year?: number;
+  linkedin_url?: string;
+  company?: string;
+  job_role?: string;
   skills: string[];
-  linkedin_url: string;
-  profile_picture?: string;
 }

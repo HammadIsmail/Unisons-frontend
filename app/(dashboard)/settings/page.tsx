@@ -109,6 +109,7 @@ export default function SettingsPage() {
   const isAlumni = role === "alumni";
   const [successMsg, setSuccessMsg] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
@@ -131,6 +132,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (profile) {
+      setDisplayName(p?.display_name ?? "");
       setBio(p?.bio ?? "");
       setPhone(p?.phone ?? "");
       setLinkedinUrl(p?.linkedin_url ?? "");
@@ -150,6 +152,7 @@ export default function SettingsPage() {
   const updateMutation = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
+      if (displayName) formData.append("display_name", displayName);
       if (bio) formData.append("bio", bio);
       if (phone) formData.append("phone", phone);
       if (isAlumni && linkedinUrl) formData.append("linkedin_url", linkedinUrl);
@@ -238,7 +241,6 @@ export default function SettingsPage() {
             description="These fields are set during registration and cannot be changed"
           />
 
-          <ReadOnlyField icon={<User className="h-3.5 w-3.5" />} label="Display Name" value={p?.display_name ?? ""} />
           <ReadOnlyField icon={<AtSign className="h-3.5 w-3.5" />} label="Username" value={`@${p?.username ?? ""}`} />
           <ReadOnlyField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={p?.email ?? ""} />
         </CardContent>
@@ -250,8 +252,23 @@ export default function SettingsPage() {
           <SectionHeader
             icon={<FileText className="h-4 w-4" />}
             title="Profile Details"
-            description="Update your bio and contact information"
+            description="Update your professional identity and contact information"
           />
+
+          {/* Display Name */}
+          <div className="space-y-1.5">
+            <Label htmlFor="display_name" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground/60" />
+              Display Name
+            </Label>
+            <Input
+              id="display_name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your professional name"
+              className="h-10 text-sm border-border/60"
+            />
+          </div>
 
           {/* Bio */}
           <div className="space-y-1.5">

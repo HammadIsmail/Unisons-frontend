@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAlumniByUsername, connectWithAlumni } from "@/lib/api/alumni.api";
+import { useQuery } from "@tanstack/react-query";
+import { getAlumniByUsername } from "@/lib/api/alumni.api";
+import { useNetwork } from "@/hooks/useNetwork";
 import useAuthStore from "@/store/authStore";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -17,10 +18,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { studentConnectWithAlumni } from "@/lib/api/student.api";
 import { getInitials } from "@/lib/utils";
 import Link from "next/link";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 import {
   ArrowLeft,
@@ -36,6 +46,7 @@ import {
   UserSearch,
   ExternalLink,
   User,
+  Clock,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -105,13 +116,26 @@ function Section({
 export default function AlumniProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { profile, role } = useAuthStore();
-  const queryClient = useQueryClient();
-  const [selectedType, setSelectedType] = useState<string>(
-    role === "student" ? "mentor" : "batchmate"
-  );
-  const [connected, setConnected] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  const {
+    myConnections,
+    sentRequests,
+    connect,
+    isConnecting,
+    cancelRequest,
+    isCancelling,
+    removeOldConnection,
+    isRemoving,
+  } = useNetwork();
+
+  const getStatus = (personId: string) => {
+    if (myConnections?.some((c: any) => c.id === personId || c.alumni_id === personId || c.user_id === personId)) {
+      return "connected";
+    }
+    if (sentRequests?.some((r: any) => r.target_id === personId)) {
+      return "pending";
+    }
+    return "none";
+  };
 
   const { data: alumni, isLoading } = useQuery({
     queryKey: ["alumni", "username", username],
@@ -119,21 +143,21 @@ export default function AlumniProfilePage() {
     enabled: !!username,
   });
 
-  const connectMutation = useMutation({
-    mutationFn: () => {
-      if (!alumni?.id) throw new Error("Alumni ID not found");
-      if (role === "student") return studentConnectWithAlumni(alumni.id);
-      return connectWithAlumni(alumni.id, selectedType);
-    },
-    onSuccess: () => {
-      setConnected(true);
-      setSuccessMsg("Connection request sent successfully.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "network"] });
-    },
-    onError: (error: any) => {
-      setErrorMsg(error.response?.data?.message || "Failed to connect. Try again.");
-    },
-  });
+  const status = alumni ? getStatus(alumni.id) : "none";
+  const isPending = status === "pending";
+  const isConnected = status === "connected";
+
+  const handleConnect = () => {
+    if (!alumni?.id) return;
+    connect({
+      targetId: alumni.id,
+      type: selectedType as any,
+    });
+  };
+
+  const [selectedType, setSelectedType] = useState<string>(
+    role === "student" ? "mentor" : "batchmate"
+  );
 
   const isOwnProfile = (profile as any)?.username === username;
   const canConnect =
@@ -203,11 +227,45 @@ export default function AlumniProfilePage() {
                   </Link>
                 </Button>
               ) : canConnect ? (
-                connected ? (
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Request Sent
-                  </div>
+                status !== "none" ? (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant={isPending ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-8 rounded-full px-4 text-xs font-bold transition-all"
+                        disabled={isCancelling || isRemoving}
+                      >
+                        {isPending ? (
+                          <><Clock className="h-3.5 w-3.5 mr-1.5" /> Pending</>
+                        ) : (
+                          "Connected"
+                        )}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>{isPending ? "Cancel Request" : "Remove Connection"}</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to {isPending ? "cancel your connection request to" : "remove"} <span className="font-semibold text-foreground">{alumni.display_name}</span>? {isConnected && "They will no longer be in your network."}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                        <DialogClose asChild>
+                          <Button variant="outline" size="sm">Back</Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => isPending ? cancelRequest(alumni.id) : removeOldConnection(alumni.id)}
+                          >
+                            Confirm
+                          </Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 ) : (
                   <div className="flex items-center gap-2">
                     {connectionTypes.length > 1 && (
@@ -226,12 +284,12 @@ export default function AlumniProfilePage() {
                     )}
                     <Button
                       size="sm"
-                      onClick={() => connectMutation.mutate()}
-                      disabled={connectMutation.isPending}
+                      onClick={handleConnect}
+                      disabled={isConnecting}
                       className="h-8 gap-1.5 cursor-pointer text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
                     >
                       <UserPlus className="h-3.5 w-3.5" />
-                      {connectMutation.isPending ? "Connecting…" : "Connect"}
+                      {isConnecting ? "Connecting…" : "Connect"}
                     </Button>
                   </div>
                 )
@@ -280,20 +338,6 @@ export default function AlumniProfilePage() {
                   .filter(Boolean)
                   .join(" · ")}
               </span>
-            </div>
-          )}
-
-          {/* Alerts */}
-          {successMsg && (
-            <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
-              <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-700 dark:text-blue-300">{successMsg}</p>
-            </div>
-          )}
-          {errorMsg && (
-            <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30">
-              <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-rose-700 dark:text-rose-300">{errorMsg}</p>
             </div>
           )}
 

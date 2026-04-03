@@ -6,6 +6,7 @@ export const getMyStudentProfile = async (): Promise<StudentProfile> => {
   return data;
 };
 
+
 export const updateStudentProfile = async (
   payload: FormData
 ): Promise<{ message: string }> => {
@@ -16,7 +17,11 @@ export const updateStudentProfile = async (
 };
 export const getMyMentors = async (): Promise<Mentor[]> => {
   const { data } = await api.get("/api/student/mentors");
-  console.log(data)
+  return data;
+};
+
+export const getMyNetwork = async (): Promise<any[]> => {
+  const { data } = await api.get("/api/student/connections");
   return data;
 };
 
@@ -26,14 +31,5 @@ export const addStudentSkill = async (payload: {
   proficiency_level: string;
 }): Promise<{ message: string }> => {
   const { data } = await api.post("/api/student/skills", payload);
-  return data;
-};
-
-export const studentConnectWithAlumni = async (
-  targetId: string
-): Promise<{ message: string }> => {
-  const { data } = await api.post(`/api/student/connect/${targetId}`, {
-    connection_type: "mentor",
-  });
   return data;
 };
