@@ -56,6 +56,10 @@ export default function Navbar() {
               readOnly
             />
           </div>
+          {/* Mobile Search Icon */}
+          <Link href="/search" className="md:hidden flex items-center justify-center p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
+            <Search className="h-6 w-6" />
+          </Link>
         </div>
 
         {/* Right: Nav Links & Profile */}
