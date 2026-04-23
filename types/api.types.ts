@@ -193,6 +193,9 @@ export interface CentralityScore {
 export interface ConnectionRequest {
   sender_id: string;
   sender_display_name: string;
+  display_name?: string;
+  sender_username?: string;
+  profile_picture?: string;
   connection_type: string;
   requested_at: string;
 }
@@ -323,4 +326,35 @@ export interface UserByUsername {
   company?: string;
   job_role?: string;
   skills: string[];
+}
+
+// ── Chat ──────────────────────────────────────────
+export interface Message {
+  _id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParticipantProfile {
+  id: string;
+  display_name: string;
+  profile_picture: string | null;
+  username: string;
+}
+
+export interface Conversation {
+  _id: string;
+  participants: string[];
+  updatedAt: string;
+  lastMessage: {
+    content: string;
+    createdAt: string;
+    isRead?: boolean;
+    senderId?: string;
+  };
+  participantProfile: ParticipantProfile;
 }

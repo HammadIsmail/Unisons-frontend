@@ -341,7 +341,7 @@ export default function OpportunityDetailPage() {
       {/* ── Posted by ──────────────────────────────────────────────────── */}
       <Section icon={<UserCircle2 className="h-3.5 w-3.5" />} title="Posted by">
         <Link
-          href={`/alumni/${opp.posted_by?.username}`}
+          href={`/profile/${opp.posted_by?.id}`}
           className="flex items-center gap-3.5 group w-fit"
         >
           <Avatar className="w-10 h-10 ring-2 ring-border/60 group-hover:ring-blue-500/40 transition-all">

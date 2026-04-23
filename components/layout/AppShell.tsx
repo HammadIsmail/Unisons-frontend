@@ -1,8 +1,11 @@
 "use client";
 
 import Navbar from "./Navbar";
+import { useChatSocket } from "@/hooks/useChatSocket";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  // Initialize real-time chat socket listener
+  useChatSocket();
   return (
     <div className="min-h-screen bg-[#f3f2ef]">
       <Navbar />

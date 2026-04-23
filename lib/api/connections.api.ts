@@ -65,3 +65,9 @@ export const cancelSentRequest = async (
   const { data } = await api.delete(`/api/connections/request/${targetId}`);
   return data;
 };
+
+export const getMyNetwork = async (role: "alumni" | "student"): Promise<any[]> => {
+  const endpoint = role === "alumni" ? "/api/alumni/connections" : "/api/student/connections";
+  const { data } = await api.get(endpoint);
+  return data;
+};

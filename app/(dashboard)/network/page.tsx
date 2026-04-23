@@ -13,6 +13,7 @@ import useAuthStore from "@/store/authStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useMemo } from "react";
+import Link from "next/link";
 
 function NetworkPageContent() {
   const { role } = useAuthStore();
@@ -128,18 +129,22 @@ function NetworkPageContent() {
                 ))
               ) : filteredConnections && filteredConnections.length > 0 ? (
                 filteredConnections.map((conn: any) => (
-                  <div key={conn.id} className="flex items-center gap-3 p-4 bg-white rounded-[12px] shadow-sm border border-border/40 hover:shadow-md transition-shadow">
+                  <Link
+                    key={conn.id}
+                    href={`/profile/${conn.id}`}
+                    className="flex items-center gap-3 p-4 bg-white rounded-[12px] shadow-sm border border-border/40 hover:shadow-md hover:border-blue-200 transition-all duration-200 group"
+                  >
                     <img 
                       src={conn.profile_picture || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"} 
                       alt={conn.display_name} 
-                      className="h-14 w-14 rounded-full object-cover border border-border/60"
+                      className="h-14 w-14 rounded-full object-cover border border-border/60 group-hover:ring-2 group-hover:ring-blue-400/40 transition-all"
                     />
                     <div className="min-w-0">
-                      <h3 className="font-bold text-[15px] truncate">{conn.display_name}</h3>
+                      <h3 className="font-bold text-[15px] truncate group-hover:text-blue-600 transition-colors">{conn.display_name}</h3>
                       <p className="text-xs text-muted-foreground line-clamp-1">{conn.role || conn.company || (role === "alumni" ? "Alumni" : "Student")}</p>
                       <p className="inline-block mt-1.5 text-[10px] font-bold tracking-wider text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded uppercase">{conn.connection_type}</p>
                     </div>
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <div className="col-span-full py-16 flex flex-col items-center text-center">

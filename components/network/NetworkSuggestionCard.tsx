@@ -67,7 +67,7 @@ export default function NetworkSuggestionCard({
         
         <div className="mt-3 w-full">
           <Link
-            href={`/profile/${username}`}
+            href={`/profile/${userId}`}
             className="font-bold text-[15px] text-foreground hover:text-[#0a66c2] hover:underline decoration-2 underline-offset-2 line-clamp-1"
           >
             {name}

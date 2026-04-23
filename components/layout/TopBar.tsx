@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { getInitials } from "@/lib/utils";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useChatSocket } from "@/hooks/useChatSocket";
+import useUIStore from "@/store/uiStore";
 
 import {
   Bell,
@@ -15,6 +17,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  MessageSquare,
 } from "lucide-react";
 
 // ── Page title map ─────────────────────────────────────────────────────────────
@@ -42,6 +45,10 @@ export default function TopBar() {
   const pathname = usePathname();
   const { profile, role, clearAuth } = useAuthStore();
   const { notificationCount } = useNotifications();
+  const { unreadChatCount } = useUIStore();
+  
+  // Call the hook to initialize socket listener globally
+  useChatSocket();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +88,6 @@ export default function TopBar() {
       {/* ── Right: Actions ──────────────────────────────────────────── */}
       <div className="flex items-center gap-1.5">
 
-        {/* Notification bell */}
         <Link
           href="/notifications"
           className="relative h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-all duration-150"
@@ -91,6 +97,20 @@ export default function TopBar() {
           {notificationCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
               {notificationCount > 9 ? "9+" : notificationCount}
+            </span>
+          )}
+        </Link>
+
+        {/* Message square */}
+        <Link
+          href="/chat"
+          className="relative h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-all duration-150"
+          aria-label="Messages"
+        >
+          <MessageSquare className="h-4 w-4" />
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
+              {unreadChatCount > 9 ? "9+" : unreadChatCount}
             </span>
           )}
         </Link>

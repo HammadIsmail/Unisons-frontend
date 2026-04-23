@@ -5,7 +5,8 @@ import {
   getMyAlumniProfile, updateAlumniProfile, addSkill, deleteSkill,
   addWorkExperience, deleteWorkExperience, getAllSkills,
 } from "@/lib/api/alumni.api";
-import { getMyStudentProfile, updateStudentProfile, addStudentSkill, getMyNetwork as getStudentNetwork } from "@/lib/api/student.api";
+import { getMyStudentProfile, updateStudentProfile, addStudentSkill } from "@/lib/api/student.api";
+import { getMyNetwork } from "@/lib/api/connections.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
 import { useState, useEffect } from "react";
@@ -157,10 +158,10 @@ export default function MyProfilePage() {
     enabled: isAlumni,
   });
 
-  const { data: studentNetwork } = useQuery({
-    queryKey: ["student", "network"],
-    queryFn: getStudentNetwork,
-    enabled: !isAlumni,
+  const { data: network, isLoading: isNetworkLoading } = useQuery({
+    queryKey: ["network", profile?.role],
+    queryFn: () => getMyNetwork(profile?.role as "alumni" | "student"),
+    enabled: !!profile?.role,
   });
 
   const profileForm = useForm<any>({
@@ -691,7 +692,7 @@ export default function MyProfilePage() {
       )}
 
       {/* ── My Mentors — student only ─────────────────────────────────────── */}
-      {!isAlumni && studentNetwork && studentNetwork.length > 0 && (
+      {!isAlumni && network && network.length > 0 && (
         <Card className="border-border/60">
           <CardContent className="p-6">
             <SectionHeader
@@ -704,7 +705,7 @@ export default function MyProfilePage() {
               }
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {studentNetwork.map((mentor: any) => (
+              {network.map((mentor: any) => (
                 <div key={mentor.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-blue-500/30 hover:shadow-sm transition-all duration-200">
                   <Avatar className="h-10 w-10 border border-border/60">
                     <AvatarImage src={mentor.profile_picture} />

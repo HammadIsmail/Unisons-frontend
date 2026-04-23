@@ -13,6 +13,11 @@ interface UIState {
   setNotifications: (notifications: Notification[]) => void;
   prependNotification: (notification: Notification) => void;
   markNotificationRead: (id: string) => void;
+
+  unreadChatCount: number;
+  setUnreadChatCount: (count: number) => void;
+  incrementUnreadChatCount: () => void;
+  decrementUnreadChatCount: () => void;
 }
 
 const useUIStore = create<UIState>()((set) => ({
@@ -43,6 +48,15 @@ const useUIStore = create<UIState>()((set) => ({
         n.id === id ? { ...n, is_read: true } : n
       ),
       notificationCount: Math.max(0, state.notificationCount - 1),
+    })),
+
+  unreadChatCount: 0,
+  setUnreadChatCount: (count) => set({ unreadChatCount: count }),
+  incrementUnreadChatCount: () =>
+    set((state) => ({ unreadChatCount: state.unreadChatCount + 1 })),
+  decrementUnreadChatCount: () =>
+    set((state) => ({
+      unreadChatCount: Math.max(0, state.unreadChatCount - 1),
     })),
 }));
 

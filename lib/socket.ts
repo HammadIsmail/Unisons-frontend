@@ -5,12 +5,20 @@ let socket: Socket | null = null;
 export const getSocket = (): Socket | null => socket;
 
 export const connectSocket = (token: string): Socket => {
-  if (socket?.connected) return socket;
-
+  if (socket) {
+    if (socket.connected && (socket as any).auth?.token === token) return socket;
+    socket.disconnect();
+  }
+  console.log(token)
   socket = io(
     process.env.NEXT_PUBLIC_SOCKET_URL ||
-      "https://unison-backend-lxmu.onrender.com",
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:5000",
     {
+      auth: {
+        token: token,
+      },
+      transports: ["websocket"],
       extraHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -18,11 +26,15 @@ export const connectSocket = (token: string): Socket => {
   );
 
   socket.on("connect", () => {
-    console.log("Socket connected:", socket?.id);
+    console.log("Socket connected! ID:", socket?.id);
   });
 
   socket.on("connect_error", (error) => {
-    console.error("Socket auth failed:", error.message);
+    console.error("Socket auth/connection failed:", error.message);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.warn("Socket disconnected:", reason);
   });
 
   return socket;

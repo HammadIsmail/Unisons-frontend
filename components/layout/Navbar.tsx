@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, Home, Users, Briefcase, Bell, User, LogOut, Settings } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useAuthStore from "@/store/authStore";
 import { useNotifications } from "@/hooks/useNotifications";
+import useUiStore from "@/store/uiStore";
+import { MessageSquare, Search, Home, Users, Briefcase, Bell, User, LogOut, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
 const NAV_ITEMS = [
   { label: "Home", href: "/feed", icon: Home },
   { label: "My Network", href: "/network", icon: Users },
+  { label: "Messaging", href: "/chat", icon: MessageSquare },
   { label: "Opportunities", href: "/opportunities", icon: Briefcase },
   { label: "Notifications", href: "/notifications", icon: Bell },
 ];
@@ -28,6 +30,7 @@ export default function Navbar() {
   const router = useRouter();
   const { profile, clearAuth } = useAuthStore();
   const { notificationCount } = useNotifications();
+  const { unreadChatCount } = useUiStore();
 
   const handleLogout = () => {
     clearAuth();
@@ -81,6 +84,11 @@ export default function Navbar() {
                     {item.label === "Notifications" && notificationCount > 0 && (
                       <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white leading-none">
                         {notificationCount > 9 ? "9+" : notificationCount}
+                      </span>
+                    )}
+                    {item.label === "Messaging" && unreadChatCount > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#0a66c2] px-1 text-[10px] font-bold text-white leading-none">
+                        {unreadChatCount > 9 ? "9+" : unreadChatCount}
                       </span>
                     )}
                   </div>

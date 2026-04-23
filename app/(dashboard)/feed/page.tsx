@@ -140,16 +140,20 @@ export default function FeedPage() {
                       {/* Post Header */}
                       <div className="p-4 flex items-start justify-between">
                         <div className="flex gap-3">
-                          <Avatar className="h-10 w-10 border border-border/50">
-                            <AvatarImage src={opp.posted_by?.profile_picture ?? undefined} />
-                            <AvatarFallback className="bg-blue-100 text-blue-700 font-bold text-xs">
-                              {opp.posted_by?.display_name?.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <Link href={`/profile/${opp.posted_by?.id}`}>
+                            <Avatar className="h-10 w-10 border border-border/50 hover:opacity-80 transition-opacity">
+                              <AvatarImage src={opp.posted_by?.profile_picture ?? undefined} />
+                              <AvatarFallback className="bg-blue-100 text-blue-700 font-bold text-xs">
+                                {opp.posted_by?.display_name?.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </Link>
                           <div className="flex flex-col">
-                            <h4 className="text-sm font-bold text-foreground leading-tight hover:text-[#0a66c2] transition-colors cursor-pointer capitalize">
-                              {opp.posted_by?.display_name}
-                            </h4>
+                            <Link href={`/profile/${opp.posted_by?.id}`}>
+                              <h4 className="text-sm font-bold text-foreground leading-tight hover:text-[#0a66c2] transition-colors cursor-pointer capitalize">
+                                {opp.posted_by?.display_name}
+                              </h4>
+                            </Link>
                             <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
                               @{opp.posted_by?.username} · Alumni
                             </p>

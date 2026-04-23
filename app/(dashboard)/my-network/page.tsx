@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMyNetwork, getPendingRequests, respondToRequest } from "@/lib/api/alumni.api";
+import { getMyNetwork, getPendingRequests, respondToConnectionRequest as respondToRequest } from "@/lib/api/connections.api";
+import { Connection, ConnectionRequest } from "@/types/api.types";
+import useAuthStore from "@/store/authStore";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -103,12 +105,15 @@ export default function MyNetworkPage() {
   const [filter, setFilter] = useState<ConnectionFilter>("all");
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "success" | "muted" } | null>(null);
 
-  const { data: connections, isLoading: connectionsLoading } = useQuery({
-    queryKey: ["alumni", "network"],
-    queryFn: getMyNetwork,
+  const { profile } = useAuthStore();
+
+  const { data: connections, isLoading: connectionsLoading } = useQuery<Connection[]>({
+    queryKey: ["network", profile?.role],
+    queryFn: () => getMyNetwork(profile?.role as "alumni" | "student"),
+    enabled: !!profile?.role,
   });
 
-  const { data: requests, isLoading: requestsLoading } = useQuery({
+  const { data: requests, isLoading: requestsLoading } = useQuery<ConnectionRequest[]>({
     queryKey: ["alumni", "connection-requests"],
     queryFn: getPendingRequests,
   });
@@ -123,7 +128,7 @@ export default function MyNetworkPage() {
       });
       setTimeout(() => setActionMsg(null), 3000);
       queryClient.invalidateQueries({ queryKey: ["alumni", "connection-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["alumni", "network"] });
+      queryClient.invalidateQueries({ queryKey: ["network", profile?.role] });
     },
   });
 
@@ -305,9 +310,9 @@ export default function MyNetworkPage() {
               <Card key={r.sender_id} className="border-border/60">
                 <CardContent className="p-4 flex items-center gap-3 flex-wrap">
                   <Avatar className="h-10 w-10 flex-shrink-0 ring-1 ring-border/60">
-                    <AvatarImage src={r.profile_picture} alt={r.display_name} />
+                    <AvatarImage src={r.profile_picture} alt={r.display_name || r.sender_display_name} />
                     <AvatarFallback className={`${getAvatarColor(r.sender_id ?? "")} text-white text-xs font-bold`}>
-                      {getInitials(r.display_name)}
+                      {getInitials(r.display_name || r.sender_display_name)}
                     </AvatarFallback>
                   </Avatar>
 

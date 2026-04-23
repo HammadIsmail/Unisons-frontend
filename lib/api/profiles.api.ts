@@ -1,11 +1,13 @@
 import api from "@/lib/api";
 import { AlumniProfile, StudentProfile } from "@/types/api.types";
 
-export interface PublicProfile extends AlumniProfile, StudentProfile {
-  connection_status: "pending" | "connected" | "none";
-  is_connection_sender: boolean;
-  opportunities_posted: any[];
-}
+export type PublicProfile = Omit<AlumniProfile, "role"> &
+  Omit<StudentProfile, "role"> & {
+    role: "alumni" | "student";
+    connection_status: "pending" | "connected" | "none";
+    is_connection_sender: boolean;
+    opportunities_posted: any[];
+  };
 
 export const getUserPublicProfile = async (
   id: string

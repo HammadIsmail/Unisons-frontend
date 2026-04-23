@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Info,
   ExternalLink,
+  MessageSquare,
 } from "lucide-react";
 
 // ── Type icon + color config ──────────────────────────────────────────────────
@@ -55,6 +56,11 @@ const TYPE_CONFIG: Record<string, {
     icon: <PartyPopper className="h-4 w-4" />,
     iconBg: "bg-amber-500/10 ring-1 ring-amber-500/20",
     iconColor: "text-amber-600 dark:text-amber-400",
+  },
+  new_message: {
+    icon: <MessageSquare className="h-4 w-4" />,
+    iconBg: "bg-blue-500/10 ring-1 ring-blue-500/20",
+    iconColor: "text-blue-600 dark:text-blue-400",
   },
 };
 

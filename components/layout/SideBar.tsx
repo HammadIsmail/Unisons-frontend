@@ -18,6 +18,7 @@ import {
   Clock,
   UserCog,
   BookOpen,
+  MessageSquare,
 } from "lucide-react";
 
 interface NavItem {
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Batch Mates",   href: "/batch-mates",      icon: <Users className="h-4 w-4" />,           roles: ["alumni"] },
   { label: "My Posts",      href: "/my-opportunities", icon: <FileText className="h-4 w-4" />,        roles: ["alumni"] },
   { label: "Mentors",       href: "/mentors",          icon: <GraduationCap className="h-4 w-4" />,   roles: ["student"] },
+  { label: "Messages",      href: "/chat",             icon: <MessageSquare className="h-4 w-4" />,   roles: ["alumni", "student"] },
   { label: "Notifications", href: "/notifications",    icon: <Bell className="h-4 w-4" />,            roles: ["alumni", "student"] },
 ];
 

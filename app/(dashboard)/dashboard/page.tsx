@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import useUIStore from "@/store/uiStore";
 import { getOpportunities } from "@/lib/api/opportunities.api";
-import { getMyNetwork } from "@/lib/api/alumni.api";
+import { getMyNetwork } from "@/lib/api/connections.api";
 import { getMyMentors } from "@/lib/api/student.api";
 import Link from "next/link";
 import { useEffect } from "react";
@@ -149,9 +149,9 @@ export default function DashboardPage() {
   const { notifications } = useNotifications();
 
   const { data: network } = useQuery({
-    queryKey: ["alumni", "network"],
-    queryFn: getMyNetwork,
-    enabled: role === "alumni",
+    queryKey: ["network", role],
+    queryFn: () => getMyNetwork(role as "alumni" | "student"),
+    enabled: !!role,
   });
 
   const { data: mentors } = useQuery({
