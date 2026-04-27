@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import useAuthStore from "@/store/authStore";
 import { useNotifications } from "@/hooks/useNotifications";
 import useUiStore from "@/store/uiStore";
-import { MessageSquare, Search, Home, Users, Briefcase, Bell, User, LogOut, Settings } from "lucide-react";
+import { MessageSquare, Search, Home, Users, Briefcase, Bell, User, LogOut, Settings, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -42,6 +42,40 @@ export default function Navbar() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         {/* Left: Logo & Search */}
         <div className="flex items-center gap-4 flex-1">
+          {/* Mobile Hamburger Menu (only < 395px) */}
+          <div className="hidden max-[395px]:block">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-center p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-full transition-colors">
+                  <Menu className="h-6 w-6" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 p-2 rounded-xl">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem asChild key={item.href}>
+                      <Link href={item.href} className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer">
+                        <Icon className="h-5 w-5" />
+                        <span className="font-medium">{item.label}</span>
+                        {item.label === "Notifications" && notificationCount > 0 && (
+                          <span className="ml-auto bg-red-600 px-2 py-0.5 rounded-full text-xs font-bold text-white">
+                            {notificationCount > 9 ? "9+" : notificationCount}
+                          </span>
+                        )}
+                        {item.label === "Messaging" && unreadChatCount > 0 && (
+                          <span className="ml-auto bg-[#0a66c2] px-2 py-0.5 rounded-full text-xs font-bold text-white">
+                            {unreadChatCount > 9 ? "9+" : unreadChatCount}
+                          </span>
+                        )}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           <Link href="/feed" className="flex items-center gap-1">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[#0a66c2] text-white font-bold text-xl">
               U
@@ -67,7 +101,7 @@ export default function Navbar() {
 
         {/* Right: Nav Links & Profile */}
         <div className="flex items-center gap-1 sm:gap-4">
-          <div className="flex items-center">
+          <div className="flex items-center max-[395px]:hidden">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;

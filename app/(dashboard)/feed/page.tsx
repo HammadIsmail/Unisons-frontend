@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getOpportunities } from "@/lib/api/opportunities.api";
+import { getMyNetwork } from "@/lib/api/connections.api";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -15,10 +16,27 @@ import {
   Briefcase,
   GraduationCap,
   Zap,
+  ChevronLeft,
+  ChevronRight,
+  UserPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import type { Opportunity } from "@/types/api.types";
+import api from "@/lib/api";
+import { Connection } from "@/types/api.types";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface MentorSuggestion {
+  alumni_id: string;
+  username: string;
+  display_name: string;
+  profile_picture: string | null;
+  domain: string;
+  company: string;
+  common_skills: number;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -66,11 +84,11 @@ function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ─── Skeletons ────────────────────────────────────────────────────────────────
 
 function PostSkeleton() {
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4 animate-pulse">
+    <div className="border-b border-gray-100 py-4 space-y-4 animate-pulse">
       <div className="flex gap-3">
         <div className="w-11 h-11 rounded-full bg-gray-100 flex-shrink-0" />
         <div className="flex-1 space-y-2 pt-1">
@@ -88,6 +106,39 @@ function PostSkeleton() {
   );
 }
 
+function ConnectionsSkeleton() {
+  return (
+    <div className="flex gap-4 px-2 animate-pulse">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
+          <div className="w-[52px] h-[52px] rounded-full bg-gray-100" />
+          <div className="h-2 bg-gray-100 rounded-full w-12" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SidebarSkeleton() {
+  return (
+    <div className="animate-pulse">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-3 py-3 border-t border-gray-50 first:border-t-0 first:pt-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex-shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-2.5 bg-gray-100 rounded-full w-3/4" />
+            <div className="h-2 bg-gray-100 rounded-full w-1/2" />
+          </div>
+          <div className="h-7 bg-gray-100 rounded-full w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Copy Link Button ─────────────────────────────────────────────────────────
 
 function CopyLinkButton({ id }: { id: string }) {
@@ -95,7 +146,7 @@ function CopyLinkButton({ id }: { id: string }) {
 
   const handleCopy = useCallback(() => {
     const url = `${window.location.origin}/opportunities/${id}`;
-    navigator.clipboard.writeText(url).catch(() => {});
+    navigator.clipboard.writeText(url).catch(() => { });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [id]);
@@ -103,7 +154,7 @@ function CopyLinkButton({ id }: { id: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all px-2.5 py-1.5 rounded-lg font-medium"
+      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all px-2.5 py-1.5 rounded-lg font-medium border border-transparent hover:border-blue-100"
     >
       {copied ? (
         <>
@@ -177,10 +228,7 @@ function OpportunityPreview({ opp }: { opp: Opportunity }) {
               {opp.location}
             </div>
           )}
-          <div className={`flex items-center gap-1 text-xs font-semibold ${dl.urgent ? "text-red-500" : "text-gray-500"}`}>
-            <CalendarClock className="h-3 w-3" />
-            {dl.label}
-          </div>
+
         </div>
 
         <div className="flex flex-wrap gap-1.5 mt-2.5">
@@ -219,7 +267,7 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.3, ease: "easeOut" }}
-      className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
+      className="border-b border-gray-100 pb-5 overflow-hidden"
     >
       {/* ── Header ── */}
       <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
@@ -238,7 +286,7 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
               {opp.posted_by.display_name}
             </p>
           </Link>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 uppercase tracking-wide">
               {opp.posted_by.role}
             </span>
@@ -286,12 +334,153 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
         <div className="flex items-center gap-1 text-xs text-gray-400">
           <CalendarClock className="h-3.5 w-3.5" />
           <span className={dl.urgent ? "text-red-500 font-semibold" : ""}>
-            {dl.urgent ? `${dl.label}` : `Due ${dl.label}`}
+            {dl.urgent ? dl.label : `Due ${dl.label}`}
           </span>
         </div>
       </div>
     </motion.article>
-  )
+  );
+}
+
+// ─── Connections Strip ────────────────────────────────────────────────────────
+
+function ConnectionsStrip({ connections }: { connections: Connection[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir === "left" ? -180 : 180, behavior: "smooth" });
+  };
+
+  if (!connections.length) return null;
+
+  return (
+    <div className="border-b border-gray-100 pb-4 overflow-hidden">
+      <div className="px-0 pt-2 pb-3 flex items-baseline justify-between">
+        <h2 className="text-[25px] font-bold text-gray-700">Your Connections</h2>
+        <Link
+          href="/connections"
+          className="text-xs text-blue-600 font-semibold hover:underline"
+        >
+          See all
+        </Link>
+      </div>
+
+      <div className="relative justify-center flex items-center my-1 px-2 pb-4">
+        <button
+          onClick={() => scroll("left")}
+          className="flex-shrink-0 w-7 h-7 rounded-full border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center transition-colors z-10"
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="h-3.5 w-3.5 text-gray-400" />
+        </button>
+
+        <div
+          ref={scrollRef}
+          className="flex gap-5 overflow-x-auto px-6 scroll-smooth"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {connections.map((conn) => (
+            <Link
+              key={conn.id}
+              href={`/profile/${conn.id}`}
+              className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
+            >
+              <Avatar className="h-[52px] w-[52px] border-2 border-blue-100 group-hover:border-blue-400 transition-colors">
+                <AvatarImage src={conn.profile_picture ?? undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm">
+                  {getInitials(conn.display_name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[11px] text-gray-500 font-medium max-w-[56px] text-center leading-tight truncate">
+                @{conn.username}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        <button
+          onClick={() => scroll("right")}
+          className="flex-shrink-0 w-7 h-7 rounded-full border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center transition-colors z-10"
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Make More Connections Sidebar ────────────────────────────────────────────
+
+function MakeMoreConnections({ suggestions }: { suggestions: MentorSuggestion[] }) {
+  const [connected, setConnected] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) =>
+    setConnected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  if (!suggestions.length) return null;
+
+  return (
+    <div className="p-5 pr-0">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-[15px] font-bold text-gray-700">Make More Connections</h2>
+        <Link
+          href={"/explore/people"}
+          className="text-xs text-blue-600 font-semibold hover:underline"
+        >
+          See More
+        </Link>
+      </div>
+
+      <div className="divide-y divide-gray-50 mt-7">
+        {suggestions.map((person) => {
+          const isConnected = connected.has(person.alumni_id);
+          return (
+            <div
+              key={person.alumni_id}
+              className="flex items-center gap-2.5 py-2.5 first:pt-0 last:pb-0"
+            >
+              <Link href={`/profile/${person.alumni_id}`} className="flex-shrink-0">
+                <Avatar className="h-9 w-9 border border-blue-100">
+                  <AvatarImage src={person.profile_picture ?? undefined} />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-xs">
+                    {getInitials(person.display_name)}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+
+              <div className="flex-1 min-w-0">
+                <Link href={`/profile/${person.alumni_id}`}>
+                  <p className="text-xs font-bold text-gray-900 hover:text-blue-600 transition-colors leading-tight truncate">
+                    {person.display_name}
+                  </p>
+                </Link>
+                <p className="text-[11px] text-gray-400 truncate">
+                  {person.company || `@${person.username}`}
+                </p>
+              </div>
+
+              <button
+                onClick={() => toggle(person.alumni_id)}
+                className={`flex-shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all duration-200 flex items-center gap-1 ${isConnected
+                    ? "text-gray-400"
+                    : "text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 cursor-pointer"
+                  }`}
+              >
+                {!isConnected && <UserPlus className="h-3 w-3" />}
+                {isConnected ? "Following" : "Connect"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -305,58 +494,126 @@ export default function FeedPage() {
     queryFn: () => getOpportunities({ page, limit: 10 }),
   });
 
-  return (
-    <div className="max-w-[600px] mx-auto px-3 py-4 space-y-4">
-      {/* ── Create Post Box (alumni only) ── */}
-      {role === "alumni" && (
-        <div className="bg-white rounded-2xl shadow-sm p-3.5 flex items-center gap-3">
-          <Avatar className="h-10 w-10 border-2 border-blue-100 flex-shrink-0">
-            <AvatarImage src={profile?.profile_picture} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm">
-              {profile?.display_name?.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <Link
-            href="/post-opportunity"
-            className="flex-1 bg-gray-100 hover:bg-blue-50 hover:border-blue-300 border border-transparent text-sm text-gray-400 hover:text-blue-500 font-medium px-4 py-2.5 rounded-full transition-all duration-200 block"
-          >
-            Share an opportunity or update…
-          </Link>
-        </div>
-      )}
+  const { data: connections = [], isLoading: connectionsLoading } = useQuery<Connection[]>({
+    queryKey: ["my-connections", role],
+    queryFn: () => getMyNetwork(role as "alumni" | "student"),
+    enabled: !!role,
+  });
 
-      {/* ── Feed ── */}
-      {isLoading ? (
-        <div className="space-y-4">
-          <PostSkeleton />
-          <PostSkeleton />
-          <PostSkeleton />
-        </div>
-      ) : data?.data?.length ? (
-        <AnimatePresence mode="popLayout">
-          <div className="space-y-4">
-            {data.data.map((opp: Opportunity, i: number) => (
-              <PostCard key={opp.id} opp={opp} index={i} />
-            ))}
+  // Suggestions:
+  //   • Students  → GET /api/student/mentors  (returns MentorSuggestion[])
+  //   • Alumni    → GET /api/alumni/batch-mates (normalised to same shape)
+  const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery<MentorSuggestion[]>({
+    queryKey: ["suggestions", role],
+    queryFn: async () => {
+      if (role === "student") {
+        const { data } = await api.get("/api/student/mentors");
+        return data as MentorSuggestion[];
+      }
+      // Alumni: use batch-mates as sidebar suggestions
+      const { data } = await api.get("/api/alumni/batch-mates");
+      return (data as any[]).map((bm) => ({
+        alumni_id: bm.id,
+        username: bm.username,
+        display_name: bm.display_name,
+        profile_picture: bm.profile_picture ?? null,
+        domain: "",
+        company: bm.company ?? "",
+        common_skills: 0,
+      }));
+    },
+    enabled: !!role,
+  });
+
+  return (
+    <div className=" mx-auto w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
+
+        {/* ── LEFT: Main feed ── */}
+        <div className="flex flex-col gap-4 min-w-0">
+
+          {/* Create Post Box — alumni only */}
+          {role === "alumni" && (
+            <div className="px-4 py-3.5 flex items-center gap-3 border-b border-gray-100">
+              <Avatar className="h-10 w-10 border-2 border-blue-100 flex-shrink-0">
+                <AvatarImage src={profile?.profile_picture} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm">
+                  {profile?.display_name?.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Link
+                href="/post-opportunity"
+                className="flex-1 bg-gray-100 hover:bg-blue-50 hover:border-blue-300 border border-transparent text-sm text-gray-400 hover:text-blue-500 font-medium px-4 py-2.5 rounded-full transition-all duration-200 block"
+              >
+                Share an opportunity or update…
+              </Link>
+            </div>
+          )}
+
+          {/* Connections Strip */}
+          {connectionsLoading ? (
+            <div className="border-b border-gray-100 pb-4 px-4 pt-2">
+              <div className="h-4 bg-gray-100 rounded-full w-36 mb-4 animate-pulse" />
+              <ConnectionsSkeleton />
+            </div>
+          ) : (
+            <ConnectionsStrip connections={connections} />
+          )}
+
+          {/* Feed */}
+          <div>
+            <h2 className="text-[25px] font-bold text-gray-700 px-1 mb-3">Opportunities</h2>
+
+            {isLoading ? (
+              <div className="space-y-4">
+                <PostSkeleton />
+                <PostSkeleton />
+                <PostSkeleton />
+              </div>
+            ) : data?.data?.length ? (
+              <AnimatePresence mode="popLayout">
+                <div className="space-y-4">
+                  {data.data.map((opp: Opportunity, i: number) => (
+                    <PostCard key={opp.id} opp={opp} index={i} />
+                  ))}
+                </div>
+              </AnimatePresence>
+            ) : (
+              <div className="flex flex-col items-center py-16 px-6 text-center border-b border-gray-100">
+                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                  <Briefcase className="h-7 w-7 text-blue-400" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900">No opportunities yet</h3>
+                <p className="text-sm text-gray-500 mt-1 max-w-[240px]">
+                  Be the first to share something with the community.
+                </p>
+                {role === "alumni" && (
+                  <Link
+                    href="/post-opportunity"
+                    className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-full transition-colors"
+                  >
+                    Post Opportunity
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
-        </AnimatePresence>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm flex flex-col items-center py-16 px-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-            <Briefcase className="h-7 w-7 text-blue-400" />
-          </div>
-          <h3 className="text-base font-bold text-gray-900">No opportunities yet</h3>
-          <p className="text-sm text-gray-500 mt-1 max-w-[240px]">
-            Be the first to share something with the community.
-          </p>
-          <Link
-            href="/post-opportunity"
-            className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-full transition-colors"
-          >
-            Post Opportunity
-          </Link>
         </div>
-      )}
+
+        {/* ── RIGHT: Sidebar — hidden on mobile ── */}
+        <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
+          {suggestionsLoading ? (
+            <div className="p-4">
+              <div className="h-4 bg-gray-100 rounded-full w-44 mb-4 animate-pulse" />
+              <SidebarSkeleton />
+            </div>
+          ) : (
+            <MakeMoreConnections suggestions={suggestions} />
+          )}
+        </aside>
+
+      </div>
     </div>
+
   );
 }
