@@ -109,6 +109,7 @@ export interface Opportunity {
   deadline: string;
   media: string[];
   required_skills?: string[];
+  description?: string;
 }
 export interface OpportunityDetail {
   id: string;
