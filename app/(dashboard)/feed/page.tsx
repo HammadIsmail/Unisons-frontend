@@ -205,7 +205,7 @@ function OpportunityPreview({ opp }: { opp: Opportunity }) {
 
   return (
     <Link href={`/opportunities/${opp.id}`} className="block mx-4 mb-1">
-      <div className="border-[1.5px] border-blue-100 hover:border-blue-400 bg-blue-50/40 hover:bg-blue-50 rounded-2xl p-3.5 transition-all duration-200 group/preview">
+      <div className="border-[1.5px] border-blue-100 hover:border-blue-400 hover:bg-blue-50 rounded-2xl p-3.5 transition-all duration-200 group/preview">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="font-bold text-gray-900 text-[15px] leading-snug font-serif">
@@ -233,8 +233,8 @@ function OpportunityPreview({ opp }: { opp: Opportunity }) {
 
         <div className="flex flex-wrap gap-1.5 mt-2.5">
           {opp.is_remote && (
-            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 flex items-center gap-1">
-              <Wifi className="h-2.5 w-2.5" />
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              <Wifi className="h-3 w-3" />
               Remote
             </span>
           )}
@@ -286,7 +286,7 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
               {opp.posted_by.display_name}
             </p>
           </Link>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 uppercase tracking-wide">
               {opp.posted_by.role}
             </span>
