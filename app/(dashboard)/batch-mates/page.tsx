@@ -69,7 +69,7 @@ export default function BatchMatesPage() {
   });
 
   const connectMutation = useMutation({
-    mutationFn: (id: string) => sendConnectionRequest(id, "batchmate"),
+    mutationFn: (id: string) => sendConnectionRequest(id),
     onSuccess: (_, id) => {
       setConnected((prev) => ({ ...prev, [id]: true }));
       queryClient.invalidateQueries({ queryKey: ["alumni", "network"] });
@@ -160,7 +160,7 @@ export default function BatchMatesPage() {
                     className="w-full h-8 text-xs gap-1.5 border-border/60 group-hover:border-blue-500/40 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
                   >
                     <UserPlus className="h-3.5 w-3.5" />
-                    Connect as Batchmate
+                    Connect
                   </Button>
                 )}
               </CardContent>

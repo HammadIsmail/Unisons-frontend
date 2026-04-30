@@ -84,6 +84,7 @@ export default function StepRegister() {
         password: formData.password,
         role: formData.role,
         roll_number: formData.roll_number,
+        batch: formData.batch,
         degree: formData.degree,
         graduation_year: formData.graduation_year,
         semester: formData.semester,
@@ -242,6 +243,24 @@ export default function StepRegister() {
               }`}
             />
             {errors.roll_number && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.roll_number.message}</p>}
+          </div>
+
+          {/* Batch */}
+          <div className="space-y-2">
+            <Label htmlFor="batch" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+              <CalendarDays className="h-3.5 w-3.5 text-[#0a66c2]" />
+              Batch
+            </Label>
+            <Input
+              {...register("batch")}
+              id="batch"
+              type="text"
+              placeholder="e.g. Fall 2020 or 2020"
+              className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                errors.batch ? "border-red-400" : ""
+              }`}
+            />
+            {errors.batch && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.batch.message}</p>}
           </div>
 
           {/* Degree */}

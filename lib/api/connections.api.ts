@@ -15,13 +15,20 @@ export interface ConnectionStatus {
   is_sender: boolean;
 }
 
+export interface ConnectionRequestResponse {
+  _id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const sendConnectionRequest = async (
-  targetId: string,
-  connectionType: "batchmate" | "colleague" | "mentor"
-): Promise<{ message: string }> => {
-  const { data } = await api.post(`/api/connections/request/${targetId}`, {
-    connection_type: connectionType,
-  });
+  targetId: string
+): Promise<ConnectionRequestResponse> => {
+  const { data } = await api.post(`/api/connections/request/${targetId}`);
   return data;
 };
 

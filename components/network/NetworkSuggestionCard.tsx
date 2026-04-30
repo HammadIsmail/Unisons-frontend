@@ -30,7 +30,7 @@ interface NetworkSuggestionCardProps {
   headline: string;
   image?: string;
   connectionStatus?: "none" | "pending" | "connected";
-  onConnect: (type: "batchmate" | "colleague" | "mentor") => void;
+  onConnect: () => void;
   onCancel?: () => void;
   onRemove?: () => void;
   isLoading?: boolean;
@@ -117,39 +117,17 @@ export default function NetworkSuggestionCard({
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        ) : role === "student" ? (
+        ) : (
           <Button
             variant="outline"
             size="sm"
             className="w-full font-bold text-xs rounded-full h-8 transition-all active:scale-95 border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50"
-            onClick={() => onConnect("mentor")}
+            onClick={() => onConnect()}
             disabled={isLoading}
           >
             <UserPlus className="h-3.5 w-3.5 mr-1.5" />
             Connect
           </Button>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full font-bold text-xs rounded-full h-8 transition-all active:scale-95 border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50"
-                disabled={isLoading}
-              >
-                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-                Connect
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-[180px]">
-              <DropdownMenuItem onClick={() => onConnect("batchmate")} className="cursor-pointer font-medium text-xs">
-                Connect as Batchmate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onConnect("colleague")} className="cursor-pointer font-medium text-xs">
-                Connect as Colleague
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         )}
       </CardFooter>
     </Card>

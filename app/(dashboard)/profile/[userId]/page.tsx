@@ -136,8 +136,8 @@ export default function PublicProfilePage() {
   });
 
   const connectMutation = useMutation({
-    mutationFn: (type: "batchmate" | "colleague" | "mentor") =>
-      sendConnectionRequest(userId, type),
+    mutationFn: () =>
+      sendConnectionRequest(userId),
     onSuccess: () => {
       toast.success("Connection request sent!");
       queryClient.invalidateQueries({ queryKey: ["public-profile", userId] });
@@ -199,9 +199,7 @@ export default function PublicProfilePage() {
   const isAlumni = profile.role === "alumni";
   const p = profile as any;
 
-  // Determine default connection type based on roles
-  const defaultConnectType: "mentor" | "colleague" =
-    myProfile?.role === "student" ? "mentor" : "colleague";
+
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -262,7 +260,7 @@ export default function PublicProfilePage() {
                 </button>
               ) : (
                 <button
-                  onClick={() => connectMutation.mutate(defaultConnectType)}
+                  onClick={() => connectMutation.mutate()}
                   disabled={connectMutation.isPending}
                   className="flex items-center gap-2 h-9 px-4 rounded-xl border border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 text-sm font-semibold hover:bg-blue-100 active:scale-95 transition-all"
                 >

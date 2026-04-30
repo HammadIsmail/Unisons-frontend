@@ -38,16 +38,10 @@ function NetworkPageContent() {
     isRemoving,
   } = useNetwork();
 
-  const [connectionFilter, setConnectionFilter] = useState<"all" | "batchmate" | "colleague" | "mentor">("all");
 
-  const filteredConnections = useMemo(() => {
-    if (!myConnections) return [];
-    if (connectionFilter === "all") return myConnections;
-    return myConnections.filter((c: any) => c.connection_type === connectionFilter);
-  }, [myConnections, connectionFilter]);
 
-  const handleConnect = (id: string, type: "batchmate" | "colleague" | "mentor") => {
-    connect({ targetId: id, type });
+  const handleConnect = (id: string) => {
+    connect({ targetId: id });
   };
 
   const getStatus = (personId: string) => {
@@ -88,33 +82,7 @@ function NetworkPageContent() {
         <TabsContent value="connections" className="m-0 focus-visible:outline-none focus-visible:ring-0">
           <NetworkSection title={role === "alumni" ? "My Connections" : "My Mentors"}>
             
-            {/* Filter Sub-tabs for Alumni */}
-            {role === "alumni" && (
-              <div className="flex items-center gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
-                <div className="flex items-center gap-1.5 mr-2 text-muted-foreground">
-                  <Filter className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Filter:</span>
-                </div>
-                {[
-                  { id: "all", label: "All" },
-                  { id: "batchmate", label: "Batchmates" },
-                  { id: "colleague", label: "Colleagues" },
-                  { id: "mentor", label: "Mentors" }
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setConnectionFilter(f.id as any)}
-                    className={`h-8 px-4 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                      connectionFilter === f.id
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                        : "bg-white border border-border/60 text-muted-foreground hover:border-blue-400 hover:text-blue-600"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            )}
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myConnectionsLoading ? (
@@ -127,8 +95,8 @@ function NetworkPageContent() {
                     </div>
                   </div>
                 ))
-              ) : filteredConnections && filteredConnections.length > 0 ? (
-                filteredConnections.map((conn: any) => (
+              ) : myConnections && myConnections.length > 0 ? (
+                myConnections.map((conn: any) => (
                   <Link
                     key={conn.id}
                     href={`/profile/${conn.id}`}
@@ -142,7 +110,6 @@ function NetworkPageContent() {
                     <div className="min-w-0">
                       <h3 className="font-bold text-[15px] truncate group-hover:text-blue-600 transition-colors">{conn.display_name}</h3>
                       <p className="text-xs text-muted-foreground line-clamp-1">{conn.role || conn.company || (role === "alumni" ? "Alumni" : "Student")}</p>
-                      <p className="inline-block mt-1.5 text-[10px] font-bold tracking-wider text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded uppercase">{conn.connection_type}</p>
                     </div>
                   </Link>
                 ))
@@ -279,7 +246,7 @@ function NetworkPageContent() {
                     headline={person.headline}
                     image={person.image}
                     connectionStatus={getStatus(person.id)}
-                    onConnect={(type) => handleConnect(person.id, type)}
+                    onConnect={() => handleConnect(person.id)}
                     onCancel={() => cancelRequest(person.id)}
                     onRemove={() => removeOldConnection(person.id)}
                     isLoading={isConnecting || isCancelling || isRemoving}

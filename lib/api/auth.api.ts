@@ -30,6 +30,7 @@ export const registerUser = async (payload: {
   password: string;
   role: "alumni" | "student";
   roll_number: string;
+  batch: string;
   degree: string;
   graduation_year?: number;
   semester?: number;
@@ -43,6 +44,7 @@ export const registerUser = async (payload: {
   formData.append("password", payload.password);
   formData.append("role", payload.role);
   formData.append("roll_number", payload.roll_number);
+  formData.append("batch", payload.batch);
   formData.append("degree", payload.degree);
   if (payload.graduation_year) {
     formData.append("graduation_year", String(payload.graduation_year));

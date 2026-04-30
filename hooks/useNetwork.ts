@@ -77,8 +77,8 @@ export function useNetwork() {
   });
 
   const connectMutation = useMutation({
-    mutationFn: ({ targetId, type }: { targetId: string; type: "batchmate" | "colleague" | "mentor" }) =>
-      sendConnectionRequest(targetId, type),
+    mutationFn: ({ targetId }: { targetId: string }) =>
+      sendConnectionRequest(targetId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["network-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["network-sent-requests"] });

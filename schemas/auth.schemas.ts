@@ -28,6 +28,7 @@ export const registerSchema = z
       .regex(/[^A-Za-z0-9]/, "Must contain at least one special character"),
     role: z.enum(["alumni", "student"]),
     roll_number: z.string().min(1, "Roll number is required"),
+    batch: z.string().min(1, "Batch is required"),
     degree: z.string().min(1, "Degree is required"),
     graduation_year: z.number().optional(),
     semester: z.number().min(1).max(8).optional(),
