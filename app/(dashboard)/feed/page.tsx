@@ -28,14 +28,14 @@ import { Connection } from "@/types/api.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface MentorSuggestion {
-  alumni_id: string;
-  username: string;
+interface UserSuggestion {
+  id: string;
   display_name: string;
+  username: string;
   profile_picture: string | null;
-  domain: string;
-  company: string;
-  common_skills: number;
+  role: string;
+  degree: string;
+  batch: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -413,7 +413,7 @@ function ConnectionsStrip({ connections }: { connections: Connection[] }) {
 
 // ─── Make More Connections Sidebar ────────────────────────────────────────────
 
-function MakeMoreConnections({ suggestions }: { suggestions: MentorSuggestion[] }) {
+function MakeMoreConnections({ suggestions }: { suggestions: UserSuggestion[] }) {
   const [connected, setConnected] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) =>
@@ -439,13 +439,13 @@ function MakeMoreConnections({ suggestions }: { suggestions: MentorSuggestion[] 
 
       <div className="divide-y divide-gray-50 mt-7">
         {suggestions.map((person) => {
-          const isConnected = connected.has(person.alumni_id);
+          const isConnected = connected.has(person.id);
           return (
             <div
-              key={person.alumni_id}
+              key={person.id}
               className="flex items-center gap-2.5 py-2.5 first:pt-0 last:pb-0"
             >
-              <Link href={`/profile/${person.alumni_id}`} className="flex-shrink-0">
+              <Link href={`/profile/${person.id}`} className="flex-shrink-0">
                 <Avatar className="h-9 w-9 border border-blue-100">
                   <AvatarImage src={person.profile_picture ?? undefined} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-xs">
@@ -455,18 +455,18 @@ function MakeMoreConnections({ suggestions }: { suggestions: MentorSuggestion[] 
               </Link>
 
               <div className="flex-1 min-w-0">
-                <Link href={`/profile/${person.alumni_id}`}>
+                <Link href={`/profile/${person.id}`}>
                   <p className="text-xs font-bold text-gray-900 hover:text-blue-600 transition-colors leading-tight truncate">
                     {person.display_name}
                   </p>
                 </Link>
                 <p className="text-[11px] text-gray-400 truncate">
-                  {person.company || `@${person.username}`}
+                  {`@${person.username}`}
                 </p>
               </div>
 
               <button
-                onClick={() => toggle(person.alumni_id)}
+                onClick={() => toggle(person.id)}
                 className={`flex-shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all duration-200 flex items-center gap-1 ${isConnected
                     ? "text-gray-400"
                     : "text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 cursor-pointer"
@@ -501,26 +501,12 @@ export default function FeedPage() {
   });
 
   // Suggestions:
-  //   • Students  → GET /api/student/mentors  (returns MentorSuggestion[])
-  //   • Alumni    → GET /api/alumni/batch-mates (normalised to same shape)
-  const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery<MentorSuggestion[]>({
-    queryKey: ["suggestions", role],
+  //   • GET /api/profiles/suggestions
+  const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery<UserSuggestion[]>({
+    queryKey: ["suggestions"],
     queryFn: async () => {
-      if (role === "student") {
-        const { data } = await api.get("/api/student/mentors");
-        return data as MentorSuggestion[];
-      }
-      // Alumni: use batch-mates as sidebar suggestions
-      const { data } = await api.get("/api/alumni/batch-mates");
-      return (data as any[]).map((bm) => ({
-        alumni_id: bm.id,
-        username: bm.username,
-        display_name: bm.display_name,
-        profile_picture: bm.profile_picture ?? null,
-        domain: "",
-        company: bm.company ?? "",
-        common_skills: 0,
-      }));
+      const { data } = await api.get("/api/profiles/suggestions");
+      return data as UserSuggestion[];
     },
     enabled: !!role,
   });
