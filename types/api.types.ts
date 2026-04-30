@@ -161,6 +161,8 @@ export interface Connection {
   display_name: string;
   username: string;
   profile_picture?: string;
+  backDropImage?: string;
+  bio?: string;
   company?: string;
   role?: string;
   connection_type: "batchmate" | "colleague" | "mentor";
@@ -295,6 +297,8 @@ export interface Notification {
 // ── Search ────────────────────────────────────────
 export interface AlumniSearchResult {
   profile_picture: string | Blob | undefined;
+  backDropImage?: string;
+  bio?: string;
   id: string;
   display_name: string;
   username: string;

@@ -52,8 +52,12 @@ export function useNetwork() {
         id: item.id || item.alumni_id || item.user_id,
         username: item.username,
         name: item.display_name,
-        headline: [item.role, item.current_company || item.company].filter(Boolean).join(" · ") || `${item.degree || ""} · Batch of ${item.batch_year || item.batch || ""}`,
+        headline:
+          item.bio ||
+          `${item.role || ""}${item.current_company || item.company ? ` • ${item.current_company || item.company}` : ""}` ||
+          "No description available",
         image: item.profile_picture,
+        backDropImage: item.backDropImage,
       }));
     }
   });
