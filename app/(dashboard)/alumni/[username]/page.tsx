@@ -151,7 +151,7 @@ export default function AlumniProfilePage() {
     if (!alumni?.id) return;
     connect({
       targetId: alumni.id,
-      type: selectedType as any,
+      // type: selectedType as any,
     });
   };
 
@@ -208,9 +208,14 @@ export default function AlumniProfilePage() {
 
       {/* ── Profile hero card ────────────────────────────────────────────── */}
       <Card className="border-border/60 overflow-hidden bg-gradient-to-b from-blue-400/20 via-transparent to-transparent">
-        <CardContent className="px-6 pb-6 pt-12">
+        {alumni.backDropImage && (
+          <div className="h-32 relative">
+            <img src={alumni.backDropImage} alt="Backdrop" className="absolute inset-0 w-full h-full object-cover" />
+          </div>
+        )}
+        <CardContent className={`px-6 pb-6 ${alumni.backDropImage ? "pt-0" : "pt-12"}`}>
           {/* Avatar row */}
-          <div className="flex items-end justify-between mb-5 gap-3 flex-wrap">
+          <div className={`flex items-end justify-between mb-5 gap-3 flex-wrap ${alumni.backDropImage ? "-mt-10" : ""}`}>
             <Avatar className="h-20 w-20 ring-4 ring-blue-100 shadow-md flex-shrink-0">
               <AvatarImage src={alumni.profile_picture} alt={alumni.display_name} />
               <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">

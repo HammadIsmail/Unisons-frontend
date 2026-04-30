@@ -121,6 +121,7 @@ export default function MyProfilePage() {
   const [showAddWork, setShowAddWork] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageHash, setImageHash] = useState(Date.now());
 
   const isAlumni = role === "alumni";
 
@@ -247,12 +248,36 @@ export default function MyProfilePage() {
       else await updateStudentProfile(formData);
       flash("Profile picture updated.");
       queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      setImageHash(Date.now());
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleBackDropUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("backDropImage", file);
+      if (isAlumni) await updateAlumniProfile(formData);
+      else await updateStudentProfile(formData);
+      flash("Backdrop picture updated.");
+      queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      setImageHash(Date.now());
     } finally {
       setUploadingImage(false);
     }
   };
 
   if (isLoading) return <ProfileSkeleton />;
+
+  const getImageUrl = (url?: string) => {
+    if (!url) return url;
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}t=${imageHash}`;
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -267,7 +292,18 @@ export default function MyProfilePage() {
 
       {/* ── Profile hero card ────────────────────────────────────────────── */}
       <Card className="border-border/60 overflow-hidden">
-        <div className="h-24 bg-gradient-to-br from-blue-600/25 via-violet-500/10 to-transparent" />
+        <div className="relative h-32 bg-gradient-to-br from-blue-600/25 via-violet-500/10 to-transparent">
+          {p?.backDropImage && (
+            <img src={getImageUrl(p.backDropImage)} alt="Backdrop" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <label className={`absolute top-4 right-4 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/60 shadow-sm flex items-center justify-center cursor-pointer hover:bg-muted transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
+            {uploadingImage
+              ? <Loader2 className="h-4 w-4 animate-spin text-foreground" />
+              : <Camera className="h-4 w-4 text-foreground" />
+            }
+            <input type="file" accept="image/*" className="hidden" onChange={handleBackDropUpload} disabled={uploadingImage} />
+          </label>
+        </div>
 
         <CardContent className="px-6 pb-6">
           <div className="flex items-end justify-between -mt-10 mb-5 gap-3 flex-wrap">
@@ -275,7 +311,7 @@ export default function MyProfilePage() {
             {/* Avatar with upload overlay */}
             <div className="relative flex-shrink-0">
               <Avatar className="h-20 w-20 ring-4 ring-background shadow-md">
-                <AvatarImage src={p?.profile_picture} alt={p?.display_name} />
+                <AvatarImage src={getImageUrl(p?.profile_picture)} alt={p?.display_name} />
                 <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">
                   {getInitials(p?.display_name)}
                 </AvatarFallback>

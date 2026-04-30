@@ -29,6 +29,7 @@ export interface AlumniProfile {
   phone: string;
   bio: string;
   profile_picture: string;
+  backDropImage?: string;
   degree: string;
   graduation_year: number;
   roll_number: string;
@@ -70,6 +71,7 @@ export interface StudentProfile {
   phone: string;
   bio: string;
   profile_picture: string;
+  backDropImage?: string;
   degree: string;
   semester: number;
   roll_number: string;
@@ -319,6 +321,7 @@ export interface UserByUsername {
   username: string;
   display_name: string;
   profile_picture?: string;
+  backDropImage?: string;
   bio?: string;
   role: string;
   degree: string;

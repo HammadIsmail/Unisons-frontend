@@ -215,9 +215,15 @@ export default function PublicProfilePage() {
 
       {/* ── Profile Hero ─────────────────────────────────────────────────── */}
       <Card className="border-border/60 overflow-hidden">
-        <div className="h-28 bg-gradient-to-br from-blue-600/25 via-violet-500/10 to-transparent" />
+        {p?.backDropImage ? (
+          <div className="h-32 relative">
+            <img src={p.backDropImage} alt="Backdrop" className="absolute inset-0 w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="h-28 bg-gradient-to-br from-blue-600/25 via-violet-500/10 to-transparent" />
+        )}
 
-        <CardContent className="px-6 pb-6">
+        <CardContent className={`px-6 pb-6 ${p?.backDropImage ? "pt-0" : ""}`}>
           <div className="flex items-end justify-between -mt-10 mb-5 gap-3 flex-wrap">
             {/* Avatar */}
             <Avatar className="h-20 w-20 ring-4 ring-background shadow-md flex-shrink-0">
