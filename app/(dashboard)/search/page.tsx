@@ -213,7 +213,7 @@ export default function SearchPage() {
   };
 
   const handleConnect = (id: string, type: "batchmate" | "colleague" | "mentor") => {
-    connect({ targetId: id, type });
+    connect({ targetId: id });
   };
 
   // Alumni filters

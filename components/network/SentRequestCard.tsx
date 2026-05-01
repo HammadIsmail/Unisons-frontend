@@ -3,11 +3,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
 
 interface SentRequestCardProps {
   targetName: string;
   targetHeadline: string;
   targetImage?: string | null;
+  targetId: string;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -16,6 +18,7 @@ export default function SentRequestCard({
   targetName,
   targetHeadline,
   targetImage,
+  targetId,
   onCancel,
   isLoading
 }: SentRequestCardProps) {
@@ -30,9 +33,12 @@ export default function SentRequestCard({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <h3 className="font-bold text-[15px] text-foreground truncate hover:underline cursor-pointer">
+            <Link
+              href={`/profile/${targetId}`}
+              className="font-bold text-[15px] text-foreground truncate hover:underline cursor-pointer"
+            >
               {targetName}
-            </h3>
+            </Link>
             <p className="text-xs text-muted-foreground line-clamp-1">
               {targetHeadline}
             </p>
