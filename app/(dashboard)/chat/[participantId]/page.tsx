@@ -1,15 +1,42 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMessages, sendMessage, markMessageRead, getConversations } from "@/lib/api/chat.api";
+import { getMessages, sendMessage, getConversations } from "@/lib/api/chat.api";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Smile, Paperclip, MoreVertical, Phone, Video, CheckCheck } from "lucide-react";
 import { Message } from "@/types/api.types";
+import { useChatSocket, formatLastSeen } from "../layout";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatMessageTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDateSeparator(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const dayMs = 86400000;
+
+  if (diff < dayMs && date.getDate() === now.getDate()) return "Today";
+  if (diff < dayMs * 2) return "Yesterday";
+  return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+}
+
+function isSameDay(a: string, b: string) {
+  const da = new Date(a), db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ChatRoomPage() {
   const params = useParams();
   const participantId = params.participantId as string;
@@ -17,63 +44,146 @@ export default function ChatRoomPage() {
   const { profile } = useAuthStore();
   const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [content, setContent] = useState("");
+  const [isTyping, setIsTyping] = useState(false); // remote participant is typing
 
-  // 1. Participant Details from conversations list
+  // ── Socket from layout context ───────────────────────────────────────────
+  const { socket, onlineStatus } = useChatSocket();
+  const liveStatus = onlineStatus[participantId];
+
+  // ── Participant details ──────────────────────────────────────────────────
   const { data: conversations } = useQuery({
     queryKey: ["conversations"],
     queryFn: getConversations,
   });
 
-  const conversation = conversations?.find(c => c.participantProfile.id === participantId);
-  const participant = conversation?.participantProfile;
+  const conversation = conversations?.find((c) => c.participantProfile.id === participantId);
+  const participant = conversation?.participantProfile as any;
 
-  // 2. Fetch Messages
+  // Derive online status: prefer live socket data, fall back to profile field
+  const isOnline = liveStatus?.isOnline ?? participant?.is_online ?? false;
+  const lastSeen = liveStatus?.lastSeen ?? participant?.last_seen ?? null;
+
+  // ── Fetch messages ───────────────────────────────────────────────────────
   const { data: messages, isLoading } = useQuery({
     queryKey: ["messages", participantId],
     queryFn: () => getMessages(participantId),
     enabled: !!participantId,
   });
 
-  // Scroll to bottom when messages load or change
+  // ── Bulk-mark conversation as read when chat is opened ───────────────────
+  useEffect(() => {
+    if (!participantId || !profile) return;
+    // Call the bulk-read endpoint
+    fetch(`/api/chat/conversations/${participantId}/read`, { method: "PATCH" })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["messages", participantId] });
+      })
+      .catch(() => {/* silently ignore */});
+  }, [participantId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Socket: typing_status + message_read / messages_read ────────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTypingStatus = ({ senderId, isTyping: typing }: { senderId: string; isTyping: boolean }) => {
+      if (senderId === participantId) setIsTyping(typing);
+    };
+
+    // Single message read
+    const handleMessageRead = ({ messageId, readAt }: { messageId: string; readAt: string }) => {
+      queryClient.setQueryData<Message[]>(["messages", participantId], (prev) =>
+        prev?.map((m) => (m._id === messageId ? { ...m, isRead: true, readAt } : m)) ?? prev
+      );
+    };
+
+    // Bulk read (all messages in this conversation marked read)
+    const handleMessagesRead = ({ participantId: pid }: { participantId: string }) => {
+      if (pid !== participantId) return;
+      queryClient.setQueryData<Message[]>(["messages", participantId], (prev) =>
+        prev?.map((m) => ({ ...m, isRead: true })) ?? prev
+      );
+    };
+
+    // New incoming message — append to cache then re-mark read
+    const handleNewMessage = (msg: Message) => {
+      if (String(msg.senderId) !== participantId) return;
+      queryClient.setQueryData<Message[]>(["messages", participantId], (prev) =>
+        prev ? [...prev, { ...msg, isRead: true }] : [msg]
+      );
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      // Mark new message read immediately
+      fetch(`/api/chat/conversations/${participantId}/read`, { method: "PATCH" }).catch(() => {});
+    };
+
+    socket.on("typing_status", handleTypingStatus);
+    socket.on("message_read", handleMessageRead);
+    socket.on("messages_read", handleMessagesRead);
+    socket.on("new_message", handleNewMessage);
+
+    return () => {
+      socket.off("typing_status", handleTypingStatus);
+      socket.off("message_read", handleMessageRead);
+      socket.off("messages_read", handleMessagesRead);
+      socket.off("new_message", handleNewMessage);
+      // Stop typing when leaving the chat
+      socket.emit("typing", { receiverId: participantId, isTyping: false });
+    };
+  }, [socket, participantId, queryClient]);
+
+  // ── Scroll to bottom ─────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Mark unread messages as read
+  // ── Auto-resize textarea ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!messages || !profile || !participantId) return;
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+    }
+  }, [content]);
 
-    // Find messages that are not from me and are unread, and have a valid ID
-    const unreadMsgs = messages.filter(
-      (msg) => !msg.isRead && msg.senderId !== profile.id && !msg._id.startsWith("temp-")
-    );
+  // ── Typing emit ──────────────────────────────────────────────────────────
+  const emitTyping = useCallback(
+    (typing: boolean) => {
+      if (!socket) return;
+      socket.emit("typing", { receiverId: participantId, isTyping: typing });
+    },
+    [socket, participantId]
+  );
 
-    if (unreadMsgs.length === 0) return;
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    if (e.target.value.trim()) {
+      emitTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => emitTyping(false), 2500);
+    } else {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      emitTyping(false);
+    }
+  };
 
-    // Process them
-    Promise.allSettled(unreadMsgs.map((msg) => markMessageRead(msg._id)))
-      .then((results) => {
-        const anySuccess = results.some((r) => r.status === "fulfilled");
-        if (anySuccess) {
-          // Just one invalidation for the whole batch
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
-          queryClient.invalidateQueries({ queryKey: ["messages", participantId] });
-        }
-      })
-      .catch(console.error);
-  }, [messages, profile?.id, queryClient, participantId]);
+  // ── Send message ─────────────────────────────────────────────────────────
+  const myId = String(profile?.id || (profile as any)?.uuid || (profile as any)?._id || "").trim();
+  const myUsername = String(profile?.username || "").trim();
 
-  // Send Message Mutation
   const sendMutation = useMutation({
     mutationFn: (text: string) => sendMessage({ receiverId: participantId, content: text }),
     onMutate: async (text: string) => {
-      // Optimistic update
+      // Stop typing indicator
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      emitTyping(false);
+
       await queryClient.cancelQueries({ queryKey: ["messages", participantId] });
       const previousMessages = queryClient.getQueryData<Message[]>(["messages", participantId]);
 
-      const myId = profile?.id || (profile as any)?.uuid || (profile as any)?._id || "me";
       const optimisticMessage: Message = {
         _id: `temp-${Date.now()}`,
         conversationId: conversation?._id || "",
@@ -84,29 +194,27 @@ export default function ChatRoomPage() {
         updatedAt: new Date().toISOString(),
       };
 
-      if (previousMessages) {
-        queryClient.setQueryData(["messages", participantId], [...previousMessages, optimisticMessage]);
-      } else {
-        queryClient.setQueryData(["messages", participantId], [optimisticMessage]);
-      }
+      queryClient.setQueryData(
+        ["messages", participantId],
+        previousMessages ? [...previousMessages, optimisticMessage] : [optimisticMessage]
+      );
+      setContent("");
 
-      setContent(""); // Clear input
-
-      // Also update conversation preview
       await queryClient.cancelQueries({ queryKey: ["conversations"] });
       const previousConversations = queryClient.getQueryData<any[]>(["conversations"]);
       if (previousConversations) {
-        queryClient.setQueryData(["conversations"], previousConversations.map(c =>
-          c.participantProfile.id === participantId
-            ? { ...c, lastMessage: optimisticMessage, updatedAt: optimisticMessage.createdAt }
-            : c
-        ));
+        queryClient.setQueryData(
+          ["conversations"],
+          previousConversations.map((c) =>
+            c.participantProfile.id === participantId
+              ? { ...c, lastMessage: optimisticMessage, updatedAt: optimisticMessage.createdAt }
+              : c
+          )
+        );
       }
-
       return { previousMessages, previousConversations };
     },
-    onError: (err, newMsg, context) => {
-      // Revert if error
+    onError: (_err, _newMsg, context) => {
       if (context?.previousMessages) {
         queryClient.setQueryData(["messages", participantId], context.previousMessages);
       }
@@ -115,7 +223,6 @@ export default function ChatRoomPage() {
       }
     },
     onSettled: () => {
-      // Always refetch to ensure correctness
       queryClient.invalidateQueries({ queryKey: ["messages", participantId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
@@ -124,8 +231,7 @@ export default function ChatRoomPage() {
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!content.trim() || sendMutation.isPending) return;
-    const textToSend = content.trim();
-    sendMutation.mutate(textToSend);
+    sendMutation.mutate(content.trim());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -137,106 +243,324 @@ export default function ChatRoomPage() {
 
   return (
     <div className="flex flex-col h-full bg-background relative">
-      {/* Header */}
-      <div className="h-16 border-b border-border/60 flex items-center px-4 flex-shrink-0 bg-background/95 backdrop-blur z-10 sticky top-0">
+      {/* ── Chat Header ── */}
+      <header className="h-[65px] border-b border-border/40 flex items-center px-4 flex-shrink-0 bg-background/98 backdrop-blur-md z-10 sticky top-0">
         <button
           onClick={() => router.push("/chat")}
-          className="md:hidden mr-3 p-1.5 -ml-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg transition-colors"
+          className="md:hidden mr-3 p-2 -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
         {participant ? (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border border-border/50">
-              <AvatarImage src={participant.profile_picture || undefined} />
-              <AvatarFallback className="bg-blue-100 text-blue-700 font-medium">
-                {getInitials(participant.display_name)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-semibold text-foreground leading-none">{participant.display_name}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">@{participant.username}</p>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-shrink-0">
+              <Avatar className="h-10 w-10 border-2 border-background shadow-sm ring-1 ring-border/30">
+                <AvatarImage src={participant.profile_picture || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/60 dark:to-blue-800/60 text-blue-700 dark:text-blue-300 text-[13px] font-semibold">
+                  {getInitials(participant.display_name)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Live online dot */}
+              {isOnline && (
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background shadow-sm" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-[14.5px] text-foreground leading-none truncate">
+                {participant.display_name}
+              </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                {isOnline ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-[11.5px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      {isTyping ? "Typing…" : "Online"}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[11.5px] text-muted-foreground/60">
+                    {formatLastSeen(lastSeen)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="h-9 w-40 bg-muted/60 rounded-lg animate-pulse" />
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 rounded-full bg-muted/60 animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-32 bg-muted/60 rounded-lg animate-pulse" />
+              <div className="h-3 w-20 bg-muted/40 rounded-md animate-pulse" />
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5">
-        {isLoading ? (
-          <div className="flex justify-center pt-8">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : messages?.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-            <p>No messages yet. Send a message to start!</p>
-          </div>
-        ) : (
-          messages?.map((msg, index) => {
-            const myId = String(profile?.id || (profile as any)?.uuid || (profile as any)?._id || "").trim();
-            const myUsername = String(profile?.username || "").trim();
-            const senderId = String(msg.senderId || "").trim();
-            console.log("isMe Check:", {
-              myId,
-              myUsername,
-              senderId,
-              isMe: (myId && senderId === myId) || (myUsername && senderId === myUsername)
-            });
-            const isMe = (myId && senderId === myId) || (myUsername && senderId === myUsername);
-            const showAvatar = !isMe && (index === 0 || messages[index - 1].senderId !== msg.senderId);
+        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+          <button className="p-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all hidden sm:flex items-center">
+            <Phone className="w-4.5 h-4.5" />
+          </button>
+          <button className="p-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all hidden sm:flex items-center">
+            <Video className="w-4.5 h-4.5" />
+          </button>
+          <button className="p-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all">
+            <MoreVertical className="w-4.5 h-4.5" />
+          </button>
+        </div>
+      </header>
 
-            return (
-              <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"} group`}>
-                {!isMe && (
-                  <div className="w-8 shrink-0 mr-2 flex flex-col justify-end pb-1">
-                    {showAvatar && participant && (
-                      <Avatar className="h-7 w-7 border border-border/50 shadow-sm">
-                        <AvatarImage src={participant.profile_picture || undefined} />
-                        <AvatarFallback className="text-[9px] bg-muted">{getInitials(participant.display_name)}</AvatarFallback>
-                      </Avatar>
+      {/* ── Messages Area ── */}
+      <div className="flex-1 overflow-y-auto bg-muted/10 dark:bg-muted/5">
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-1">
+          {isLoading ? (
+            <div className="space-y-4 pt-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"} gap-2`}>
+                  {i % 2 === 0 && (
+                    <div className="w-8 h-8 rounded-full bg-muted/70 animate-pulse flex-shrink-0 self-end" />
+                  )}
+                  <div
+                    className="h-10 rounded-2xl animate-pulse bg-muted/70"
+                    style={{ width: `${120 + Math.random() * 140}px` }}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : messages?.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[300px] text-center py-12">
+              {participant && (
+                <div className="mb-5">
+                  <div className="relative inline-block">
+                    <Avatar className="h-20 w-20 border-4 border-background shadow-xl ring-2 ring-border/20">
+                      <AvatarImage src={participant.profile_picture || undefined} />
+                      <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/60 dark:to-blue-800/60 text-blue-700 dark:text-blue-300">
+                        {getInitials(participant.display_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isOnline && (
+                      <span className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-background" />
                     )}
                   </div>
-                )}
+                </div>
+              )}
+              <h3 className="text-lg font-bold text-foreground mb-1">
+                {participant
+                  ? `Say hello to ${participant.display_name.split(" ")[0]}!`
+                  : "Start a conversation"}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                {participant
+                  ? `This is the beginning of your conversation with @${participant.username}.`
+                  : "Send a message to kick things off."}
+              </p>
+            </div>
+          ) : (
+            messages?.map((msg, index) => {
+              const senderId = String(msg.senderId || "").trim();
+              const isMe =
+                (myId && senderId === myId) || (myUsername && senderId === myUsername);
+              const prevMsg = index > 0 ? messages[index - 1] : null;
+              const nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
 
-                <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${isMe
-                  ? "bg-blue-600 text-white rounded-br-none shadow-sm shadow-blue-500/10"
-                  : "bg-muted dark:bg-muted/70 text-foreground rounded-bl-none shadow-sm"
-                  }`}>
-                  <div className="text-[14.5px] whitespace-pre-wrap break-words">{msg.content}</div>
-                  <div className={`text-[10px] mt-1 text-right ${isMe ? "text-blue-200" : "text-muted-foreground"}`}>
-                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              const isFirstInGroup = !prevMsg || prevMsg.senderId !== msg.senderId;
+              const isLastInGroup = !nextMsg || nextMsg.senderId !== msg.senderId;
+
+              const showDate = !prevMsg || !isSameDay(prevMsg.createdAt, msg.createdAt);
+              const showAvatar = !isMe && isLastInGroup;
+
+              // Read receipt: show blue ticks on last sent message only
+              const isLastSentMsg =
+                isMe &&
+                isLastInGroup &&
+                (!nextMsg || String(nextMsg.senderId).trim() !== myId);
+
+              return (
+                <div key={msg._id}>
+                  {showDate && (
+                    <div className="flex items-center gap-3 my-5">
+                      <div className="flex-1 h-px bg-border/40" />
+                      <span className="text-[11px] text-muted-foreground/70 font-medium px-3 py-1 bg-muted/30 rounded-full border border-border/30">
+                        {formatDateSeparator(msg.createdAt)}
+                      </span>
+                      <div className="flex-1 h-px bg-border/40" />
+                    </div>
+                  )}
+
+                  <div
+                    className={`flex items-end gap-2.5 ${
+                      isMe ? "justify-end" : "justify-start"
+                    } ${isLastInGroup ? "mb-3" : "mb-0.5"}`}
+                  >
+                    {/* Received: Avatar space */}
+                    {!isMe && (
+                      <div className="w-8 flex-shrink-0 self-end mb-0.5">
+                        {showAvatar && participant ? (
+                          <Avatar className="h-8 w-8 border border-border/40 shadow-sm">
+                            <AvatarImage src={participant.profile_picture || undefined} />
+                            <AvatarFallback className="text-[9px] font-semibold bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300">
+                              {getInitials(participant.display_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Bubble */}
+                    <div
+                      className={`max-w-[70%] sm:max-w-[60%] group ${
+                        isMe ? "items-end" : "items-start"
+                      } flex flex-col`}
+                    >
+                      {!isMe && isFirstInGroup && participant && (
+                        <span className="text-[11px] font-medium text-muted-foreground ml-1 mb-1">
+                          {participant.display_name.split(" ")[0]}
+                        </span>
+                      )}
+
+                      <div
+                        className={`relative px-4 py-2.5 shadow-sm transition-all ${
+                          isMe
+                            ? `bg-blue-600 text-white ${
+                                isFirstInGroup && isLastInGroup
+                                  ? "rounded-2xl"
+                                  : isFirstInGroup
+                                  ? "rounded-2xl rounded-br-md"
+                                  : isLastInGroup
+                                  ? "rounded-2xl rounded-tr-md"
+                                  : "rounded-lg rounded-r-md"
+                              } shadow-blue-600/20`
+                            : `bg-white dark:bg-muted/60 text-foreground border border-border/30 ${
+                                isFirstInGroup && isLastInGroup
+                                  ? "rounded-2xl"
+                                  : isFirstInGroup
+                                  ? "rounded-2xl rounded-bl-md"
+                                  : isLastInGroup
+                                  ? "rounded-2xl rounded-tl-md"
+                                  : "rounded-lg rounded-l-md"
+                              }`
+                        }`}
+                      >
+                        <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </p>
+
+                        {/* Timestamp + read receipt (only on last sent bubble in group) */}
+                        <div
+                          className={`flex items-center gap-1 mt-1 ${
+                            isMe ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <span
+                            className={`text-[10px] ${
+                              isMe ? "text-blue-200" : "text-muted-foreground/50"
+                            }`}
+                          >
+                            {formatMessageTime(msg.createdAt)}
+                          </span>
+                          {isMe && (
+                            <CheckCheck
+                              className={`w-3 h-3 transition-colors duration-300 ${
+                                msg._id.startsWith("temp-")
+                                  ? "text-blue-300/40" // pending
+                                  : msg.isRead
+                                  ? "text-blue-200"    // read — bright
+                                  : "text-blue-300/60" // delivered, unread
+                              }`}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              );
+            })
+          )}
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="flex items-end gap-2.5 mb-3">
+              <div className="w-8 flex-shrink-0 self-end">
+                {participant && (
+                  <Avatar className="h-8 w-8 border border-border/40 shadow-sm">
+                    <AvatarImage src={participant.profile_picture || undefined} />
+                    <AvatarFallback className="text-[9px] font-semibold bg-muted text-muted-foreground">
+                      {getInitials(participant.display_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
               </div>
-            );
-          })
-        )}
-        <div ref={bottomRef} />
+              <div className="bg-white dark:bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} className="h-2" />
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="p-3 bg-background border-t border-border/60 flex-shrink-0">
-        <form onSubmit={handleSend} className="relative flex items-end gap-2 bg-muted/40 p-2 rounded-2xl border border-border/50 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            className="w-full max-h-32 min-h-[44px] bg-transparent resize-none py-2.5 pl-3 pr-2 text-sm text-foreground focus:outline-none scrollbar-hide"
-            rows={1}
-            disabled={sendMutation.isPending}
-          />
-          <button
-            type="submit"
-            disabled={!content.trim() || sendMutation.isPending}
-            className="h-10 w-10 shrink-0 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors mb-0.5"
+      {/* ── Message Input Bar ── */}
+      <div className="flex-shrink-0 border-t border-border/40 bg-background/98 backdrop-blur-md px-4 py-3">
+        <div className="max-w-3xl mx-auto">
+          <form
+            onSubmit={handleSend}
+            className="flex items-end gap-2.5 bg-muted/30 dark:bg-muted/20 rounded-2xl border border-border/50 px-3 py-2.5 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all duration-200 shadow-sm"
           >
-            <Send className="h-4 w-4 ml-0.5" />
-          </button>
-        </form>
+            <button
+              type="button"
+              className="p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted/60 transition-all flex-shrink-0 self-end mb-0.5"
+              tabIndex={-1}
+            >
+              <Paperclip className="w-4.5 h-4.5" />
+            </button>
+
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleContentChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              rows={1}
+              disabled={sendMutation.isPending}
+              className="flex-1 bg-transparent resize-none min-h-[36px] max-h-32 py-1.5 text-[14px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none overflow-y-auto scrollbar-hide leading-relaxed disabled:opacity-70"
+            />
+
+            <button
+              type="button"
+              className="p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted/60 transition-all flex-shrink-0 self-end mb-0.5"
+              tabIndex={-1}
+            >
+              <Smile className="w-4.5 h-4.5" />
+            </button>
+
+            <button
+              type="submit"
+              disabled={!content.trim() || sendMutation.isPending}
+              className={`h-9 w-9 flex-shrink-0 self-end rounded-xl flex items-center justify-center transition-all duration-200 ${
+                content.trim() && !sendMutation.isPending
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/30 scale-100 hover:scale-105"
+                  : "bg-muted/60 text-muted-foreground/40 cursor-not-allowed"
+              }`}
+            >
+              {sendMutation.isPending ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 ml-0.5" />
+              )}
+            </button>
+          </form>
+
+          <p className="text-[10.5px] text-muted-foreground/40 text-center mt-2 select-none">
+            Press <kbd className="font-mono">Enter</kbd> to send ·{" "}
+            <kbd className="font-mono">Shift+Enter</kbd> for new line
+          </p>
+        </div>
       </div>
     </div>
   );

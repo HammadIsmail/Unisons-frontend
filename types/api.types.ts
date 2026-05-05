@@ -347,12 +347,14 @@ export interface Message {
   updatedAt: string;
 }
 
-export interface ParticipantProfile {
+type ParticipantProfile = {
   id: string;
   display_name: string;
-  profile_picture: string | null;
   username: string;
-}
+  profile_picture?: string | null;
+  is_online?: boolean;
+  last_seen?: string | null;
+};
 
 export interface Conversation {
   _id: string;
