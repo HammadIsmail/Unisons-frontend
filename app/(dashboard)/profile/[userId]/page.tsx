@@ -366,7 +366,7 @@ export default function PublicProfilePage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-muted/40"
                     >
                       <span className="text-xs font-medium text-foreground">
-                        {s.skill_name}
+                        {s.skill_name || s.name || s.skill}
                       </span>
                       <span
                         className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${meta.badge}`}

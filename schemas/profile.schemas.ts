@@ -22,6 +22,7 @@ export const updateStudentProfileSchema = z.object({
     .string()
     .regex(/^\+?[\d\s\-]{10,15}$/, "Enter a valid phone number")
     .optional(),
+  semester: z.number().min(1).max(8).optional(),
 });
 
 export const addSkillSchema = z.object({

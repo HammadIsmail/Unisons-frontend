@@ -2,14 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getMyAlumniProfile, updateAlumniProfile, addSkill, deleteSkill,
-  addWorkExperience, deleteWorkExperience, getAllSkills,
+  getMyAlumniProfile, updateAlumniProfile, addSkill,
+  addWorkExperience, deleteWorkExperience,
 } from "@/lib/api/alumni.api";
 import { getMyStudentProfile, updateStudentProfile, addStudentSkill } from "@/lib/api/student.api";
-import { getMyNetwork } from "@/lib/api/connections.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -30,12 +29,13 @@ import {
 import Link from "next/link";
 
 import {
-  Pencil, Plus, X, Trash2, CheckCircle2, Camera, Loader2,
+  Pencil, Plus, X, Trash2, Camera, Loader2,
   Linkedin, Phone, Network, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
-  Activity, ArrowRight, ChevronRight, Users,
+  Activity, ArrowRight, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { deleteSkill } from "@/lib/api/skill.api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -64,49 +64,55 @@ function SectionHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-2.5">
-        <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-          {icon}
-        </div>
-        <h2 className="font-semibold text-foreground text-[15px]">{title}</h2>
-      </div>
+    <div className="flex items-center justify-between mb-5">
+      <h2 className="font-bold text-foreground text-base tracking-tight flex items-center gap-2">
+        <span className="text-muted-foreground">{icon}</span>
+        {title}
+      </h2>
       {action}
     </div>
   );
 }
 
-const PROFICIENCY_META: Record<string, { badge: string }> = {
-  expert: { badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
-  intermediate: { badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800" },
-  beginner: { badge: "bg-muted text-muted-foreground border-border/60" },
-};
-
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function ProfileSkeleton() {
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-      <Card className="border-border/60 overflow-hidden">
-        <div className="h-24 bg-gradient-to-r from-blue-600/20 to-violet-600/10" />
-        <CardContent className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-10 mb-5">
-            <Skeleton className="h-20 w-20 rounded-full" />
-            <Skeleton className="h-8 w-24 rounded-xl" />
-          </div>
-          <Skeleton className="h-6 w-40 rounded mb-1.5" />
-          <Skeleton className="h-4 w-24 rounded mb-3" />
-          <Skeleton className="h-4 w-56 rounded" />
-        </CardContent>
-      </Card>
-      <Card className="border-border/60">
-        <CardContent className="p-6 space-y-3">
-          <Skeleton className="h-5 w-24 rounded" />
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-7 w-20 rounded-full" />)}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-0 space-y-0">
+      <Skeleton className="h-56 w-full rounded-none" />
+      <div className="bg-background px-6 pb-6">
+        <div className="flex items-end justify-between -mt-12 mb-4">
+          <Skeleton className="h-24 w-24 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-xl" />
+        </div>
+        <Skeleton className="h-7 w-48 rounded mb-2" />
+        <Skeleton className="h-4 w-28 rounded mb-3" />
+        <div className="flex gap-4">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-20 rounded" />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat Item ─────────────────────────────────────────────────────────────────
+
+function StatItem({
+  icon,
+  value,
+  label,
+  small = false,
+}: {
+  icon: React.ReactNode;
+  value: string | number;
+  label: string;
+  small?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center px-3 py-2">
+      <span className={`text-muted-foreground ${small ? "mb-0.5" : "mb-1"}`}>{icon}</span>
+      <span className={`font-bold text-foreground ${small ? "text-sm" : "text-base"}`}>{value}</span>
+      <span className={`text-muted-foreground ${small ? "text-[10px]" : "text-xs"}`}>{label}</span>
     </div>
   );
 }
@@ -119,9 +125,12 @@ export default function MyProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [showAddWork, setShowAddWork] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
+  const [skillInput, setSkillInput] = useState("");
+  const [skillCategory, setSkillCategory] = useState("");
+  const [skillProficiency, setSkillProficiency] = useState<"beginner" | "intermediate" | "expert">("intermediate");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageHash, setImageHash] = useState(Date.now());
+  const skillInputRef = useRef<HTMLInputElement>(null);
 
   const isAlumni = role === "alumni";
 
@@ -147,22 +156,10 @@ export default function MyProfilePage() {
     }
   }, [profile, updateProfile]);
 
-  const { data: allSkills } = useQuery({
-    queryKey: ["skills"],
-    queryFn: getAllSkills,
-    staleTime: Infinity,
-  });
-
   const { data: myOpportunities } = useQuery({
     queryKey: ["opportunities", "me"],
     queryFn: getMyOpportunities,
     enabled: isAlumni,
-  });
-
-  const { data: network, isLoading: isNetworkLoading } = useQuery({
-    queryKey: ["network", profile?.role],
-    queryFn: () => getMyNetwork(profile?.role as "alumni" | "student"),
-    enabled: !!profile?.role,
   });
 
   const profileForm = useForm<any>({
@@ -171,11 +168,11 @@ export default function MyProfilePage() {
       display_name: p?.display_name ?? "",
       bio: profile?.bio ?? "",
       phone: (profile as any)?.phone ?? "",
+      ...(!isAlumni && { semester: p?.semester ?? undefined }),
       ...(isAlumni && { linkedin_url: (profile as any)?.linkedin_url ?? "" }),
     },
   });
 
-  const skillForm = useForm<AddSkillInput>({ resolver: zodResolver(addSkillSchema) });
   const workForm = useForm<AddWorkExperienceInput>({
     resolver: zodResolver(addWorkExperienceSchema),
     defaultValues: { is_current: false },
@@ -183,12 +180,7 @@ export default function MyProfilePage() {
   const isCurrentJob = workForm.watch("is_current");
 
   const flash = (msg: string) => {
-    toast.success(msg, {
-      action: {
-        label: "OK",
-        onClick: () => {},
-      },
-    })
+    toast.success(msg, { action: { label: "OK", onClick: () => {} } });
   };
 
   const profileMutation = useMutation({
@@ -197,6 +189,7 @@ export default function MyProfilePage() {
       if (data.display_name?.trim()) formData.append("display_name", data.display_name.trim());
       if (data.bio?.trim()) formData.append("bio", data.bio.trim());
       if (data.phone?.trim()) formData.append("phone", data.phone.trim());
+      if (!isAlumni && data.semester) formData.append("semester", String(data.semester));
       if (isAlumni && data.linkedin_url?.trim()) formData.append("linkedin_url", data.linkedin_url.trim());
       return isAlumni ? updateAlumniProfile(formData) : updateStudentProfile(formData);
     },
@@ -211,16 +204,19 @@ export default function MyProfilePage() {
     mutationFn: (data: any) => isAlumni ? addSkill(data) : addStudentSkill(data),
     onSuccess: () => {
       setShowAddSkill(false);
-      skillForm.reset();
+      setSkillInput("");
+      setSkillCategory("");
+      setSkillProficiency("intermediate");
       flash("Skill added.");
       queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
     },
   });
 
   const deleteSkillMutation = useMutation({
-    mutationFn: deleteSkill,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni", "me"] }),
-  });
+  mutationFn: deleteSkill,
+  onSuccess: () =>
+    queryClient.invalidateQueries({ queryKey: ["me"] }),
+});
 
   const workMutation = useMutation({
     mutationFn: addWorkExperience,
@@ -271,493 +267,575 @@ export default function MyProfilePage() {
     }
   };
 
+  const handleAddSkill = () => {
+    if (!skillInput.trim()) return;
+    skillMutation.mutate({
+      skill_name: skillInput.trim(),
+      category: skillCategory.trim() || undefined,
+      proficiency_level: skillProficiency,
+    });
+  };
+
   if (isLoading) return <ProfileSkeleton />;
 
   const getImageUrl = (url?: string) => {
     if (!url) return url;
-    const separator = url.includes("?") ? "&" : "?";
-    return `${url}${separator}t=${imageHash}`;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}t=${imageHash}`;
   };
 
-  return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  const PROFICIENCY_COLORS: Record<string, string> = {
+    expert: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
+    intermediate: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
+    beginner: "bg-muted text-muted-foreground border-border/60",
+  };
 
-      {/* ── Success toast ────────────────────────────────────────────────── */}
-      {successMsg && (
-        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm font-medium text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-300">
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-          {successMsg}
-        </div>
+  // ── Shared stat blocks (desktop & mobile sizes) ───────────────────────────
+
+  const alumniStats = (small = false) => (
+    <>
+      <StatItem icon={<Network className={small ? "h-4 w-4" : "h-5 w-5"} />} value={p?.connections_count ?? 0} label="Connections" small={small} />
+      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
+      <StatItem icon={<Briefcase className={small ? "h-4 w-4" : "h-5 w-5"} />} value={myOpportunities?.length ?? 0} label="Opportunities" small={small} />
+      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
+      <StatItem icon={<Tag className={small ? "h-4 w-4" : "h-5 w-5"} />} value={p?.detailed_skills?.length ?? p?.skills?.length ?? 0} label="Skills" small={small} />
+    </>
+  );
+
+  const studentStats = (small = false) => (
+    <>
+      <StatItem icon={<GraduationCap className={small ? "h-4 w-4" : "h-5 w-5"} />} value={`Sem ${p?.semester ?? "—"}`} label="Semester" small={small} />
+      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
+      <StatItem icon={<Tag className={small ? "h-4 w-4" : "h-5 w-5"} />} value={p?.detailed_skills?.length ?? p?.skills?.length ?? 0} label="Skills" small={small} />
+    </>
+  );
+
+  const editButton = (
+    <Button
+      variant={editMode ? "outline" : "default"}
+      size="sm"
+      onClick={() => setEditMode(!editMode)}
+      className={`h-9 gap-1.5 text-sm font-semibold ${!editMode ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20" : ""}`}
+    >
+      {editMode ? <><X className="h-4 w-4" /> Cancel</> : <><Pencil className="h-4 w-4" /> Edit Profile</>}
+    </Button>
+  );
+
+  const nameBlock = (mobile = false) => (
+    <div className={`flex flex-col items-center mt-4 text-center ${mobile ? "" : ""}`}>
+      <h1 className={`font-bold text-foreground tracking-tight ${mobile ? "text-xl" : "text-2xl"}`}>{p?.display_name}</h1>
+      <p className="text-sm text-gray-400 mt-0.5">@{p?.username}</p>
+      {isAlumni && (p?.current_role || p?.current_company) && (
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {[p.current_role, p.current_company].filter(Boolean).join(" · ")}
+        </p>
       )}
+      <p className="text-sm text-muted-foreground mt-0.5">
+        {[profile?.degree, profile?.batch, isAlumni
+          ? `Class of ${p?.graduation_year}`
+          : `Semester ${p?.semester}`
+        ].filter(Boolean).join(" · ")}
+      </p>
+    </div>
+  );
 
-      {/* ── Profile hero card ────────────────────────────────────────────── */}
-      <Card className="border-border/60 overflow-hidden">
-        <div className="relative h-32 bg-gradient-to-br from-blue-600/25 via-violet-500/10 to-transparent">
+  return (
+    <div className="w-full mx-auto animate-in fade-in duration-500">
+
+      {/* ── Cover / Hero ────────────────────────────────────────────────────── */}
+      {/*
+        FIX 1: overflow-visible so the avatar hanging -bottom-12 is NOT clipped.
+        The background image is clipped separately inside a child div.
+      */}
+      <div className="relative h-52 sm:h-64 overflow-visible bg-gradient-to-br from-indigo-500/30 via-violet-400/20 to-purple-300/10">
+
+        {/* Clipped background — image stays inside cover bounds */}
+        <div className="absolute inset-0 overflow-hidden">
           {p?.backDropImage && (
-            <img src={getImageUrl(p.backDropImage)} alt="Backdrop" className="absolute inset-0 w-full h-full object-cover" />
+            <img
+              src={getImageUrl(p.backDropImage)}
+              alt="Cover"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
           )}
-          <label className={`absolute top-4 right-4 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/60 shadow-sm flex items-center justify-center cursor-pointer hover:bg-muted transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
-            {uploadingImage
-              ? <Loader2 className="h-4 w-4 animate-spin text-foreground" />
-              : <Camera className="h-4 w-4 text-foreground" />
-            }
-            <input type="file" accept="image/*" className="hidden" onChange={handleBackDropUpload} disabled={uploadingImage} />
-          </label>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         </div>
 
-        <CardContent className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-10 mb-5 gap-3 flex-wrap">
+        {/* Cover upload */}
+        <label className={`absolute top-4 right-4 z-10 h-9 w-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
+          {uploadingImage
+            ? <Loader2 className="h-4 w-4 animate-spin text-white" />
+            : <Camera className="h-4 w-4 text-white" />}
+          <input type="file" accept="image/*" className="hidden" onChange={handleBackDropUpload} disabled={uploadingImage} />
+        </label>
 
-            {/* Avatar with upload overlay */}
-            <div className="relative flex-shrink-0">
-              <Avatar className="h-20 w-20 ring-4 ring-background shadow-md">
-                <AvatarImage src={getImageUrl(p?.profile_picture)} alt={p?.display_name} />
-                <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">
-                  {getInitials(p?.display_name)}
-                </AvatarFallback>
-              </Avatar>
-              <label className={`absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background border border-border/60 shadow-sm flex items-center justify-center cursor-pointer hover:bg-muted transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
-                {uploadingImage
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                  : <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-                }
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-              </label>
-            </div>
+        {/* Avatar — centered, overlaps into profile bar below */}
+        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-20">
+          <div className="relative">
+            <Avatar className="h-24 w-24 ring-4 ring-background shadow-lg">
+              <AvatarImage src={getImageUrl(p?.profile_picture)} alt={p?.display_name} />
+              <AvatarFallback className="bg-indigo-600 text-white text-3xl font-bold">
+                {getInitials(p?.display_name)}
+              </AvatarFallback>
+            </Avatar>
+            <label className={`absolute -bottom-1 -right-1 z-30 h-7 w-7 rounded-full bg-background border-2 border-background shadow-md flex items-center justify-center cursor-pointer hover:bg-muted transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
+              {uploadingImage
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                : <Camera className="h-3.5 w-3.5 text-muted-foreground" />}
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+            </label>
+          </div>
+        </div>
+      </div>
 
-            {/* Edit toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditMode(!editMode)}
-              className="h-8 gap-1.5 text-xs border-border/60 mb-1"
-            >
-              {editMode
-                ? <><X className="h-3.5 w-3.5" /> Cancel</>
-                : <><Pencil className="h-3.5 w-3.5" /> Edit Profile</>
-              }
-            </Button>
+      {/* ── Profile bar ─────────────────────────────────────────────────────── */}
+      <div className="bg-background border-b border-border/60">
+
+        {/* ── DESKTOP (sm+) ── */}
+        <div className="hidden sm:grid grid-cols-3 items-center px-6 pt-14 pb-3">
+
+          {/* col-1: Stats — LEFT aligned inside their column */}
+          <div className="flex items-center gap-1 justify-start">
+            {isAlumni ? alumniStats() : studentStats()}
           </div>
 
-          {/* Name + handle */}
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{p?.display_name}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">@{p?.username}</p>
+          {/* col-2: Name — CENTER of the screen */}
+          {nameBlock()}
 
-          {/* Role + company (alumni) */}
-          {isAlumni && (p?.current_role || p?.current_company) && (
-            <p className="flex items-center gap-1.5 text-sm text-foreground mt-2">
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              {[p.current_role, p.current_company].filter(Boolean).join(" · ")}
-            </p>
-          )}
-
-          {/* Degree + batch */}
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-            <GraduationCap className="h-3.5 w-3.5" />
-            {[profile?.degree, profile?.batch, isAlumni ? `Class of ${p?.graduation_year}` : `Semester ${p?.semester}`]
-              .filter(Boolean).join(" · ")}
-          </p>
-
-          {/* Read-only bio */}
-          {!editMode && profile?.bio && (
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{profile.bio}</p>
-          )}
-
-          {/* Contact row */}
-          {!editMode && (
-            <div className="mt-3 flex flex-wrap gap-4">
-              {p?.phone && (
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Phone className="h-3 w-3" />
-                  {p.phone}
-                </span>
-              )}
-              {isAlumni && p?.linkedin_url && (
-                <a
-                  href={p.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  <Linkedin className="h-3 w-3" />
-                  LinkedIn
-                </a>
-              )}
-              {isAlumni && (
-                <Link
-                  href="/network?tab=connections"
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-blue-600 transition-colors"
-                >
-                  <Network className="h-3 w-3" />
-                  {p?.connections_count ?? 0} connections
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Edit form */}
-          {editMode && (
-            <form
-              onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))}
-              className="mt-5 pt-5 border-t border-border/60 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200"
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="display_name" className="text-sm font-medium text-foreground">Display Name</Label>
-                <Input
-                  {...profileForm.register("display_name")}
-                  id="display_name"
-                  placeholder="Your professional name"
-                  className="h-10 text-sm border-border/60"
-                />
-                <FieldError message={profileForm.formState.errors.display_name?.message as string} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="bio" className="text-sm font-medium text-foreground">Bio</Label>
-                <textarea
-                  {...profileForm.register("bio")}
-                  id="bio"
-                  rows={3}
-                  placeholder="Tell the network about yourself…"
-                  className="w-full px-3.5 py-2.5 text-sm border border-border/60 rounded-xl outline-none resize-none bg-background text-foreground placeholder:text-muted-foreground/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 transition-all"
-                />
-                <FieldError message={profileForm.formState.errors.bio?.message as string} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-sm font-medium text-foreground">Phone</Label>
-                <Input {...profileForm.register("phone")} id="phone" placeholder="+92-300-1234567" className="h-10 text-sm border-border/60" />
-              </div>
-
-              {isAlumni && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="linkedin_url" className="text-sm font-medium text-foreground">LinkedIn URL</Label>
-                  <Input {...(profileForm.register as any)("linkedin_url")} id="linkedin_url" placeholder="https://linkedin.com/in/yourname" className="h-10 text-sm border-border/60" />
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={profileMutation.isPending}
-                className="h-9 gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
+          {/* col-3: Actions — RIGHT aligned inside their column */}
+          <div className="flex items-center gap-2 justify-end">
+            {isAlumni && p?.linkedin_url && (
+              <a
+                href={p.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
               >
-                {profileMutation.isPending
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
-                  : "Save Changes"
-                }
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+                <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </a>
+            )}
+            {editButton}
+          </div>
+        </div>
 
-      {/* ── Skills card ──────────────────────────────────────────────────── */}
-      <Card className="border-border/60">
-        <CardContent className="p-6">
-          <SectionHeader
-            icon={<Tag className="h-3.5 w-3.5" />}
-            title="Skills"
-            action={
-              <button
-                onClick={() => setShowAddSkill(!showAddSkill)}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+        {/* ── MOBILE (<sm) — stack vertically, everything centered ── */}
+        <div className="sm:hidden flex flex-col items-center px-4 pt-14 pb-3 gap-3">
+          {nameBlock(true)}
+          <div className="flex items-center gap-1">
+            {isAlumni ? alumniStats(true) : studentStats(true)}
+          </div>
+          <div className="flex items-center gap-2">
+            {isAlumni && p?.linkedin_url && (
+              <a
+                href={p.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
               >
-                {showAddSkill ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add Skill</>}
-              </button>
-            }
-          />
+                <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </a>
+            )}
+            {editButton}
+          </div>
+        </div>
 
-          {/* Add skill form */}
-          {showAddSkill && (
-            <div className="mb-4 p-4 bg-muted/40 border border-border/60 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Skill</Label>
-                  <Select onValueChange={(val) => skillForm.setValue("skill_name", val, { shouldValidate: true })}>
-                    <SelectTrigger className="h-9 text-sm border-border/60">
-                      <SelectValue placeholder="Select skill" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allSkills?.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FieldError message={skillForm.formState.errors.skill_name?.message} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category</Label>
-                  <Input {...skillForm.register("category")} placeholder="e.g. Programming" className="h-9 text-sm border-border/60" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proficiency</Label>
-                <Select onValueChange={(val) => skillForm.setValue("proficiency_level", val as any, { shouldValidate: true })}>
-                  <SelectTrigger className="h-9 text-sm border-border/60">
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <form onSubmit={skillForm.handleSubmit((data) => skillMutation.mutate(data))}>
-                <Button type="submit" size="sm" disabled={skillMutation.isPending} className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20">
-                  {skillMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Skill"}
-                </Button>
-              </form>
-            </div>
+        {/* Tab nav */}
+        <div className="flex items-center gap-6 px-4 sm:px-6 mt-1">
+          <button className="py-3 text-sm font-semibold text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400">
+            Profile
+          </button>
+          {isAlumni && (
+            <Link href="/my-opportunities" className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
+              Opportunities
+            </Link>
           )}
+          <Link href="/network" className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
+            Network
+          </Link>
+        </div>
+      </div>
 
-          {/* Skills display */}
-          {p?.detailed_skills?.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {p.detailed_skills.map((s: any) => {
-                const meta = PROFICIENCY_META[s.proficiency_level] ?? PROFICIENCY_META.beginner;
-                return (
-                  <div key={s.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-muted/40 group">
-                    <span className="text-xs font-medium text-foreground">{s.skill_name}</span>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${meta.badge}`}>
-                      {s.proficiency_level}
-                    </span>
-                    {isAlumni && (
-                      <button
-                        onClick={() => deleteSkillMutation.mutate(s.id)}
-                        disabled={deleteSkillMutation.isPending}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground/50 hover:text-rose-500 transition-all ml-0.5"
-                        aria-label="Remove skill"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : profile?.skills?.length ? (
-            <div className="flex flex-wrap gap-2">
-              {profile.skills.map((s: string) => (
-                <span key={s} className="text-xs px-3 py-1.5 rounded-full font-medium bg-muted text-foreground border border-border/60">
-                  {s}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No skills added yet.</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Body: two-column on md+ ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 px-4 sm:px-6 py-5">
 
-      {/* ── Work Experience — alumni only ─────────────────────────────────── */}
-      {isAlumni && (
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionHeader
-              icon={<Briefcase className="h-3.5 w-3.5" />}
-              title="Work Experience"
-              action={
-                <button
-                  onClick={() => setShowAddWork(!showAddWork)}
-                  className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                >
-                  {showAddWork ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add</>}
-                </button>
-              }
-            />
+        {/* ── LEFT SIDEBAR ────────────────────────────────────────────────────── */}
+        <div className="space-y-4">
 
-            {/* Add work form */}
-            {showAddWork && (
-              <form
-                onSubmit={workForm.handleSubmit((data) => workMutation.mutate(data))}
-                className="mb-5 p-4 bg-muted/40 border border-border/60 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
-              >
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company</Label>
-                    <Input {...workForm.register("company_name")} placeholder="Company name" className="h-9 text-sm border-border/60" />
-                    <FieldError message={workForm.formState.errors.company_name?.message} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</Label>
-                    <Input {...workForm.register("role")} placeholder="Job title" className="h-9 text-sm border-border/60" />
-                    <FieldError message={workForm.formState.errors.role?.message} />
-                  </div>
-                </div>
+          <Card className="border-border/60 shadow-sm">
+            <CardContent className="p-5">
+              <h2 className="font-bold text-foreground text-base mb-3">Introduction</h2>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Start Date</Label>
-                    <Input {...workForm.register("start_date")} type="date" className="h-9 text-sm border-border/60" />
+              {!editMode && profile?.bio ? (
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{profile.bio}</p>
+              ) : !editMode ? (
+                <p className="text-sm text-muted-foreground mb-4 italic">No bio yet.</p>
+              ) : null}
+
+              {!editMode && (
+                <div className="space-y-2.5">
+                  {isAlumni && p?.current_company && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Building2 className="h-4 w-4 flex-shrink-0" />
+                      <span>{p.current_company}</span>
+                    </div>
+                  )}
+                  {p?.phone && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Phone className="h-4 w-4 flex-shrink-0" />
+                      <span>{p.phone}</span>
+                    </div>
+                  )}
+                  {isAlumni && p?.linkedin_url && (
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <Linkedin className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:underline truncate">
+                        LinkedIn Profile
+                      </a>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <GraduationCap className="h-4 w-4 flex-shrink-0" />
+                    <span>{[profile?.degree, profile?.batch].filter(Boolean).join(", ")}</span>
                   </div>
-                  {!isCurrentJob && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">End Date</Label>
-                      <Input {...workForm.register("end_date")} type="date" className="h-9 text-sm border-border/60" />
+                  {!isAlumni && p?.semester && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <CalendarDays className="h-4 w-4 flex-shrink-0" />
+                      <span>Semester {p.semester}</span>
                     </div>
                   )}
                 </div>
+              )}
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employment Type</Label>
-                  <Select onValueChange={(val) => workForm.setValue("employment_type", val as any, { shouldValidate: true })}>
-                    <SelectTrigger className="h-9 text-sm border-border/60">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full-time">Full-time</SelectItem>
-                      <SelectItem value="part-time">Part-time</SelectItem>
-                      <SelectItem value="freelance">Freelance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Current job toggle */}
-                <button
-                  type="button"
-                  onClick={() => workForm.setValue("is_current", !isCurrentJob)}
-                  className="flex items-center gap-2 group"
+              {editMode && (
+                <form
+                  onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))}
+                  className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
                 >
-                  <div className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${isCurrentJob
-                      ? "bg-blue-600 border-blue-600"
-                      : "border-border/60 group-hover:border-border"
-                    }`}>
-                    {isCurrentJob && <Check className="h-3 w-3 text-white" />}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Name</Label>
+                    <Input {...profileForm.register("display_name")} placeholder="Your name" className="h-9 text-sm border-border/60" />
+                    <FieldError message={profileForm.formState.errors.display_name?.message as string} />
                   </div>
-                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                    I currently work here
-                  </span>
-                </button>
-
-                <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20">
-                  {workMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Experience"}
-                </Button>
-              </form>
-            )}
-
-            {/* Work experience list */}
-            {p?.work_experiences?.length > 0 ? (
-              <div className="space-y-3">
-                {p.work_experiences.map((w: any, idx: number) => (
-                  <div key={w.id}>
-                    {idx > 0 && <Separator className="opacity-50 mb-3" />}
-                    <div className="flex items-start justify-between gap-3 group">
-                      <div className="flex gap-3">
-                        {/* Company icon */}
-                        <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold text-foreground">{w.role}</p>
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-muted text-muted-foreground border-border/60 capitalize">
-                              {w.employment_type}
-                            </span>
-                            {w.is_current && (
-                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
-                                Current
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-0.5">{w.company_name}</p>
-                          <p className="text-xs text-muted-foreground/60 mt-0.5 flex items-center gap-1">
-                            <CalendarDays className="h-3 w-3" />
-                            {w.start_date ? new Date(w.start_date).toLocaleDateString() : "—"} — {w.is_current ? "Present" : (w.end_date ? new Date(w.end_date).toLocaleDateString() : "—")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => deleteWorkMutation.mutate(w.id)}
-                        disabled={deleteWorkMutation.isPending}
-                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-muted-foreground hover:text-rose-500 transition-all flex-shrink-0 mt-1"
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bio</Label>
+                    <textarea
+                      {...profileForm.register("bio")}
+                      rows={3}
+                      placeholder="Tell the network about yourself…"
+                      className="w-full px-3 py-2 text-sm border border-border/60 rounded-lg outline-none resize-none bg-background text-foreground placeholder:text-muted-foreground/50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</Label>
+                    <Input {...profileForm.register("phone")} placeholder="+92-300-1234567" className="h-9 text-sm border-border/60" />
+                  </div>
+                  {!isAlumni && (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Semester</Label>
+                      <Select
+                        defaultValue={p?.semester ? String(p.semester) : undefined}
+                        onValueChange={(val) => profileForm.setValue("semester", Number(val))}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <SelectTrigger className="h-9 text-sm border-border/60">
+                          <SelectValue placeholder="Select semester" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                            <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {isAlumni && (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">LinkedIn URL</Label>
+                      <Input {...(profileForm.register as any)("linkedin_url")} placeholder="https://linkedin.com/in/..." className="h-9 text-sm border-border/60" />
+                    </div>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={profileMutation.isPending}
+                    className="w-full h-9 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20"
+                  >
+                    {profileMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Save Changes"}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+
+        </div>
+
+        {/* ── RIGHT MAIN CONTENT ───────────────────────────────────────────────── */}
+        <div className="space-y-4">
+
+          {/* Skills card */}
+          <Card className="border-border/60 shadow-sm">
+            <CardContent className="p-5">
+              <SectionHeader
+                icon={<Tag className="h-4 w-4" />}
+                title="Skills"
+                action={
+                  <button
+                    onClick={() => setShowAddSkill(!showAddSkill)}
+                    className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
+                  >
+                    {showAddSkill ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add Skill</>}
+                  </button>
+                }
+              />
+
+              {showAddSkill && (
+                <div className="mb-4 p-4 bg-muted/40 border border-border/60 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-1 space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Skill Name</Label>
+                      <Input
+                        ref={skillInputRef}
+                        value={skillInput}
+                        onChange={(e) => setSkillInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSkill(); } }}
+                        placeholder="e.g. React, Python…"
+                        className="h-9 text-sm border-border/60"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category</Label>
+                      <Input
+                        value={skillCategory}
+                        onChange={(e) => setSkillCategory(e.target.value)}
+                        placeholder="e.g. Programming"
+                        className="h-9 text-sm border-border/60"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proficiency</Label>
+                      <Select value={skillProficiency} onValueChange={(v) => setSkillProficiency(v as any)}>
+                        <SelectTrigger className="h-9 text-sm border-border/60">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="beginner">Beginner</SelectItem>
+                          <SelectItem value="intermediate">Intermediate</SelectItem>
+                          <SelectItem value="expert">Expert</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleAddSkill}
+                    disabled={skillMutation.isPending || !skillInput.trim()}
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20"
+                  >
+                    {skillMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Skill"}
+                  </Button>
+                </div>
+              )}
+
+              {p?.detailed_skills?.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {p.detailed_skills.map((s: any) => (
+                    <div
+                      key={s.id}
+                      className={`inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-t-full rounded-tr-full rounded-br-full rounded-bl-none border text-xs font-semibold transition-all ${PROFICIENCY_COLORS[s.proficiency_level] ?? PROFICIENCY_COLORS.beginner}`}
+                    >
+                      <span>{s.skill_name || s.name || s.skill}</span>
+                      <button
+                        onClick={() => deleteSkillMutation.mutate(s.id)}
+                        disabled={deleteSkillMutation.isPending}
+                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+                        aria-label="Remove skill"
+                      >
+                        <X className="h-2.5 w-2.5" />
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No work experience added yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                </div>
+              ) : profile?.skills?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {profile.skills.map((s: string) => (
+                    <span key={s} className="inline-flex items-center pl-3 pr-2 py-1.5 rounded-full text-xs font-semibold bg-muted text-foreground border border-border/60">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No skills added yet. Click "Add Skill" to get started.</p>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* ── Activity / Posts — alumni only ─────────────────────────────────── */}
-      {isAlumni && myOpportunities && myOpportunities.length > 0 && (
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionHeader
-              icon={<Activity className="h-3.5 w-3.5" />}
-              title="Recent Activity"
-              action={
-                <Link href="/my-opportunities" className="text-xs font-medium text-blue-600 flex items-center gap-1 hover:underline">
-                  See all <ArrowRight className="h-3 w-3" />
-                </Link>
-              }
-            />
-            <div className="space-y-4">
-              {myOpportunities.slice(0, 3).map((opp: any) => (
-                <div key={opp.id} className="group">
-                  <Link href={`/opportunities/${opp.id}`} className="block">
-                    <div className="flex items-start justify-between">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors truncate">{opp.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{opp.company}</p>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                            opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"
-                          }`}>
-                            {opp.status}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <CalendarDays className="h-2.5 w-2.5" />
-                            Posted {opp.posted_at ? new Date(opp.posted_at).toLocaleDateString() : "—"}
-                          </span>
+          {/* Work Experience — alumni only */}
+          {isAlumni && (
+            <Card className="border-border/60 shadow-sm">
+              <CardContent className="p-5">
+                <SectionHeader
+                  icon={<Briefcase className="h-4 w-4" />}
+                  title="Work Experience"
+                  action={
+                    <button
+                      onClick={() => setShowAddWork(!showAddWork)}
+                      className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
+                    >
+                      {showAddWork ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add</>}
+                    </button>
+                  }
+                />
+
+                {showAddWork && (
+                  <form
+                    onSubmit={workForm.handleSubmit((data) => workMutation.mutate(data))}
+                    className="mb-5 p-4 bg-muted/40 border border-border/60 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
+                  >
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company</Label>
+                        <Input {...workForm.register("company_name")} placeholder="Company name" className="h-9 text-sm border-border/60" />
+                        <FieldError message={workForm.formState.errors.company_name?.message} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</Label>
+                        <Input {...workForm.register("role")} placeholder="Job title" className="h-9 text-sm border-border/60" />
+                        <FieldError message={workForm.formState.errors.role?.message} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Start Date</Label>
+                        <Input {...workForm.register("start_date")} type="date" className="h-9 text-sm border-border/60" />
+                      </div>
+                      {!isCurrentJob && (
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">End Date</Label>
+                          <Input {...workForm.register("end_date")} type="date" className="h-9 text-sm border-border/60" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employment Type</Label>
+                      <Select onValueChange={(val) => workForm.setValue("employment_type", val as any, { shouldValidate: true })}>
+                        <SelectTrigger className="h-9 text-sm border-border/60">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full-time">Full-time</SelectItem>
+                          <SelectItem value="part-time">Part-time</SelectItem>
+                          <SelectItem value="freelance">Freelance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => workForm.setValue("is_current", !isCurrentJob)}
+                      className="flex items-center gap-2 group"
+                    >
+                      <div className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${isCurrentJob ? "bg-indigo-600 border-indigo-600" : "border-border/60 group-hover:border-border"}`}>
+                        {isCurrentJob && <Check className="h-3 w-3 text-white" />}
+                      </div>
+                      <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                        I currently work here
+                      </span>
+                    </button>
+                    <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-8 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20">
+                      {workMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Experience"}
+                    </Button>
+                  </form>
+                )}
+
+                {p?.work_experiences?.length > 0 ? (
+                  <div className="space-y-4">
+                    {p.work_experiences.map((w: any, idx: number) => (
+                      <div key={w.id}>
+                        {idx > 0 && <Separator className="opacity-40 mb-4" />}
+                        <div className="flex items-start justify-between gap-3 group">
+                          <div className="flex gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center flex-shrink-0 mt-0.5 border border-indigo-100 dark:border-indigo-900">
+                              <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-bold text-foreground">{w.role}</p>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-muted text-muted-foreground border-border/60 capitalize">
+                                  {w.employment_type}
+                                </span>
+                                {w.is_current && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                                    Current
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-0.5">{w.company_name}</p>
+                              <p className="text-xs text-muted-foreground/60 mt-1 flex items-center gap-1">
+                                <CalendarDays className="h-3 w-3" />
+                                {w.start_date ? new Date(w.start_date).toLocaleDateString() : "—"} — {w.is_current ? "Present" : (w.end_date ? new Date(w.end_date).toLocaleDateString() : "—")}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deleteWorkMutation.mutate(w.id)}
+                            disabled={deleteWorkMutation.isPending}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all flex-shrink-0 mt-0.5"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors ml-2 flex-shrink-0" />
-                    </div>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── My Mentors — student only ─────────────────────────────────────── */}
-      {!isAlumni && network && network.length > 0 && (
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionHeader
-              icon={<Users className="h-3.5 w-3.5" />}
-              title="My Mentors"
-              action={
-                <Link href="/network?tab=connections" className="text-xs font-medium text-blue-600 flex items-center gap-1 hover:underline">
-                   View Network <ArrowRight className="h-3 w-3" />
-                </Link>
-              }
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {network.map((mentor: any) => (
-                <div key={mentor.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-blue-500/30 hover:shadow-sm transition-all duration-200">
-                  <Avatar className="h-10 w-10 border border-border/60">
-                    <AvatarImage src={mentor.profile_picture} />
-                    <AvatarFallback className="bg-blue-600 text-white text-xs font-bold">{getInitials(mentor.display_name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate leading-none mb-1">{mentor.display_name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate leading-none">{mentor.role} · {mentor.company}</p>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ) : (
+                  <p className="text-sm text-muted-foreground">No work experience added yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
+          {/* Recent Opportunities — alumni only */}
+          {isAlumni && myOpportunities && myOpportunities.length > 0 && (
+            <Card className="border-border/60 shadow-sm">
+              <CardContent className="p-5">
+                <SectionHeader
+                  icon={<Activity className="h-4 w-4" />}
+                  title="Recent Activity"
+                  action={
+                    <Link href="/my-opportunities" className="text-xs font-semibold text-indigo-600 flex items-center gap-1 hover:underline">
+                      See all <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  }
+                />
+                <div className="space-y-3">
+                  {myOpportunities.slice(0, 3).map((opp: any) => (
+                    <Link key={opp.id} href={`/opportunities/${opp.id}`}>
+                      <div className="flex items-start justify-between p-3 rounded-xl border border-border/40 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all group">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-foreground group-hover:text-indigo-600 transition-colors truncate">{opp.title}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">{opp.company}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                              opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"
+                            }`}>
+                              {opp.status}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <CalendarDays className="h-2.5 w-2.5" />
+                              {opp.posted_at ? new Date(opp.posted_at).toLocaleDateString() : "—"}
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-indigo-600 transition-colors ml-2 flex-shrink-0 mt-1" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }

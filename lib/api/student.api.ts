@@ -33,3 +33,10 @@ export const addStudentSkill = async (payload: {
   const { data } = await api.post("/api/student/skills", payload);
   return data;
 };
+
+export const deleteStudentSkill = async (
+  skillId: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/student/skills/${skillId}`);
+  return data;
+};

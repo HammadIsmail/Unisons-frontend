@@ -71,13 +71,6 @@ export const addSkill = async (payload: {
   return data;
 };
 
-export const deleteSkill = async (
-  skillId: string
-): Promise<{ message: string }> => {
-  const { data } = await api.delete(`/api/alumni/skills/${skillId}`);
-  return data;
-};
-
 export const getAllSkills = async (): Promise<string[]> => {
   const { data } = await api.get("/api/skills/all");
   return data;
