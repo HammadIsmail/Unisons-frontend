@@ -33,6 +33,7 @@ import {
   Linkedin, Phone, Network, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
   Activity, ArrowRight, ChevronRight,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteSkill } from "@/lib/api/skill.api";
@@ -133,17 +134,18 @@ export default function MyProfilePage() {
   const skillInputRef = useRef<HTMLInputElement>(null);
 
   const isAlumni = role === "alumni";
+  const isReady = role !== undefined && role !== null;
 
   const { data: alumniProfile, isLoading: alumniLoading } = useQuery({
     queryKey: ["alumni", "me"],
     queryFn: getMyAlumniProfile,
-    enabled: isAlumni,
+    enabled: isReady && isAlumni,
   });
 
   const { data: studentProfile, isLoading: studentLoading } = useQuery({
     queryKey: ["student", "me"],
     queryFn: getMyStudentProfile,
-    enabled: !isAlumni,
+    enabled: isReady && !isAlumni,
   });
 
   const profile = isAlumni ? alumniProfile : studentProfile;
@@ -180,7 +182,7 @@ export default function MyProfilePage() {
   const isCurrentJob = workForm.watch("is_current");
 
   const flash = (msg: string) => {
-    toast.success(msg, { action: { label: "OK", onClick: () => {} } });
+    toast.success(msg, { action: { label: "OK", onClick: () => { } } });
   };
 
   const profileMutation = useMutation({
@@ -213,10 +215,10 @@ export default function MyProfilePage() {
   });
 
   const deleteSkillMutation = useMutation({
-  mutationFn: deleteSkill,
-  onSuccess: () =>
-    queryClient.invalidateQueries({ queryKey: ["me"] }),
-});
+    mutationFn: deleteSkill,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
 
   const workMutation = useMutation({
     mutationFn: addWorkExperience,
@@ -284,12 +286,12 @@ export default function MyProfilePage() {
     return `${url}${sep}t=${imageHash}`;
   };
 
-  const PROFICIENCY_COLORS: Record<string, string> = {
-    expert: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
-    intermediate: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
-    beginner: "bg-muted text-muted-foreground border-border/60",
+  type ProficiencyLevel = "beginner" | "intermediate" | "expert";
+  const PROFICIENCY_COLORS: Record<ProficiencyLevel, string> = {
+    expert: "bg-blue-600 text-white",
+    intermediate: "bg-blue-100 text-blue-700 border border-blue-300",
+    beginner: "bg-gray-100 text-gray-600 border border-gray-300",
   };
-
   // ── Shared stat blocks (desktop & mobile sizes) ───────────────────────────
 
   const alumniStats = (small = false) => (
@@ -315,7 +317,7 @@ export default function MyProfilePage() {
       variant={editMode ? "outline" : "default"}
       size="sm"
       onClick={() => setEditMode(!editMode)}
-      className={`h-9 gap-1.5 text-sm font-semibold ${!editMode ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20" : ""}`}
+      className={`h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600 ${!editMode ? "bg-indigo-600 hover:scale-102 shadow-sm shadow-indigo-600/20" : ""}`}
     >
       {editMode ? <><X className="h-4 w-4" /> Cancel</> : <><Pencil className="h-4 w-4" /> Edit Profile</>}
     </Button>
@@ -341,12 +343,6 @@ export default function MyProfilePage() {
 
   return (
     <div className="w-full mx-auto animate-in fade-in duration-500">
-
-      {/* ── Cover / Hero ────────────────────────────────────────────────────── */}
-      {/*
-        FIX 1: overflow-visible so the avatar hanging -bottom-12 is NOT clipped.
-        The background image is clipped separately inside a child div.
-      */}
       <div className="relative h-52 sm:h-64 overflow-visible bg-gradient-to-br from-indigo-500/30 via-violet-400/20 to-purple-300/10">
 
         {/* Clipped background — image stays inside cover bounds */}
@@ -441,15 +437,15 @@ export default function MyProfilePage() {
 
         {/* Tab nav */}
         <div className="flex items-center gap-6 px-4 sm:px-6 mt-1">
-          <button className="py-3 text-sm font-semibold text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400">
+          <button className="py-3 text-md text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400">
             Profile
           </button>
           {isAlumni && (
-            <Link href="/my-opportunities" className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
+            <Link href="/my-opportunities" className="py-3 text-md font-md text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
               Opportunities
             </Link>
           )}
-          <Link href="/network" className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
+          <Link href="/network" className="py-3 text-md font-md text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
             Network
           </Link>
         </div>
@@ -504,6 +500,12 @@ export default function MyProfilePage() {
                       <span>Semester {p.semester}</span>
                     </div>
                   )}
+                  {p?.email && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Mail className="h-4 w-4 flex-shrink-0" />
+                      <span>{p.email}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -554,10 +556,20 @@ export default function MyProfilePage() {
                       <Input {...(profileForm.register as any)("linkedin_url")} placeholder="https://linkedin.com/in/..." className="h-9 text-sm border-border/60" />
                     </div>
                   )}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Email
+                    </Label>
+                    <Input
+                      value={p?.email || ""}
+                      disabled
+                      className="h-9 text-sm border-border/60 bg-muted/40 text-black cursor-not-allowed"
+                    />
+                  </div>
                   <Button
                     type="submit"
                     disabled={profileMutation.isPending}
-                    className="w-full h-9 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20"
+                    className="w-full h-9 text-sm bg-white hover:scale-102 border border-1 !border-blue-600 !text-blue-600 shadow-sm shadow-blue-600/20"
                   >
                     {profileMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Save Changes"}
                   </Button>
@@ -580,7 +592,7 @@ export default function MyProfilePage() {
                 action={
                   <button
                     onClick={() => setShowAddSkill(!showAddSkill)}
-                    className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
                   >
                     {showAddSkill ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add Skill</>}
                   </button>
@@ -588,7 +600,7 @@ export default function MyProfilePage() {
               />
 
               {showAddSkill && (
-                <div className="mb-4 p-4 bg-muted/40 border border-border/60 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="mb-4 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-1 space-y-1">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Skill Name</Label>
@@ -629,7 +641,7 @@ export default function MyProfilePage() {
                     onClick={handleAddSkill}
                     disabled={skillMutation.isPending || !skillInput.trim()}
                     size="sm"
-                    className="h-8 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20"
+                    className="h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600"
                   >
                     {skillMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Skill"}
                   </Button>
@@ -638,7 +650,13 @@ export default function MyProfilePage() {
 
               {p?.detailed_skills?.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {p.detailed_skills.map((s: any) => (
+                  {p.detailed_skills.map((s: {
+                    id: string;
+                    skill_name?: string;
+                    name?: string;
+                    skill?: string;
+                    proficiency_level: ProficiencyLevel;
+                  }) => (
                     <div
                       key={s.id}
                       className={`inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-t-full rounded-tr-full rounded-br-full rounded-bl-none border text-xs font-semibold transition-all ${PROFICIENCY_COLORS[s.proficiency_level] ?? PROFICIENCY_COLORS.beginner}`}
@@ -679,8 +697,7 @@ export default function MyProfilePage() {
                   action={
                     <button
                       onClick={() => setShowAddWork(!showAddWork)}
-                      className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
-                    >
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"                    >
                       {showAddWork ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add</>}
                     </button>
                   }
@@ -689,7 +706,7 @@ export default function MyProfilePage() {
                 {showAddWork && (
                   <form
                     onSubmit={workForm.handleSubmit((data) => workMutation.mutate(data))}
-                    className="mb-5 p-4 bg-muted/40 border border-border/60 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
+                    className="mb-4 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
@@ -740,7 +757,7 @@ export default function MyProfilePage() {
                         I currently work here
                       </span>
                     </button>
-                    <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-8 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20">
+                    <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600">
                       {workMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Experience"}
                     </Button>
                   </form>
@@ -814,9 +831,8 @@ export default function MyProfilePage() {
                           <h3 className="text-sm font-semibold text-foreground group-hover:text-indigo-600 transition-colors truncate">{opp.title}</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">{opp.company}</p>
                           <div className="flex items-center gap-3 mt-1.5">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                              opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"
-                            }`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"
+                              }`}>
                               {opp.status}
                             </span>
                             <span className="text-[10px] text-muted-foreground flex items-center gap-1">

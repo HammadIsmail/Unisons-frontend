@@ -1,7 +1,8 @@
 "use client";
 
-import { MessageSquare, Users, Sparkles } from "lucide-react";
+import { MessageSquare, Users, Sparkles, MessageCircleMore } from "lucide-react";
 import Link from "next/link";
+import { Bell, Search } from "lucide-react";
 
 export default function MessagesRootPage() {
   return (
@@ -52,11 +53,11 @@ export default function MessagesRootPage() {
         </Link>
 
         {/* Feature hints */}
-        <div className="mt-10 grid grid-cols-3 gap-4 w-full max-w-xs">
+        <div className="mt-10 grid grid-cols-3 gap-4 w-full w-auto flex justify-center items-center">
           {[
-            { emoji: "💬", label: "Real-time chat" },
-            { emoji: "🔔", label: "Read receipts" },
-            { emoji: "🔍", label: "Search chats" },
+            { emoji: <MessageCircleMore className="w-6 h-6" />, label: "Real-time chat" },
+            { emoji: <Bell className="w-6 h-6" />, label: "Read receipts" },
+            { emoji: <Search className="w-6 h-6" />, label: "Search chats" },
           ].map((item) => (
             <div
               key={item.label}
