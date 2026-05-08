@@ -21,7 +21,7 @@ export const updateAlumniProfile = async (
 };
 
 export const getMyNetwork = async (): Promise<Connection[]> => {
-  const { data } = await api.get("/api/alumni/network");
+  const { data } = await api.get("/api/alumni/connections");
   return data;
 };
 

@@ -25,12 +25,23 @@ export function useNetwork() {
   const { data: sentRequests, isLoading: sentRequestsLoading } = useQuery({
     queryKey: ["network-sent-requests"],
     queryFn: getSentRequests,
+    enabled: !!role,
   });
-
   // 4. My Connections (Both roles)
   const { data: myConnections, isLoading: myConnectionsLoading } = useQuery({
-    queryKey: [isAlumni ? "alumni" : "student", "network"],
-    queryFn: isAlumni ? getAlumniNetwork : getStudentNetwork,
+    queryKey: [role, "network"],
+    queryFn: () => {
+      if (role === "alumni") {
+        return getAlumniNetwork();
+      }
+
+      if (role === "student") {
+        return getStudentNetwork();
+      }
+
+      return Promise.resolve([]);
+    },
+    enabled: !!role,
   });
 
   // 5. Remove Connection
@@ -46,6 +57,7 @@ export function useNetwork() {
   const { data: suggestions, isLoading: suggestionsLoading } = useQuery({
     queryKey: ["network-suggestions"],
     queryFn: () => searchAlumni(),
+    enabled: !!role,
     select: (data: any[]) => {
       // Normalize data for the UI
       return data.map((item) => ({
@@ -60,12 +72,6 @@ export function useNetwork() {
         backDropImage: item.backDropImage,
       }));
     }
-  });
-
-  // 3. Skill Trends
-  const { data: trends, isLoading: trendsLoading } = useQuery({
-    queryKey: ["network-trends"],
-    queryFn: getSkillTrends,
   });
 
   // Mutations
@@ -112,8 +118,6 @@ export function useNetwork() {
     myConnectionsLoading,
     suggestions,
     suggestionsLoading,
-    trends,
-    trendsLoading,
     respondInvitation: respondMutation.mutate,
     isResponding: respondMutation.isPending,
     connect: connectMutation.mutate,
