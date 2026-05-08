@@ -3,74 +3,84 @@
 import { useNotifications } from "@/hooks/useNotifications";
 import { useRouter } from "next/navigation";
 import { timeAgo } from "@/lib/utils";
+import { useState, useRef } from "react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 
 import {
   Bell,
   CheckCheck,
-  Inbox,
   Trash2,
   Loader2,
-  CheckCircle2,
   XCircle,
   Briefcase,
   Users,
   PartyPopper,
   ShieldCheck,
   Info,
-  ExternalLink,
+  ArrowUpRight,
   MessageSquare,
+  Filter,
+  Clock,
 } from "lucide-react";
 
-// ── Type icon + color config ──────────────────────────────────────────────────
+// ── Type config ───────────────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<string, {
   icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
+  gradient: string;
+  label: string;
+  pill: string;
 }> = {
   account_approved: {
     icon: <ShieldCheck className="h-4 w-4" />,
-    iconBg: "bg-emerald-500/10 ring-1 ring-emerald-500/20",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
+    gradient: "from-emerald-500 to-teal-600",
+    label: "Account",
+    pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20",
   },
   account_rejected: {
     icon: <XCircle className="h-4 w-4" />,
-    iconBg: "bg-rose-500/10 ring-1 ring-rose-500/20",
-    iconColor: "text-rose-600 dark:text-rose-400",
+    gradient: "from-rose-500 to-pink-600",
+    label: "Account",
+    pill: "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/20",
   },
   new_opportunity: {
     icon: <Briefcase className="h-4 w-4" />,
-    iconBg: "bg-blue-500/10 ring-1 ring-blue-500/20",
-    iconColor: "text-blue-600 dark:text-blue-400",
+    gradient: "from-blue-500 to-indigo-600",
+    label: "Opportunity",
+    pill: "bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-blue-500/20",
   },
   connection_request: {
     icon: <Users className="h-4 w-4" />,
-    iconBg: "bg-violet-500/10 ring-1 ring-violet-500/20",
-    iconColor: "text-violet-600 dark:text-violet-400",
+    gradient: "from-violet-500 to-purple-600",
+    label: "Network",
+    pill: "bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-violet-500/20",
   },
   connection_accepted: {
     icon: <PartyPopper className="h-4 w-4" />,
-    iconBg: "bg-amber-500/10 ring-1 ring-amber-500/20",
-    iconColor: "text-amber-600 dark:text-amber-400",
+    gradient: "from-amber-500 to-orange-600",
+    label: "Network",
+    pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20",
   },
   new_message: {
     icon: <MessageSquare className="h-4 w-4" />,
-    iconBg: "bg-blue-500/10 ring-1 ring-blue-500/20",
-    iconColor: "text-blue-600 dark:text-blue-400",
+    gradient: "from-sky-500 to-blue-600",
+    label: "Message",
+    pill: "bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/20",
   },
 };
+
+const FILTERS = ["All", "Unread", "Messages", "Network", "Opportunity", "Account"];
 
 function getTypeConfig(type: string) {
   return TYPE_CONFIG[type] ?? {
     icon: <Info className="h-4 w-4" />,
-    iconBg: "bg-muted ring-1 ring-border/60",
-    iconColor: "text-muted-foreground",
+    gradient: "from-slate-400 to-slate-600",
+    label: "Info",
+    pill: "bg-muted text-muted-foreground ring-border/60",
   };
 }
 
@@ -83,11 +93,19 @@ function getInitials(name?: string | null) {
 
 function NotificationSkeleton() {
   return (
-    <div className="flex items-start gap-3 px-5 py-4">
-      <Skeleton className="h-9 w-9 rounded-full flex-shrink-0" />
-      <div className="flex-1 space-y-1.5">
-        <Skeleton className="h-4 w-4/5 rounded" />
-        <Skeleton className="h-3 w-20 rounded" />
+    <div className="flex gap-4 p-5">
+      <div className="flex flex-col items-center gap-1 flex-shrink-0">
+        <Skeleton className="h-10 w-10 rounded-xl" />
+        <Skeleton className="h-12 w-0.5 rounded-full" />
+      </div>
+      <div className="flex-1 space-y-2 pt-1">
+        <div className="flex gap-2 items-center">
+          <Skeleton className="h-4 w-16 rounded-full" />
+          <Skeleton className="h-3 w-24 rounded" />
+        </div>
+        <Skeleton className="h-4 w-full rounded" />
+        <Skeleton className="h-4 w-3/4 rounded" />
+        <Skeleton className="h-8 w-28 rounded-lg mt-1" />
       </div>
     </div>
   );
@@ -97,6 +115,29 @@ function NotificationSkeleton() {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  const [selectedNotification, setSelectedNotification] = useState<string | null>(null);
+
+  const holdTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startPress = (id: string) => {
+    holdTimer.current = setTimeout(() => {
+      setSelectedNotification(id);
+    }, 600); // hold for 600ms
+  };
+
+  const cancelPress = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteNotification(id);
+    setSelectedNotification(null);
+  };
+
   const {
     notifications,
     isLoading,
@@ -117,162 +158,361 @@ export default function NotificationsPage() {
     notifications.filter((n) => !n.is_read).forEach((n) => markAsRead(n.id));
   };
 
+  const filtered = notifications?.filter((n) => {
+    if (activeFilter === "All") return true;
+    if (activeFilter === "Unread") return !n.is_read;
+    const cfg = getTypeConfig(n.type);
+    return cfg.label === activeFilter;
+  }) ?? [];
+
+  const todayCount = notifications?.filter((n) => {
+    const d = new Date(n.created_at);
+    const now = new Date();
+    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth();
+  }).length ?? 0;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="min-h-screen bg-background w-full" onClick={() => setSelectedNotification(null)}>
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Notifications</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {notificationCount > 0
-              ? `${notificationCount} unread notification${notificationCount !== 1 ? "s" : ""}`
-              : "You're all caught up"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {notificationCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={markAllRead}
-              className="h-8 gap-1.5 text-xs border-border/60 flex-shrink-0"
-            >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Mark all read
-            </Button>
-          )}
+      {/* ── Sticky top bar ──────────────────────────────────────────────── */}
+      <div className="border-b border-border/60 bg-background/80 backdrop-blur-sm sticky top-0 z-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-9 w-9 rounded-xl bg-white border-1 border-blue-600 flex items-center justify-center shadow-sm">
+                  <Bell className="h-4 w-4 text-blue-600" />
+                </div>
+                {notificationCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center leading-none shadow-sm ring-2 ring-background">
+                    {notificationCount > 9 ? "9+" : notificationCount}
+                  </span>
+                )}
+              </div>
+              <div>
+                <h1 className="text-base font-bold text-foreground leading-none">Notifications</h1>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-none">
+                  {notificationCount > 0 ? `${notificationCount} unread` : "All caught up"}
+                </p>
+              </div>
+            </div>
 
-          {notifications?.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => clearAllNotifications()}
-              disabled={isClearingAll}
-              className="h-8 gap-1.5 text-xs border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"
-            >
-              {isClearingAll ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5">
+              {notificationCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={markAllRead}
+                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Mark all read</span>
+                </Button>
               )}
-              Clear all
-            </Button>
-          )}
+              {notifications?.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => clearAllNotifications()}
+                  disabled={isClearingAll}
+                  className="h-8 gap-1.5 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                >
+                  {isClearingAll
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Trash2 className="h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">Clear all</span>
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Notification list ────────────────────────────────────────────── */}
-      <Card className="border-border/60 overflow-hidden">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+        {/* ── Stats row ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            {
+              label: "Total",
+              value: notifications?.length ?? 0,
+              color: "text-foreground",
+              sub: "notifications",
+            },
+            {
+              label: "Unread",
+              value: notificationCount,
+              color: "text-black dark:text-blue-400",
+              sub: "pending",
+            },
+            {
+              label: "Today",
+              value: todayCount,
+              color: "text-black dark:text-emerald-400",
+              sub: "received",
+            },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl border border-border/60 bg-card px-4 py-4 text-center space-y-0.5 hover:border-border transition-colors"
+            >
+              <p className={`text-3xl font-bold tabular-nums leading-none ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-semibold">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Filter pills ─────────────────────────────────────────────── */}
+        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+          <Filter className="h-3.5 w-3.5 text-muted-foreground/60 flex-shrink-0" />
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`
+                flex-shrink-0 px-3.5 py-1.5 cursor-pointer rounded-full mt-1 text-[11px] font-medium transition-all duration-150 border
+                ${activeFilter === f
+                  ? "bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]"
+                  : "border border-blue-600 text-blue-600 hover:scale-103"
+                }
+              `}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* ── Timeline ─────────────────────────────────────────────────── */}
+      <div className="mx-auto px-4 sm:px-6 pb-6">
         {isLoading ? (
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border/40">
             {[1, 2, 3, 4].map((i) => <NotificationSkeleton key={i} />)}
           </div>
-        ) : notifications?.length ? (
-          <div className="divide-y divide-border/50">
-            {notifications.map((n) => {
+        ) : filtered.length ? (
+          <div className="relative space-y-4">
+
+            {filtered.map((n, idx) => {
               const config = getTypeConfig(n.type);
-              const hasLink = !!n.reference_link;
+              const isLast = idx === filtered.length - 1;
 
               return (
                 <div
                   key={n.id}
-                  onClick={() => handleClick(n.id, n.reference_link, n.is_read)}
+                  onTouchStart={() => startPress(n.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchEnd={cancelPress}
+                  onTouchMove={cancelPress}
+                  onMouseLeave={cancelPress}
                   className={`
-                    group flex items-start gap-3 px-5 py-4 transition-colors duration-150
-                    ${hasLink ? "cursor-pointer" : "cursor-default"}
-                    ${!n.is_read
-                      ? "bg-blue-50/40 dark:bg-blue-950/10 hover:bg-blue-50/70 dark:hover:bg-blue-950/20"
-                      : "hover:bg-muted/40"
+    group relative overflow-hidden flex gap-4 px-5 py-5 rounded-2xl
+    border transition-all duration-300
+
+    ${selectedNotification && selectedNotification !== n.id
+                      ? "blur-sm scale-[0.98] opacity-40"
+                      : ""
                     }
-                  `}
+
+    ${selectedNotification === n.id
+                      ? "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-800 scale-[1.02]"
+                      : !n.is_read
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900"
+                        : "bg-gray-50 border-gray-200 dark:bg-white/[0.03] dark:border-white/10"
+                    }
+  `}
                 >
-                  {/* Avatar or type icon */}
-                  {n.sender_profile_picture || n.sender_display_name ? (
-                    <Avatar className={`h-9 w-9 flex-shrink-0 mt-0.5 ring-1 ${!n.is_read ? "ring-blue-500/20" : "ring-border/60"}`}>
-                      <AvatarImage src={n.sender_profile_picture ?? ""} alt={n.sender_display_name ?? ""} />
-                      <AvatarFallback className="bg-blue-600/10 text-blue-700 dark:text-blue-300 text-xs font-bold">
-                        {getInitials(n.sender_display_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${config.iconBg} ${config.iconColor}`}>
-                      {config.icon}
-                    </div>
-                  )}
+                  {/* Timeline node */}
+                  <div className="flex-shrink-0 z-10 relative">
+                    {n.sender_profile_picture || n.sender_display_name ? (
+                      <div className="relative">
+                        <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+                          <AvatarImage
+                            src={n.sender_profile_picture ?? ""}
+                            alt={n.sender_display_name ?? ""}
+                          />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold">
+                            {getInitials(n.sender_display_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div
+                          className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br ${config.gradient} flex items-center justify-center ring-2 ring-background shadow-sm text-white`}
+                        >
+                          <span className="scale-75">{config.icon}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className={`h-10 w-10 rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center text-white shadow-sm ring-2 ring-background`}
+                      >
+                        {config.icon}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-snug ${!n.is_read ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                      {n.message}
-                    </p>
-
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {/* Meta row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ring-1 ${config.pill}`}
+                      >
+                        {config.label}
+                      </span>
                       {n.sender_username && (
-                        <span className="text-[11px] text-muted-foreground/60">
+                        <span className="text-[11px] text-muted-foreground/60 font-medium">
                           @{n.sender_username}
                         </span>
                       )}
-                      {n.sender_username && <span className="text-muted-foreground/30 text-[10px]">·</span>}
-                      <span className="text-[11px] text-muted-foreground/60">
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground/50 ml-auto">
+                        <Clock className="h-3 w-3" />
                         {timeAgo(n.created_at)}
                       </span>
-                      {hasLink && (
-                        <>
-                          <span className="text-muted-foreground/30 text-[10px]">·</span>
-                          <span className="text-[11px] text-blue-500 dark:text-blue-400 flex items-center gap-0.5">
-                            <ExternalLink className="h-3 w-3" />
-                            View
-                          </span>
-                        </>
+                      {!n.is_read && (
+                        <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      )}
+                    </div>
+
+                    {/* Message */}
+                    <p
+                      className={`text-sm leading-relaxed ${!n.is_read
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
+                        }`}
+                    >
+                      {n.message}
+                    </p>
+
+                    {/* Action row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {n.reference_link && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleClick(n.id, n.reference_link, n.is_read)}
+                          className="h-7 gap-1.5 text-[11px] border-border/60 px-3 rounded-lg"
+                        >
+                          View details
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {!n.is_read && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => markAsRead(n.id)}
+                          className="h-7 gap-1 text-[11px] text-muted-foreground px-2 rounded-lg"
+                        >
+                          <CheckCheck className="h-3 w-3" />
+                          Mark read
+                        </Button>
                       )}
                     </div>
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteNotification(n.id);
-                    }}
-                    disabled={isDeletingNotification}
-                    className="
-                                opacity-0 group-hover:opacity-100
-                                transition-all duration-150
-                                p-1.5 rounded-lg
-                                text-muted-foreground hover:text-rose-500
-                                hover:bg-rose-50 dark:hover:bg-rose-950/30
-                                flex-shrink-0
-                              "
-                  >
-                    {isDeletingNotification ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5 text-red-500 cursor-pointer" />
-                    )}
-                  </button>
-                  {/* Unread dot */}
-                  {!n.is_read && (
-                    <div className="flex-shrink-0 mt-2">
-                      <div className="h-2 w-2 rounded-full bg-blue-500" />
-                    </div>
-                  )}
+                  {/* Delete */}
+{/* Desktop hover delete */}
+{selectedNotification !== n.id && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDelete(n.id);
+    }}
+    disabled={isDeletingNotification}
+    className="
+      hidden md:flex
+      absolute top-0 right-0 h-full w-[5%] min-w-[52px]
+      translate-x-full group-hover:translate-x-0
+      transition-transform duration-300 ease-out
+      bg-red-600 hover:bg-rose-700
+      items-center justify-center
+      rounded-tr-2xl rounded-br-2xl
+      z-10
+    "
+  >
+    {isDeletingNotification ? (
+      <Loader2 className="h-4 w-4 animate-spin text-white" />
+    ) : (
+      <Trash2 className="h-4 w-4 text-white" />
+    )}
+  </button>
+)}
+
+{/* Mobile long press delete mode */}
+{selectedNotification === n.id && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDelete(n.id);
+    }}
+    disabled={isDeletingNotification}
+    className="
+      md:hidden
+      absolute inset-0 z-20
+      flex items-center justify-center
+      bg-red-600/10 backdrop-blur-[2px]
+    "
+  >
+    <div
+      className="
+        h-14 w-14 rounded-full
+        bg-red-600 hover:bg-red-700
+        flex items-center justify-center
+        shadow-lg transition-all duration-200 active:scale-90
+      "
+    >
+      {isDeletingNotification ? (
+        <Loader2 className="h-6 w-6 animate-spin text-white" />
+      ) : (
+        <Trash2 className="h-6 w-6 text-white" />
+      )}
+    </div>
+  </button>
+)}
                 </div>
               );
             })}
           </div>
         ) : (
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <Inbox className="h-6 w-6 text-muted-foreground/40" />
+          /* ── Empty state ── */
+          <div className="py-24 flex flex-col items-center justify-center text-center px-6">
+            <div className="relative mb-6">
+              <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center shadow-inner">
+                <Bell className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+              <div className="absolute -top-1.5 -right-1.5 h-7 w-7 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm ring-2 ring-background">
+                <CheckCheck className="h-3.5 w-3.5 text-white" />
+              </div>
             </div>
-            <p className="text-[15px] font-semibold text-foreground mb-1">All caught up!</p>
-            <p className="text-sm text-muted-foreground">
-              No notifications yet. We'll let you know when something happens.
+            <p className="text-base font-semibold text-foreground">
+              {activeFilter !== "All"
+                ? `No ${activeFilter.toLowerCase()} notifications`
+                : "You're all caught up!"}
             </p>
-          </CardContent>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs leading-relaxed">
+              {activeFilter !== "All"
+                ? "Try a different filter to see more notifications."
+                : "New notifications will appear here as they arrive."}
+            </p>
+            {activeFilter !== "All" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-5 text-xs rounded-lg"
+                onClick={() => setActiveFilter("All")}
+              >
+                Show all notifications
+              </Button>
+            )}
+          </div>
         )}
-      </Card>
+      </div>
 
+      {/* ── Footer count ─────────────────────────────────────────────── */}
+      {!isLoading && notifications?.length > 0 && (
+        <p className="text-center text-[11px] text-muted-foreground/40 pb-2">
+          Showing {filtered.length} of {notifications.length} notification
+          {notifications.length !== 1 ? "s" : ""}
+        </p>
+      )}
     </div>
   );
 }
