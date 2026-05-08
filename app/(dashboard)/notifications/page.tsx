@@ -14,6 +14,8 @@ import {
   Bell,
   CheckCheck,
   Inbox,
+  Trash2,
+  Loader2,
   CheckCircle2,
   XCircle,
   Briefcase,
@@ -95,7 +97,16 @@ function NotificationSkeleton() {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { notifications, isLoading, markAsRead, notificationCount } = useNotifications();
+  const {
+    notifications,
+    isLoading,
+    markAsRead,
+    notificationCount,
+    clearAllNotifications,
+    isClearingAll,
+    deleteNotification,
+    isDeletingNotification,
+  } = useNotifications();
 
   const handleClick = (id: string, referenceLink?: string | null, isRead?: boolean) => {
     if (!isRead) markAsRead(id);
@@ -119,17 +130,36 @@ export default function NotificationsPage() {
               : "You're all caught up"}
           </p>
         </div>
-        {notificationCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={markAllRead}
-            className="h-8 gap-1.5 text-xs border-border/60 flex-shrink-0"
-          >
-            <CheckCheck className="h-3.5 w-3.5" />
-            Mark all read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {notificationCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={markAllRead}
+              className="h-8 gap-1.5 text-xs border-border/60 flex-shrink-0"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Mark all read
+            </Button>
+          )}
+
+          {notifications?.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => clearAllNotifications()}
+              disabled={isClearingAll}
+              className="h-8 gap-1.5 text-xs border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"
+            >
+              {isClearingAll ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Clear all
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Notification list ────────────────────────────────────────────── */}
@@ -149,7 +179,7 @@ export default function NotificationsPage() {
                   key={n.id}
                   onClick={() => handleClick(n.id, n.reference_link, n.is_read)}
                   className={`
-                    flex items-start gap-3 px-5 py-4 transition-colors duration-150
+                    group flex items-start gap-3 px-5 py-4 transition-colors duration-150
                     ${hasLink ? "cursor-pointer" : "cursor-default"}
                     ${!n.is_read
                       ? "bg-blue-50/40 dark:bg-blue-950/10 hover:bg-blue-50/70 dark:hover:bg-blue-950/20"
@@ -199,6 +229,27 @@ export default function NotificationsPage() {
                     </div>
                   </div>
 
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNotification(n.id);
+                    }}
+                    disabled={isDeletingNotification}
+                    className="
+                                opacity-0 group-hover:opacity-100
+                                transition-all duration-150
+                                p-1.5 rounded-lg
+                                text-muted-foreground hover:text-rose-500
+                                hover:bg-rose-50 dark:hover:bg-rose-950/30
+                                flex-shrink-0
+                              "
+                  >
+                    {isDeletingNotification ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5 text-red-500 cursor-pointer" />
+                    )}
+                  </button>
                   {/* Unread dot */}
                   {!n.is_read && (
                     <div className="flex-shrink-0 mt-2">

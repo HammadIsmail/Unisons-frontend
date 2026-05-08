@@ -7,6 +7,11 @@ import { connectSocket, disconnectSocket, getSocket } from "@/lib/socket";
 import useAuthStore from "@/store/authStore";
 import useUIStore from "@/store/uiStore";
 import { Notification } from "@/types/api.types";
+import {
+  clearAllNotifications,
+  deleteNotification,
+} from "@/lib/api/notifications.api";
+import { toast } from "sonner";
 
 export function useNotifications() {
   const { token, isAuthenticated } = useAuthStore();
@@ -49,6 +54,10 @@ export function useNotifications() {
     };
   }, [token, isAuthenticated]);
 
+  const flash = (msg: string) => {
+    toast.success(msg, { action: { label: "OK", onClick: () => { } } });
+  };
+
   // ── Mark as read ──
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
@@ -60,10 +69,30 @@ export function useNotifications() {
     },
   });
 
+  const clearAllMutation = useMutation({
+    mutationFn: clearAllNotifications,
+    onSuccess: () => {
+      flash("All notifications cleared successfully");
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: deleteNotification,
+    onSuccess: () => {
+      flash("Notification deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
   return {
     notifications,
     notificationCount,
     isLoading,
     markAsRead: markReadMutation.mutate,
+    clearAllNotifications: clearAllMutation.mutate,
+    deleteNotification: deleteNotificationMutation.mutate,
+    isClearingAll: clearAllMutation.isPending,
+    isDeletingNotification: deleteNotificationMutation.isPending,
   };
 }

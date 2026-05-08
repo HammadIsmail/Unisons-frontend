@@ -216,8 +216,13 @@ export default function MyProfilePage() {
 
   const deleteSkillMutation = useMutation({
     mutationFn: deleteSkill,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["me"] }),
+    onSuccess: () => {
+      flash("Skill deleted successfully.");
+
+      queryClient.invalidateQueries({
+        queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
+      });
+    },
   });
 
   const workMutation = useMutation({
@@ -232,7 +237,10 @@ export default function MyProfilePage() {
 
   const deleteWorkMutation = useMutation({
     mutationFn: deleteWorkExperience,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni", "me"] }),
+    onSuccess: () => {
+      flash("Work experience deleted successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] })
+    }
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -665,10 +673,14 @@ export default function MyProfilePage() {
                       <button
                         onClick={() => deleteSkillMutation.mutate(s.id)}
                         disabled={deleteSkillMutation.isPending}
-                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 disabled:opacity-100"
                         aria-label="Remove skill"
                       >
-                        <X className="h-2.5 w-2.5" />
+                        {deleteSkillMutation.isPending ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : (
+                          <X className="h-2.5 w-2.5" />
+                        )}
                       </button>
                     </div>
                   ))}
@@ -795,9 +807,13 @@ export default function MyProfilePage() {
                           <button
                             onClick={() => deleteWorkMutation.mutate(w.id)}
                             disabled={deleteWorkMutation.isPending}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all flex-shrink-0 mt-0.5"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all flex-shrink-0 mt-0.5 disabled:opacity-100"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            {deleteWorkMutation.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
                           </button>
                         </div>
                       </div>

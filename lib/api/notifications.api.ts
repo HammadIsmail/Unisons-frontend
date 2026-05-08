@@ -12,3 +12,13 @@ export const markNotificationRead = async (
   const { data } = await api.patch(`/api/notifications/${id}/read`);
   return data;
 };
+
+export const clearAllNotifications = async () => {
+  const { data } = await api.delete("/api/notifications/all");
+  return data;
+};
+
+export const deleteNotification = async (id: string) => {
+  const { data } = await api.delete(`/api/notifications/${id}`);
+  return data;
+};
