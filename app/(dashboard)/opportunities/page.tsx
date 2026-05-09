@@ -281,7 +281,7 @@ export default function OpportunitiesPage() {
               "radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.7 0.18 255 / 0.25), transparent 70%), radial-gradient(ellipse 60% 50% at 80% 20%, oklch(0.7 0.2 320 / 0.15), transparent 70%)",
           }}
         />
-        <div className="mx-auto max-w-7xl px-6 pb-12 pt-16 sm:pt-10">
+        <div className="mx-auto max-w-7xl px-6 pb-5 pt-5">
           <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
