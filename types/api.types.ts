@@ -110,6 +110,7 @@ export interface Opportunity {
   posted_at: string;
   deadline: string;
   media: string[];
+  salary?: string;
   required_skills?: string[];
   description?: string;
 }
@@ -124,6 +125,7 @@ export interface OpportunityDetail {
   apply_link: string;
   deadline: string;
   status: "open" | "closed";
+  salary?: string;
   media: string[];
   company: {
     name: string;

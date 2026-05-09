@@ -3,6 +3,7 @@ import {
   AlumniSearchResult,
   OpportunitySearchResult,
   UserByUsername,
+  Opportunity,
 } from "@/types/api.types";
 
 export const searchAlumni = async (params: {
@@ -21,7 +22,7 @@ export const searchOpportunities = async (params: {
   skill?: string;
   location?: string;
   is_remote?: boolean;
-}): Promise<OpportunitySearchResult[]> => {
+}): Promise<Opportunity[]> => {
   const { data } = await api.get("/api/search/opportunities", { params });
   return data;
 };

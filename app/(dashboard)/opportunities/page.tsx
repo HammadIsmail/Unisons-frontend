@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getOpportunities } from "@/lib/api/opportunities.api";
-import { getAllSkills } from "@/lib/api/alumni.api";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { getOpportunities } from "@/lib/api/opportunities.api";
+import { searchOpportunities } from "@/lib/api/search.api";
+import { getAllSkills } from "@/lib/api/skill.api";
+import { Opportunity } from "@/types/api.types";
+
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -19,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 import {
   Briefcase,
@@ -34,80 +38,138 @@ import {
   ArrowRight,
   SearchX,
   Filter,
+  Search,
+  Bookmark,
+  TrendingUp,
+  Sparkles,
+  Clock,
+  Users,
 } from "lucide-react";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type OppType = "job" | "internship" | "freelance";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TYPES = ["all", "job", "internship", "freelance"] as const;
 
-const TYPE_META: Record<string, {
-  label: string;
-  icon: React.ReactNode;
-  badge: string;
-  cardAccent: string;
-  iconBg: string;
-}> = {
+const TYPE_META: Record<
+  OppType,
+  {
+    label: string;
+    Icon: React.ElementType;
+    chip: string;
+    dot: string;
+  }
+> = {
   job: {
-    label: "Job",
-    icon: <Briefcase className="h-3.5 w-3.5" />,
-    badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
-    cardAccent: "from-blue-500 to-blue-600",
-    iconBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20",
+    label: "Full-time",
+    Icon: Briefcase,
+    chip: "bg-[oklch(0.95_0.04_240)] text-[oklch(0.4_0.18_255)] dark:bg-[oklch(0.3_0.08_255)] dark:text-[oklch(0.85_0.12_245)]",
+    dot: "bg-[oklch(0.6_0.2_255)]",
   },
   internship: {
     label: "Internship",
-    icon: <GraduationCap className="h-3.5 w-3.5" />,
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
-    cardAccent: "from-emerald-500 to-teal-500",
-    iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20",
+    Icon: GraduationCap,
+    chip: "bg-[oklch(0.95_0.05_160)] text-[oklch(0.45_0.15_160)] dark:bg-[oklch(0.3_0.08_160)] dark:text-[oklch(0.85_0.15_160)]",
+    dot: "bg-[oklch(0.65_0.18_160)]",
   },
   freelance: {
     label: "Freelance",
-    icon: <Zap className="h-3.5 w-3.5" />,
-    badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
-    cardAccent: "from-amber-500 to-orange-500",
-    iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20",
+    Icon: Zap,
+    chip: "bg-[oklch(0.95_0.06_60)] text-[oklch(0.5_0.18_55)] dark:bg-[oklch(0.32_0.1_55)] dark:text-[oklch(0.85_0.15_70)]",
+    dot: "bg-[oklch(0.7_0.18_60)]",
   },
 };
 
 function getTypeMeta(type: string) {
-  return TYPE_META[type] ?? TYPE_META.job;
+  return TYPE_META[type as OppType] ?? TYPE_META.job;
 }
 
 function formatDeadline(date: string) {
   const d = new Date(date);
-  const now = new Date();
-  const diffDays = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const diff = Math.ceil((d.getTime() - Date.now()) / 86400000);
+  if (diff < 0) return { label: "Expired", urgent: true };
+  if (diff === 0) return { label: "Today", urgent: true };
+  if (diff <= 3) return { label: `${diff}d left`, urgent: true };
+  if (diff <= 14) return { label: `${diff}d left`, urgent: false };
+  return {
+    label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    urgent: false,
+  };
+}
 
-  const formatted = d.toLocaleDateString("en-PK", { month: "short", day: "numeric" });
-
-  if (diffDays < 0) return { label: "Expired", urgent: true };
-  if (diffDays <= 3) return { label: `${formatted} · ${diffDays}d left`, urgent: true };
-  return { label: formatted, urgent: false };
+function timeAgo(date: string) {
+  const diff = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return `${diff}d ago`;
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function OppCardSkeleton() {
   return (
-    <Card className="border-border/60 overflow-hidden">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between mb-4">
-          <Skeleton className="h-9 w-9 rounded-xl" />
-          <Skeleton className="h-5 w-16 rounded-full" />
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-6">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <Skeleton className="h-11 w-11 rounded-xl" />
+        <Skeleton className="h-7 w-7 rounded-full" />
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <Skeleton className="h-5 w-20 rounded-full" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+      <Skeleton className="h-6 w-4/5 rounded mb-1.5" />
+      <Skeleton className="h-4 w-3/5 rounded mb-1" />
+      <Skeleton className="h-4 w-2/5 rounded mb-4" />
+      <div className="flex gap-1.5 mb-5">
+        <Skeleton className="h-5 w-14 rounded-md" />
+        <Skeleton className="h-5 w-14 rounded-md" />
+        <Skeleton className="h-5 w-14 rounded-md" />
+      </div>
+      <div className="mt-auto flex-1" />
+      <div className="border-t border-border pt-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-6 w-6 rounded-full" />
+          <Skeleton className="h-3.5 w-20 rounded" />
         </div>
-        <Skeleton className="h-5 w-4/5 rounded mb-2" />
-        <Skeleton className="h-4 w-3/5 rounded mb-1" />
-        <Skeleton className="h-4 w-2/5 rounded mb-4" />
-        <div className="border-t border-border/50 pt-3 mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-6 w-6 rounded-full" />
-            <Skeleton className="h-3.5 w-20 rounded" />
+        <Skeleton className="h-4 w-16 rounded" />
+      </div>
+    </div>
+  );
+}
+
+function FeaturedCardSkeleton() {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-8 lg:p-10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto]">
+        <div>
+          <div className="flex items-center gap-2 mb-5">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
           </div>
-          <Skeleton className="h-3.5 w-24 rounded" />
+          <div className="flex items-start gap-4">
+            <Skeleton className="h-14 w-14 rounded-xl flex-shrink-0" />
+            <div className="flex-1">
+              <Skeleton className="h-8 w-3/4 rounded mb-2" />
+              <Skeleton className="h-4 w-1/2 rounded" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-full rounded mt-5" />
+          <Skeleton className="h-4 w-4/5 rounded mt-2" />
+          <div className="flex gap-2 mt-5">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-6 w-16 rounded-full" />
+            ))}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center gap-3 lg:flex-col lg:items-end lg:justify-between">
+          <Skeleton className="h-10 w-28 rounded-xl" />
+          <Skeleton className="h-10 w-24 rounded-xl" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -116,20 +178,38 @@ function OppCardSkeleton() {
 export default function OpportunitiesPage() {
   const { role } = useAuthStore();
   const [page, setPage] = useState(1);
-  const [type, setType] = useState("");
+  const [type, setType] = useState<"" | OppType>("");
   const [skill, setSkill] = useState("");
   const [isRemote, setIsRemote] = useState<boolean | undefined>(undefined);
+  const [query, setQuery] = useState("");
+  const [saved, setSaved] = useState<Set<string>>(new Set());
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["opportunities", { page, type, skill, is_remote: isRemote }],
+  // Use search API when there's a query, else use list API
+  const isSearching = !!query;
+
+  const { data: searchData, isLoading: searchLoading } = useQuery({
+    queryKey: ["opportunities-search", { query, type, skill, isRemote }],
     queryFn: () =>
-      getOpportunities({
-        page,
-        limit: 10,
+      searchOpportunities({
+        title: query || undefined,
         type: type || undefined,
         skill: skill || undefined,
         is_remote: isRemote,
       }),
+    enabled: isSearching,
+  });
+
+  const { data: listData, isLoading: listLoading } = useQuery({
+    queryKey: ["opportunities", { page, type, skill, is_remote: isRemote }],
+    queryFn: () =>
+      getOpportunities({
+        page,
+        limit: 9, // 1 featured + 8 in grid
+        type: type || undefined,
+        skill: skill || undefined,
+        is_remote: isRemote,
+      }),
+    enabled: !isSearching,
   });
 
   const { data: skills } = useQuery({
@@ -138,294 +218,738 @@ export default function OpportunitiesPage() {
     staleTime: Infinity,
   });
 
-  const totalPages = data ? Math.ceil(data.total / 10) : 0;
-  const hasActiveFilters = !!(type || skill || isRemote);
+  const isLoading = isSearching ? searchLoading : listLoading;
+
+  // Normalize data from either API
+  const opportunities: Opportunity[] = isSearching
+    ? searchData ?? []
+    : listData?.data ?? [];
+
+  const totalPages = !isSearching && listData
+    ? Math.ceil(listData.total / 9)
+    : 0;
+
+  const totalCount = isSearching
+    ? opportunities.length
+    : listData?.total ?? 0;
+
+  const featured = opportunities[0];
+  const rest = opportunities.slice(1);
+  const hasActiveFilters = !!(type || skill || isRemote || query);
+
+  const stats = [
+    { label: "Open roles", value: totalCount, Icon: Briefcase },
+    {
+      label: "Remote",
+      value: opportunities.filter((o) => o.is_remote).length,
+      Icon: Wifi,
+    },
+    { label: "This week", value: opportunities.length, Icon: TrendingUp },
+    {
+      label: "Hiring orgs",
+      value: new Set(opportunities.map((o) => o.company)).size,
+      Icon: Building2,
+    },
+  ];
+
+  const toggleSave = (id: string) => {
+    setSaved((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const clearFilters = () => {
     setType("");
     setSkill("");
     setIsRemote(undefined);
+    setQuery("");
     setPage(1);
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Opportunities
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {isLoading
-              ? "Loading…"
-              : data?.total
-                ? `${data.total} opportunit${data.total === 1 ? "y" : "ies"} available`
-                : "No opportunities found"}
-          </p>
-        </div>
-        {role === "alumni" && (
-          <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 h-9 px-4 gap-1.5 self-start sm:self-auto"
-            asChild
-          >
-            <Link href="/post-opportunity">
-              <Plus className="h-4 w-4" />
-              Post Opportunity
-            </Link>
-          </Button>
-        )}
-      </div>
-
-      {/* ── Filters ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 delay-75">
-
-        {/* Type pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
-            <Filter className="h-3.5 w-3.5" />
-            Type
-          </span>
-          {TYPES.map((t) => {
-            const active = t === "all" ? !type : type === t;
-            return (
-              <button
-                key={t}
-                onClick={() => { setType(t === "all" ? "" : t); setPage(1); }}
-                className={`
-                  px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all duration-150
-                  ${active
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60"
-                  }
-                `}
-              >
-                {t}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="hidden sm:block w-px h-5 bg-border/60" />
-
-        {/* Skill select */}
-        <Select
-          value={skill || "all"}
-          onValueChange={(v) => { setSkill(v === "all" ? "" : v); setPage(1); }}
-        >
-          <SelectTrigger className="h-8 w-[160px] text-xs border-border/60 bg-background">
-            <SelectValue placeholder="All Skills" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Skills</SelectItem>
-            {skills?.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Remote toggle */}
-        <button
-          onClick={() => { setIsRemote(isRemote === true ? undefined : true); setPage(1); }}
-          className={`
-            flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
-            ${isRemote
-              ? "bg-violet-600 text-white shadow-sm shadow-violet-600/25"
-              : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60"
-            }
-          `}
-        >
-          <Wifi className="h-3.5 w-3.5" />
-          Remote only
-        </button>
-
-        {/* Clear */}
-        {hasActiveFilters && (
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto sm:ml-0"
-          >
-            <X className="h-3.5 w-3.5" />
-            Clear
-          </button>
-        )}
-      </div>
-
-      {/* ── Grid ────────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => <OppCardSkeleton key={i} />)}
-        </div>
-      ) : data?.data?.length ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
-          {data.data.map((opp) => {
-            const meta = getTypeMeta(opp.type);
-            const deadline = formatDeadline(opp.deadline);
-            const locationStr =
-              !opp.location || opp.location.toLowerCase() === "none"
-                ? null
-                : opp.location;
-
-            return (
-              <Link key={opp.id} href={`/opportunities/${opp.id}`} className="group block">
-                <Card className="h-full border-border/60 hover:border-blue-500/40 hover:shadow-md hover:shadow-blue-500/5 transition-all duration-250 overflow-hidden relative">
-                  {/* Top accent bar */}
-                  <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${meta.cardAccent} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-
-                  <CardContent className="p-5 flex flex-col h-full">
-                    {/* Top row: icon + badges */}
-                    <div className="flex items-start justify-between gap-2 mb-4">
-                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.iconBg}`}>
-                        {meta.icon}
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${meta.badge}`}>
-                          {meta.icon}
-                          {meta.label}
-                        </span>
-                        {opp.is_remote && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800">
-                            <Wifi className="h-3 w-3" />
-                            Remote
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="font-semibold text-foreground text-[15px] leading-snug mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-                      {opp.title}
-                    </h3>
-
-                    {/* Company + Location */}
-                    <div className="flex flex-col gap-1 mb-4">
-                      {opp.company && (
-                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
-                          {opp.company}
-                        </span>
-                      )}
-                      {locationStr && (
-                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                          {locationStr}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="mt-auto pt-3 border-t border-border/50 flex items-center justify-between gap-2">
-                      {/* Posted by */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Avatar className="h-6 w-6 flex-shrink-0 ring-1 ring-border/60">
-                          <AvatarImage
-                            src={opp.posted_by?.profile_picture ? opp.posted_by.profile_picture : undefined}
-                            alt={opp.posted_by?.display_name}
-                          />
-                          <AvatarFallback className="bg-blue-600/10 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
-                            {opp.posted_by?.display_name?.charAt(0) ?? "A"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-medium text-foreground truncate leading-none">
-                            {opp.posted_by?.display_name ?? "Unknown"}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground truncate leading-none mt-0.5">
-                            @{opp.posted_by?.username ?? "unknown"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Deadline */}
-                      <span className={`flex items-center gap-1 text-[11px] font-medium flex-shrink-0 ${deadline.urgent ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}>
-                        <CalendarClock className="h-3.5 w-3.5" />
-                        {deadline.label}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      ) : (
-        /* Empty state */
-        <Card className="border-border/60 border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <SearchX className="h-6 w-6 text-muted-foreground/50" />
+    <div className="min-h-screen bg-background">
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <header className="relative overflow-hidden border-b border-border">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 opacity-60"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.7 0.18 255 / 0.25), transparent 70%), radial-gradient(ellipse 60% 50% at 80% 20%, oklch(0.7 0.2 320 / 0.15), transparent 70%)",
+          }}
+        />
+        <div className="mx-auto max-w-7xl px-6 pb-12 pt-16 sm:pt-20">
+          <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+                <Sparkles className="h-3.5 w-3.5 text-[oklch(0.65_0.2_255)]" />
+                Curated by your alumni network
+              </div>
+              <h1 className="mt-5 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+                Find your next{" "}
+<span
+  className="bg-clip-text text-transparent"
+  style={{
+    backgroundImage:
+      "linear-gradient(135deg, #2563eb, #60a5fa, #93c5fd)",
+  }}
+>
+  opportunity
+</span>
+              </h1>
+              <p className="mt-3 max-w-xl text-base text-muted-foreground">
+                Roles posted by alumni and partners. Filter by type, skill, or
+                remote-first to discover what fits.
+              </p>
             </div>
-            <p className="text-[15px] font-semibold text-foreground mb-1">No opportunities found</p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              {hasActiveFilters
-                ? "Try adjusting your filters to see more results."
-                : "No opportunities have been posted yet. Check back soon."}
-            </p>
-            {hasActiveFilters && (
-              <Button variant="outline" size="sm" className="mt-4 h-8 text-xs gap-1.5" onClick={clearFilters}>
-                <X className="h-3.5 w-3.5" />
-                Clear all filters
+            {role === "alumni" && (
+              <Button
+                variant="outline"
+                size="lg"
+                asChild
+                className="
+    self-start md:self-auto
+    gap-2
+    rounded-lg
+    !border-blue-600
+    !bg-white
+    !text-blue-600
+    shadow-sm
+    transition-all duration-200
+    hover:!bg-white
+    hover:shadow-lg
+    hover:scale-[1.02]
+  "
+              >
+                <Link href="/post-opportunity">
+                  <Plus className="h-4 w-4" />
+                  Post opportunity
+                </Link>
               </Button>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
 
-      {/* ── Pagination ───────────────────────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="h-8 px-3 gap-1.5 text-xs border-border/60"
+          {/* Search + stats */}
+          <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute z-10 left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by role, company, or keyword…"
+                className="h-full rounded-4xl border-border bg-card/80 pl-12 pr-4 text-base shadow-sm backdrop-blur placeholder:text-muted-foreground/70"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
+              {stats.map((s) => (
+                <div
+                  key={s.label}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-card/80 px-4 py-3 backdrop-blur"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                    <s.Icon className="h-4 w-4 text-foreground" />
+                  </div>
+                  <div className="leading-tight">
+                    <div className="text-lg font-semibold text-foreground">
+                      {isLoading ? (
+                        <Skeleton className="h-5 w-8" />
+                      ) : (
+                        s.value
+                      )}
+                    </div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {s.label}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Filters ──────────────────────────────────────────────────── */}
+      <section className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-6 py-4">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Filter className="h-3.5 w-3.5" />
+            Filter
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-1">
+            {TYPES.map((t) => {
+              const active = t === "all" ? !type : type === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setType(t === "all" ? "" : (t as OppType));
+                    setPage(1);
+                  }}
+                  className={cn(
+                    "rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-all",
+                    active
+                      ? "bg-foreground text-background shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t}
+                </button>
+              );
+            })}
+          </div>
+
+          <Select
+            value={skill || "all"}
+            onValueChange={(v) => {
+              setSkill(v === "all" ? "" : v);
+              setPage(1);
+            }}
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Prev
-          </Button>
+            <SelectTrigger className="h-9 w-[160px] rounded-full border-border bg-card text-xs">
+              <SelectValue placeholder="All skills" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All skills</SelectItem>
+              {skills?.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Page numbers */}
-          <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              setIsRemote(isRemote ? undefined : true);
+              setPage(1);
+            }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+              isRemote
+                ? "border-transparent bg-foreground text-background shadow-sm"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Wifi className="h-3.5 w-3.5" />
+            Remote only
+          </button>
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear filters
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* ── Content ──────────────────────────────────────────────────── */}
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        {isLoading ? (
+          <>
+            <FeaturedCardSkeleton />
+            <div className="mt-12">
+              <div className="mb-5">
+                <Skeleton className="h-7 w-48 rounded mb-1" />
+                <Skeleton className="h-4 w-32 rounded" />
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <OppCardSkeleton key={i} />
+                ))}
+              </div>
+            </div>
+          </>
+        ) : opportunities.length === 0 ? (
+          <EmptyState
+            onClear={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
+        ) : (
+          <>
+            {featured && (
+              <FeaturedCard
+                opp={featured}
+                saved={saved.has(featured.id)}
+                onSave={() => toggleSave(featured.id)}
+              />
+            )}
+
+            {rest.length > 0 && (
+              <>
+                <div className="mb-5 mt-12 flex items-end justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                      All opportunities
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {rest.length} role{rest.length === 1 ? "" : "s"} matching
+                      your filters
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {rest.map((opp) => (
+                    <OppCard
+                      key={opp.id}
+                      opp={opp}
+                      saved={saved.has(opp.id)}
+                      onSave={() => toggleSave(opp.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── Pagination ─────────────────────────────────────────────── */}
+        {totalPages > 1 && (
+          <nav
+            aria-label="Pagination"
+            className="mt-14 flex items-center justify-center gap-2"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-full"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Prev
+            </Button>
+
             {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .filter(
+                (p) =>
+                  p === 1 || p === totalPages || Math.abs(p - page) <= 1
+              )
               .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1)
+                  acc.push("...");
                 acc.push(p);
                 return acc;
               }, [])
               .map((p, i) =>
                 p === "..." ? (
-                  <span key={`ellipsis-${i}`} className="text-xs text-muted-foreground px-1">…</span>
+                  <span
+                    key={`ellipsis-${i}`}
+                    className="px-1 text-muted-foreground"
+                  >
+                    …
+                  </span>
                 ) : (
                   <button
                     key={p}
                     onClick={() => setPage(p as number)}
-                    className={`h-8 w-8 rounded-lg text-xs font-medium transition-all duration-150 ${page === p
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+                    className={cn(
+                      "h-9 w-9 rounded-full text-sm font-medium transition-colors",
+                      page === p
+                        ? "bg-foreground text-background"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
+                    )}
                   >
                     {p}
                   </button>
                 )
               )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-full"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </nav>
+        )}
+      </main>
+    </div>
+  );
+}
+
+// ── Featured Card ─────────────────────────────────────────────────────────────
+
+function FeaturedCard({
+  opp,
+  saved,
+  onSave,
+}: {
+  opp: Opportunity;
+  saved: boolean;
+  onSave: () => void;
+}) {
+  const meta = getTypeMeta(opp.type);
+  const deadline = formatDeadline(opp.deadline);
+
+  return (
+    <article className="group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-shadow hover:shadow-xl">
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 opacity-50"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 80% at 90% 0%, oklch(0.7 0.2 255 / 0.18), transparent 60%)",
+        }}
+      />
+      <div className="grid grid-cols-1 gap-8 p-8 lg:grid-cols-[1fr_auto] lg:p-10">
+        <div className="min-w-0">
+          <div className="mb-5 flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="gap-1.5 border-transparent bg-foreground/5 px-2.5 py-1 font-medium"
+            >
+              <Sparkles className="h-3 w-3" />
+              Featured
+            </Badge>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                meta.chip
+              )}
+            >
+              <meta.Icon className="h-3 w-3" />
+              {meta.label}
+            </span>
+            {opp.is_remote && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <Wifi className="h-3 w-3" />
+                Remote
+              </span>
+            )}
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="h-8 px-3 gap-1.5 text-xs border-border/60"
-          >
-            Next
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
+          <div className="flex items-start gap-4">
+            <CompanyLogo opp={opp} size={56} />
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                {opp.title}
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {opp.company}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {opp.location}
+                </span>
+                {opp.salary && (
+                  <span className="font-medium text-foreground">
+                    {opp.salary}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
+          {opp.description && (
+            <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3">
+              {opp.description}
+            </p>
+          )}
+
+          {opp.required_skills && opp.required_skills.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {opp.required_skills.map((s) => (
+                <span
+                  key={s}
+                  className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+            <PostedBy opp={opp} />
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              Posted {timeAgo(opp.posted_at)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-row items-center gap-3 lg:flex-col lg:items-end lg:justify-between">
+          <div className="flex flex-col items-end gap-2">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+                deadline.urgent
+                  ? "bg-[oklch(0.95_0.05_25)] text-[oklch(0.5_0.2_25)] dark:bg-[oklch(0.3_0.1_25)] dark:text-[oklch(0.85_0.15_30)]"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              <CalendarClock className="h-3 w-3" />
+              {deadline.label}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 lg:flex-col lg:items-stretch">
+<Button
+  variant="outline"
+  size="lg"
+  asChild
+  className="
+    gap-2
+    rounded-lg
+    !border-blue-600
+    !bg-white
+    !text-blue-600
+    shadow-sm
+    transition-all duration-200
+    hover:!bg-white
+    hover:!text-blue-700
+    hover:!border-blue-700
+    hover:shadow-lg
+    hover:scale-[1.02]
+    active:scale-[0.98]
+  "
+>
+  <a
+    href={opp.apply_link}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Apply now
+    <ArrowRight className="h-4 w-4" />
+  </a>
+</Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={onSave}
+              className="gap-2"
+            >
+              <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+              {saved ? "Saved" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ── Standard Card ─────────────────────────────────────────────────────────────
+
+function OppCard({
+  opp,
+  saved,
+  onSave,
+}: {
+  opp: Opportunity;
+  saved: boolean;
+  onSave: () => void;
+}) {
+  const meta = getTypeMeta(opp.type);
+  const deadline = formatDeadline(opp.deadline);
+  const locationStr =
+    !opp.location || opp.location.toLowerCase() === "none"
+      ? null
+      : opp.location;
+
+  return (
+    <Link href={`/opportunities/${opp.id}`} className="group block">
+      <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-lg">
+        {/* Save button — stop propagation so Link doesn't fire */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onSave();
+          }}
+          aria-label={saved ? "Unsave" : "Save"}
+          className={cn(
+            "absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+            saved && "bg-foreground text-background hover:bg-foreground"
+          )}
+        >
+          <Bookmark className={cn("h-3.5 w-3.5", saved && "fill-current")} />
+        </button>
+
+        <div className="mb-4 pr-10">
+          <CompanyLogo opp={opp} size={44} />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+              meta.chip
+            )}
+          >
+            <meta.Icon className="h-2.5 w-2.5" />
+            {meta.label}
+          </span>
+          {opp.is_remote && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <Wifi className="h-2.5 w-2.5" />
+              Remote
+            </span>
+          )}
+        </div>
+
+        <h3 className="mt-3 line-clamp-2 text-lg font-semibold leading-snug tracking-tight text-foreground group-hover:text-[oklch(0.55_0.22_255)] transition-colors">
+          {opp.title}
+        </h3>
+
+        <div className="mt-1.5 flex flex-col gap-1 text-xs text-muted-foreground">
+          {opp.company && (
+            <span className="font-medium text-foreground">{opp.company}</span>
+          )}
+          {locationStr && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {locationStr}
+            </span>
+          )}
+        </div>
+
+        {opp.salary && (
+          <div className="mt-3 text-sm font-medium text-foreground">
+            {opp.salary}
+          </div>
+        )}
+
+        {opp.required_skills && opp.required_skills.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {opp.required_skills.slice(0, 3).map((s) => (
+              <span
+                key={s}
+                className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+              >
+                {s}
+              </span>
+            ))}
+            {opp.required_skills.length > 3 && (
+              <span className="rounded-md px-1 py-0.5 text-[11px] text-muted-foreground">
+                +{opp.required_skills.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="mt-5 flex-1" />
+
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <PostedBy opp={opp} compact />
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+              deadline.urgent
+                ? "bg-[oklch(0.95_0.05_25)] text-[oklch(0.5_0.2_25)] dark:bg-[oklch(0.3_0.1_25)] dark:text-[oklch(0.85_0.15_30)]"
+                : "text-muted-foreground"
+            )}
+          >
+            <CalendarClock className="h-3 w-3" />
+            {deadline.label}
+          </span>
+        </div>
+      </article>
+    </Link>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function CompanyLogo({ opp, size }: { opp: Opportunity; size: number }) {
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background"
+      style={{ width: size, height: size }}
+    >
+      {opp.media && opp.media[0] ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={opp.media[0]}
+          alt={`${opp.company} logo`}
+          className="h-full w-full object-contain p-1.5"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
+      ) : (
+        <Building2 className="h-1/2 w-1/2 text-muted-foreground" />
+      )}
+    </div>
+  );
+}
+
+function PostedBy({
+  opp,
+  compact,
+}: {
+  opp: Opportunity;
+  compact?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <Avatar className={compact ? "h-6 w-6" : "h-7 w-7"}>
+        <AvatarImage
+          src={
+            opp.posted_by?.profile_picture
+              ? opp.posted_by.profile_picture
+              : undefined
+          }
+          alt={opp.posted_by?.display_name}
+        />
+        <AvatarFallback className="text-[10px]">
+          {opp.posted_by?.display_name?.charAt(0) ?? "A"}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 leading-tight">
+        <div className="truncate text-xs font-medium text-foreground">
+          {opp.posted_by?.display_name ?? "Unknown"}
+        </div>
+        {!compact && (
+          <div className="truncate text-[11px] text-muted-foreground">
+            @{opp.posted_by?.username ?? "unknown"}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({
+  onClear,
+  hasActiveFilters,
+}: {
+  onClear: () => void;
+  hasActiveFilters: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card/50 px-6 py-20 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+        <SearchX className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="mt-5 text-lg font-semibold text-foreground">
+        No opportunities found
+      </h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        {hasActiveFilters
+          ? "Try adjusting your filters or search terms to see more results."
+          : "No opportunities have been posted yet. Check back soon."}
+      </p>
+      {hasActiveFilters && (
+        <Button variant="outline" onClick={onClear} className="mt-6 gap-2">
+          <X className="h-4 w-4" />
+          Clear filters
+        </Button>
+      )}
     </div>
   );
 }
