@@ -2,9 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPendingRequests, respondToConnectionRequest, sendConnectionRequest, getSentRequests, cancelSentRequest, removeConnection } from "@/lib/api/connections.api";
-import { getBatchMates, getMyNetwork as getAlumniNetwork, searchAlumni } from "@/lib/api/alumni.api";
-import { getMyMentors, getMyNetwork as getStudentNetwork } from "@/lib/api/student.api";
-import { getSkillTrends } from "@/lib/api/network.api";
+import { getMyNetwork as getAlumniNetwork, searchAlumni } from "@/lib/api/alumni.api";
+import { getMyNetwork as getStudentNetwork } from "@/lib/api/student.api";
 import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 
