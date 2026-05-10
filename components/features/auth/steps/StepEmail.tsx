@@ -103,13 +103,6 @@ export default function StepEmail() {
           )}
         </div>
 
-        <div className="flex items-start gap-2 px-1">
-          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-[10px] text-muted-foreground italic">
-            Registration is only available for EDU email addresses to ensure platform integrity.
-          </p>
-        </div>
-
         <Button
           type="submit"
           disabled={isSubmitting}

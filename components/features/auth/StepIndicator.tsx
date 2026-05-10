@@ -23,7 +23,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
       <motion.div 
         className="absolute top-4 left-0 h-[2px] bg-[#0a66c2] -z-0 mx-8"
         initial={{ width: 0 }}
-        animate={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+        animate={{ width: `${((currentStep - 1) / (steps.length - 0.5)) * 100}%` }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
       />
 
