@@ -47,9 +47,15 @@ export function AuthShell({ heading, subheading, children, footer }: AuthShellPr
             "Where graduates stay connected, grow together, and give back."
           </blockquote>
           <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {["bg-blue-300", "bg-blue-200", "bg-white/60"].map((c, i) => (
-                <div key={i} className={`h-8 w-8 rounded-full ${c} ring-2 ring-blue-600`} />
+            <div className="flex">
+              {[1, 2, 3].map((i) => (
+                <img
+                  key={i}
+                  src={`/dev${i}.jpeg`}
+                  alt={`User ${i}`}
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-blue-600 -mr-2 last:mr-0"
+                  style={{ zIndex: 4 - i, position: 'relative' }}
+                />
               ))}
             </div>
             <p className="text-sm text-blue-100">

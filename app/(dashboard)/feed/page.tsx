@@ -80,7 +80,8 @@ function timeAgo(dateStr?: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function getInitials(name: string) {
+function getInitials(name: string | null | undefined) {
+  if (!name) return "?";
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 

@@ -67,6 +67,7 @@ export default function PostOpportunityPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [serverError, setServerError] = useState("");
 
@@ -89,7 +90,7 @@ export default function PostOpportunityPage() {
     if (!trimmed) return;
     if (selectedSkills.includes(trimmed)) {
       setSkillInput("");
-      return; 
+      return;
     }
     const updated = [...selectedSkills, trimmed];
     setSelectedSkills(updated);
@@ -116,7 +117,10 @@ export default function PostOpportunityPage() {
 
   const onSubmit = (data: PostOpportunityInput) => {
     setServerError("");
-    mutation.mutate(data);
+    mutation.mutate({
+      ...data,
+      media: selectedFiles.length > 0 ? selectedFiles : undefined
+    });
   };
 
   return (
@@ -323,8 +327,8 @@ export default function PostOpportunityPage() {
                   />
                   <FieldError message={errors.required_skills?.message as string} />
                 </div>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={addSkill}
                   className="h-10 px-5 bg-muted text-foreground border border-border/60 hover:bg-muted/80 shadow-sm"
                 >
@@ -352,7 +356,7 @@ export default function PostOpportunityPage() {
                   <span className="text-sm text-muted-foreground/70">No skills added yet</span>
                 )}
               </div>
-              
+
               {selectedSkills.length > 0 && (
                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium text-right mt-1">
                   {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} added
@@ -406,22 +410,49 @@ export default function PostOpportunityPage() {
               <span className="text-muted-foreground font-normal">(optional)</span>
             </SectionLabel>
 
-            <label className="flex flex-col items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-all duration-150 group">
-              <ImagePlus className="h-5 w-5 text-muted-foreground/40 group-hover:text-blue-500/60 transition-colors" />
-              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                Click to upload images (max 5)
-              </span>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  setValue("media" as any, files);
-                }}
-              />
-            </label>
+            <div className="space-y-4">
+              <label className="flex flex-col items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-all duration-150 group">
+                <ImagePlus className="h-5 w-5 text-muted-foreground/40 group-hover:text-blue-500/60 transition-colors" />
+                <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                  Click to upload images (max 5)
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (selectedFiles.length + files.length > 5) {
+                      alert("You can only upload up to 5 images.");
+                    }
+                    setSelectedFiles([...selectedFiles, ...files].slice(0, 5));
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
+              {selectedFiles.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {selectedFiles.map((file, i) => (
+                    <div key={i} className="relative flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/30">
+                      <ImagePlus className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-xs truncate font-medium flex-1" title={file.name}>{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedFiles(selectedFiles.filter((_, index) => index !== i));
+                        }}
+                        className="text-muted-foreground hover:text-rose-500 transition-colors p-1"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
