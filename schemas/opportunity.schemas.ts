@@ -22,9 +22,12 @@ export const postOpportunitySchema = z.object({
 });
 
 export const updateOpportunitySchema = z.object({
-  title: z.string().min(5).optional(),
-  description: z.string().min(20).optional(),
-  apply_link: z.string().url().optional(),
+  title: z.string().min(5, "Title must be at least 5 characters").optional(),
+  type: z.enum(["job", "internship", "freelance"]).optional(),
+  description: z.string().min(20, "Description must be at least 20 characters").optional(),
+  requirements: z.string().min(10, "Requirements must be at least 10 characters").optional(),
+  location: z.string().min(1, "Location is required").optional(),
+  is_remote: z.boolean().optional(),
   deadline: z
     .string()
     .refine(
@@ -32,7 +35,12 @@ export const updateOpportunitySchema = z.object({
       "Deadline must be a future date"
     )
     .optional(),
+  company_name: z.string().min(1, "Company name is required").optional(),
+  apply_link: z.string().url("Enter a valid URL for the apply link").optional(),
   status: z.enum(["open", "closed"]).optional(),
+  required_skills: z.array(z.string()).optional(),
+  media: z.array(z.string()).optional(),
+  existing_media: z.array(z.string()).optional(),
 });
 
 export type PostOpportunityInput = z.infer<typeof postOpportunitySchema>;

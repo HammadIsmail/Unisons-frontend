@@ -67,13 +67,53 @@ export const updateOpportunity = async (
   id: string,
   payload: {
     title?: string;
+    type?: string;
     description?: string;
-    apply_link?: string;
+    requirements?: string;
+    location?: string;
+    is_remote?: boolean;
     deadline?: string;
+    company_name?: string;
+    apply_link?: string;
     status?: string;
+    required_skills?: string[];
+    media?: (File | string)[];
+    existing_media?: string[];
   }
 ): Promise<{ message: string }> => {
-  const { data } = await api.put(`/api/opportunities/${id}`, payload);
+  const formData = new FormData();
+  if (payload.title) formData.append("title", payload.title);
+  if (payload.type) formData.append("type", payload.type);
+  if (payload.description) formData.append("description", payload.description);
+  if (payload.requirements) formData.append("requirements", payload.requirements);
+  if (payload.location) formData.append("location", payload.location);
+  if (payload.is_remote !== undefined) formData.append("is_remote", String(payload.is_remote));
+  if (payload.deadline) formData.append("deadline", payload.deadline);
+  if (payload.company_name) formData.append("company_name", payload.company_name);
+  if (payload.apply_link) formData.append("apply_link", payload.apply_link);
+  if (payload.status) formData.append("status", payload.status);
+
+  if (payload.required_skills) {
+    payload.required_skills.forEach((skill) => {
+      formData.append("required_skills", skill);
+    });
+  }
+
+  if (payload.media) {
+    payload.media.forEach((item) => {
+      formData.append("media", item);
+    });
+  }
+
+  if (payload.existing_media) {
+    payload.existing_media.forEach((url) => {
+      formData.append("media", url);
+    });
+  }
+
+  const { data } = await api.put(`/api/opportunities/${id}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 };
 

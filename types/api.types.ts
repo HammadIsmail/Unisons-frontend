@@ -115,6 +115,7 @@ export interface Opportunity {
   description?: string;
 }
 export interface OpportunityDetail {
+  posted_at: any;
   id: string;
   title: string;
   type: "job" | "internship" | "freelance";
