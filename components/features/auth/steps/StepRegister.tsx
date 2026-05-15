@@ -93,6 +93,7 @@ export default function StepRegister() {
       reset();
       router.push("/pending");
     } catch (error: any) {
+      console.log(error);
       setServerError(
         error.response?.data?.message || "Registration failed. Please try again."
       );

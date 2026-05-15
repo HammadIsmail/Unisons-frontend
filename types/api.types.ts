@@ -218,10 +218,15 @@ export interface TopCompany {
   alumni_count: number;
 }
 
+export interface SkillTrendItem {
+  skill: string;
+  [key: string]: any;
+}
+
 export interface SkillTrends {
-  most_required_in_opportunities: string[];
-  most_common_among_alumni: string[];
-  gap: string[];
+  most_required_in_opportunities: (string | SkillTrendItem)[];
+  most_common_among_alumni: (string | SkillTrendItem)[];
+  gap: (string | SkillTrendItem)[];
 }
 
 export interface BatchAnalysis {
