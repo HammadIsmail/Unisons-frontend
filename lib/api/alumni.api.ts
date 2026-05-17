@@ -84,6 +84,6 @@ export const getAlumniByUsername = async (
 };
 
 export const searchAlumni = async (params?: Record<string, string>): Promise<any[]> => {
-  const { data } = await api.get("/api/search/alumni", { params });
+  const { data } = await api.get("/api/search/users", { params });
   return data;
 };

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { searchAlumni, searchOpportunities } from "@/lib/api/search.api";
-import { getAllSkills } from "@/lib/api/alumni.api";
+import { searchAlumni } from "@/lib/api/search.api";
+import { getAllSkills } from "@/lib/api/skill.api";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNetwork } from "@/hooks/useNetwork";
 import useAuthStore from "@/store/authStore";
@@ -12,174 +12,377 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { getInitials } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
-
+import { cn, getInitials } from "@/lib/utils";
 import {
   Search,
-  Users,
-  Briefcase,
-  GraduationCap,
-  Zap,
-  Wifi,
   MapPin,
   Building2,
-  ArrowRight,
+  GraduationCap,
+  Sparkles,
   X,
-  SlidersHorizontal,
-  SearchX,
-  AtSign,
-  ChevronRight,
-  Clock,
   UserPlus,
-  ExternalLink,
+  Check,
+  Clock,
+  MessageCircle,
+  Briefcase,
+  Wifi,
+  ChevronRight,
+  AtSign,
+  SearchX,
   Filter,
+  AlertTriangle,
+  ChevronDown,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "alumni" | "opportunities";
+type Status = "none" | "pending" | "connected";
 
-const TYPE_META: Record<string, { label: string; icon: React.ReactNode; badge: string }> = {
-  job: {
-    label: "Job",
-    icon: <Briefcase className="h-3 w-3" />,
-    badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
-  },
-  internship: {
-    label: "Internship",
-    icon: <GraduationCap className="h-3 w-3" />,
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
-  },
-  freelance: {
-    label: "Freelance",
-    icon: <Zap className="h-3 w-3" />,
-    badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
-  },
-};
+type PendingAction =
+  | { type: "cancel"; targetId: string; targetName: string }
+  | { type: "disconnect"; targetId: string; targetName: string }
+  | null;
 
-function getTypeMeta(type: string) {
-  return TYPE_META[type] ?? TYPE_META.job;
+// ── Confirm Dialog ────────────────────────────────────────────────────────────
+
+interface ConfirmDialogProps {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmVariant?: "danger" | "warning";
+  onConfirm: () => void;
+  onCancel: () => void;
 }
 
-// ── Filter Components ─────────────────────────────────────────────────────────
-
-function FilterInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label?: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
+function ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  confirmVariant = "danger",
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  if (!open) return null;
+  const isDanger = confirmVariant === "danger";
   return (
-    <div className="space-y-1.5 min-w-[120px]">
-      {label && (
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </label>
-      )}
-      <div className="relative">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full h-9 px-3 text-xs bg-background border border-border/60 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition placeholder:text-muted-foreground/50 text-foreground"
-        />
-        {value && (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={onCancel}
+      />
+      <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 fade-in duration-200">
+        <button
+          onClick={onCancel}
+          className="absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <div
+          className={cn(
+            "w-11 h-11 rounded-full flex items-center justify-center mb-4",
+            isDanger ? "bg-red-50" : "bg-amber-50"
+          )}
+        >
+          <AlertTriangle
+            className={cn("w-5 h-5", isDanger ? "text-red-500" : "text-amber-500")}
+          />
+        </div>
+        <h2 className="text-[15px] font-semibold text-foreground leading-snug">
+          {title}
+        </h2>
+        <p className="text-[13px] text-muted-foreground mt-1.5 leading-relaxed">
+          {description}
+        </p>
+        <div className="flex gap-2.5 mt-5">
           <button
-            onClick={() => onChange("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition"
+            onClick={onCancel}
+            className="flex-1 py-2 rounded-xl text-[13px] font-medium border border-border/60 text-muted-foreground hover:bg-muted/60 transition-colors"
           >
-            <X className="h-3 w-3" />
+            Keep
           </button>
-        )}
+          <button
+            onClick={onConfirm}
+            className={cn(
+              "flex-1 py-2 rounded-xl text-[13px] font-semibold text-white transition-colors",
+              isDanger ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
+            )}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function FilterSelect({
+// ── Filter Pill (matches React design) ───────────────────────────────────────
+
+function FilterPill({
   label,
   value,
   onChange,
   options,
-  placeholder,
 }: {
-  label?: string;
+  label: string;
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  placeholder?: string;
+  options: string[];
 }) {
+  const active = !!value;
+  const [search, setSearch] = useState("");
+
+  const filteredOptions = options.filter(o => 
+    typeof o === 'string' && o.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div className="space-y-1.5 min-w-[120px]">
-      {label && (
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </label>
-      )}
-      <Select value={value || "_all"} onValueChange={(v) => onChange(v === "_all" ? "" : v)}>
-        <SelectTrigger className="h-9 text-xs border-border/60 bg-background rounded-xl">
-          <SelectValue placeholder={placeholder ?? "Any"} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="_all">{placeholder ?? "Any"}</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (!open) setSearch("");
+      }}
+    >
+      <DropdownMenuTrigger
+        className={`h-9 flex !text-blue-600 items-center w-auto gap-1.5 rounded-full border px-3.5 text-xs font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-ring border-blue-600`}
+      >
+        <span className={active ? "text-muted-foreground" : ""}>{label}</span>
+        {active && <span className="font-semibold max-w-[100px] truncate">{value}</span>}
+        <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="start">
+        <div className="p-2 sticky top-0 bg-popover z-10">
+          <Input
+            id={`search-${label.toLowerCase()}`}
+            name={`search-${label.toLowerCase()}`}
+            placeholder={`Search ${label.toLowerCase()}...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="h-8 text-xs"
+          />
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup
+          value={value || "_all"}
+          onValueChange={(v) => onChange(v === "_all" ? "" : v)}
+        >
+          <DropdownMenuRadioItem value="_all">Any {label.toLowerCase()}</DropdownMenuRadioItem>
+          {filteredOptions.map((o) => (
+            <DropdownMenuRadioItem key={o} value={o}>
+              {o}
+            </DropdownMenuRadioItem>
           ))}
-        </SelectContent>
-      </Select>
-    </div>
+          {filteredOptions.length === 0 && (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              No results found
+            </div>
+          )}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
-function ResultSkeleton({ type }: { type: Tab }) {
+function CardSkeleton() {
   return (
-    <Card className="border-border/60">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-1/3 rounded" />
-            <Skeleton className="h-3 w-1/4 rounded" />
-            {type === "alumni" && <Skeleton className="h-3 w-1/2 rounded" />}
-          </div>
-          <Skeleton className="h-8 w-20 rounded-full" />
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <div className="flex items-start gap-3">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-3 w-1/4" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <Skeleton className="mt-4 h-4 w-1/2" />
+      <Skeleton className="mt-2 h-3 w-2/3" />
+      <div className="mt-4 flex gap-1.5">
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
+// ── Alumni Card ───────────────────────────────────────────────────────────────
+
+function AlumniCard({
+  alumnus: a,
+  status,
+  onConnect,
+  onRequestCancelConfirm,
+  onRequestDisconnectConfirm,
+  isLoading,
+}: {
+  alumnus: any;
+  status: Status;
+  onConnect: () => void;
+  onRequestCancelConfirm: () => void;
+  onRequestDisconnectConfirm: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <article className="group relative flex flex-col rounded-2xl border border-border/60 bg-card p-5 transition hover:border-border hover:shadow-lg hover:-translate-y-0.5">
+      <div className="flex items-start gap-3">
+        <Link href={`/profile/${a.id}`}>
+          <Avatar className="h-12 w-12 ring-2 ring-background group-hover:scale-105 transition-transform">
+            <AvatarImage src={a.profile_picture} alt={a.display_name} />
+            <AvatarFallback className="bg-muted text-xs font-semibold">
+              {getInitials(a.display_name)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
+        <div className="min-w-0 flex-1">
+          <Link href={`/profile/${a.id}`}>
+            <h3 className="truncate text-sm font-semibold text-foreground hover:text-primary transition-colors">
+              {a.display_name}
+            </h3>
+          </Link>
+          <p className="truncate text-xs text-muted-foreground">
+            @{a.username}
+          </p>
+        </div>
+      </div>
+      
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {a.company && (
+          <span className="inline-flex items-center gap-1">
+            <Building2 className="h-3 w-3" />
+            {a.company}
+          </span>
+        )}
+        {a.batch_year && (
+          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium dark:bg-blue-900/40 dark:text-blue-300">
+            <GraduationCap className="h-3 w-3" />
+            Batch of {a.batch_year}
+          </span>
+        )}
+      </div>
+
+      {a.bio ? (
+        <p className="mt-3 line-clamp-2 text-xs text-muted-foreground/90">
+          {a.bio}
+        </p>
+      ) : (
+        <p className="mt-3 line-clamp-2 text-xs text-muted-foreground/90">
+          No bio available
+        </p>
+      )}
+
+      {a.skills?.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {a.skills.slice(0, 3).map((s: string) => (
+            <Badge
+              key={s}
+              variant="secondary"
+              className="rounded-full bg-muted/60 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted"
+            >
+              {s}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 line-clamp-2 text-xs text-muted-foreground/90">
+          No skills available
+        </p>
+      )}
+
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-border/60 pt-4">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <GraduationCap className="h-3.5 w-3.5" />
+          {a.role.toUpperCase()}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            aria-label="Message"
+            asChild
+          >
+            <Link href={`/chat/${a.id}`}>
+              <MessageCircle className="h-4 w-4" />
+            </Link>
+          </Button>
+
+          {status === "connected" ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 gap-1.5 rounded-full px-3 text-xs border border-border/60 text-muted-foreground hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+              onClick={onRequestDisconnectConfirm}
+              disabled={isLoading}
+            >
+              <Check className="h-3.5 w-3.5" /> Connected
+            </Button>
+          ) : status === "pending" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 rounded-full px-3 text-xs border border-border/60 text-muted-foreground hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+              onClick={onRequestCancelConfirm}
+              disabled={isLoading}
+            >
+              <Clock className="h-3.5 w-3.5" /> Pending
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 rounded-full px-3 text-xs !bg-white !text-blue-600 border !border-blue-600 hover:scale-102 cursor-pointer active:scale-[0.98] transition-all"
+              onClick={onConnect}
+              disabled={isLoading}
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Connect
+            </Button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ── Empty State ───────────────────────────────────────────────────────────────
+
+function EmptyState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-card/40 px-6 py-20 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+        <SearchX className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold text-foreground">
+        No matches yet
+      </h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        Try a broader search, or clear your filters to see everyone in the
+        network.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-5 rounded-full"
+        onClick={onReset}
+      >
+        Reset filters
+      </Button>
+    </div>
   );
 }
 
@@ -187,7 +390,6 @@ function ResultSkeleton({ type }: { type: Tab }) {
 
 export default function SearchPage() {
   const { role } = useAuthStore();
-  const [tab, setTab] = useState<Tab>("alumni");
   const [query, setQuery] = useState("");
   const router = useRouter();
 
@@ -202,18 +404,32 @@ export default function SearchPage() {
     isRemoving,
   } = useNetwork();
 
-  const getStatus = (personId: string) => {
-    if (myConnections?.some((c: any) => c.id === personId || c.alumni_id === personId || c.user_id === personId)) {
-      return "connected";
-    }
-    if (sentRequests?.some((r: any) => r.target_id === personId)) {
-      return "pending";
-    }
-    return "none";
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+
+  const handleConfirm = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === "cancel") cancelRequest(pendingAction.targetId);
+    else if (pendingAction.type === "disconnect") removeOldConnection(pendingAction.targetId);
+    setPendingAction(null);
   };
 
-  const handleConnect = (id: string, type: "batchmate" | "colleague" | "mentor") => {
-    connect({ targetId: id });
+  const handleDialogCancel = () => setPendingAction(null);
+
+  const handleConnect = (id: string) => connect({ targetId: id });
+
+  const getStatus = (personId: string): Status => {
+    if (
+      myConnections?.some(
+        (c: any) =>
+          c.id === personId ||
+          c.alumni_id === personId ||
+          c.user_id === personId
+      )
+    )
+      return "connected";
+    if (sentRequests?.some((r: any) => r.target_id === personId))
+      return "pending";
+    return "none";
   };
 
   // Alumni filters
@@ -222,20 +438,15 @@ export default function SearchPage() {
   const [batchYear, setBatchYear] = useState("");
   const [degree, setDegree] = useState("");
 
-  // Opportunity filters
-  const [oppType, setOppType] = useState("");
-  const [oppLocation, setOppLocation] = useState("");
-  const [oppSkill, setOppSkill] = useState("");
-  const [isRemote, setIsRemote] = useState<boolean | undefined>(undefined);
-
   const debouncedQuery = useDebounce(query, 300);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const usernameQuery = query.startsWith("@") ? query.slice(1) : "";
+  const isAtMode = query.startsWith("@");
 
   const { data: suggestions } = useQuery({
     queryKey: ["search", "suggestions", usernameQuery],
     queryFn: () => searchAlumni({ display_name: usernameQuery }),
-    enabled: query.startsWith("@") && usernameQuery.length > 0 && tab === "alumni",
+    enabled: isAtMode && usernameQuery.length > 0,
   });
 
   const { data: skills } = useQuery({
@@ -245,7 +456,11 @@ export default function SearchPage() {
   });
 
   const { data: alumniResults, isLoading: alumniLoading } = useQuery({
-    queryKey: ["search", "alumni", { debouncedQuery, company, skill, batchYear, degree }],
+    queryKey: [
+      "search",
+      "alumni",
+      { debouncedQuery, company, skill, batchYear, degree },
+    ],
     queryFn: () =>
       searchAlumni({
         display_name: debouncedQuery || undefined,
@@ -254,311 +469,262 @@ export default function SearchPage() {
         batch_year: batchYear || undefined,
         degree: degree || undefined,
       }),
-    enabled: tab === "alumni",
   });
 
-  const { data: oppResults, isLoading: oppLoading } = useQuery({
-    queryKey: ["search", "opportunities", { debouncedQuery, oppType, oppSkill, oppLocation, isRemote }],
-    queryFn: () =>
-      searchOpportunities({
-        title: debouncedQuery || undefined,
-        type: oppType || undefined,
-        skill: oppSkill || undefined,
-        location: oppLocation || undefined,
-        is_remote: isRemote,
-      }),
-    enabled: tab === "opportunities",
-  });
+  const isLoading = alumniLoading;
 
-  const isLoading = tab === "alumni" ? alumniLoading : oppLoading;
-  const isAtMode = query.startsWith("@") && tab === "alumni";
-  const hasAlumniFilters = !!(company || skill || batchYear || degree);
-  const hasOppFilters = !!(oppType || oppSkill || oppLocation || isRemote);
-  const hasFilters = tab === "alumni" ? hasAlumniFilters : hasOppFilters;
+  const skillOptions = skills ?? [];
 
-  const skillOptions = skills?.map((s) => ({ value: s, label: s })) ?? [];
+  const hasAlumniFilters = !!(company || skill || batchYear || degree || query);
 
-  const clearAll = () => {
+  const resetAll = () => {
     setQuery("");
-    setCompany(""); setSkill(""); setBatchYear(""); setDegree("");
-    setOppType(""); setOppSkill(""); setOppLocation(""); setIsRemote(undefined);
+    setCompany("");
+    setSkill("");
+    setBatchYear("");
+    setDegree("");
   };
 
-  const resultCount = tab === "alumni" ? (alumniResults?.length ?? 0) : (oppResults?.length ?? 0);
+  const resultCount = alumniResults?.length ?? 0;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-      
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Search</h1>
-        <p className="text-sm text-muted-foreground">Find alumni or opportunities across the network</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* ── Hero Header ────────────────────────────────────────────────────── */}
+      <header className="relative overflow-hidden border-b border-border/60">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/5 via-background to-background" />
+        <div
+          className="absolute inset-0 -z-10 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
+            backgroundSize: "24px 24px",
+          }}
+        />
+        <div className="mx-auto max-w-6xl px-6 pt-16 pb-10">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Alumni Network
+          </Link>
+          <h1 className="mt-4 text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
+            Find your people.
+          </h1>
+          <p className="mt-3 max-w-xl text-base text-muted-foreground">
+            Search users by name, company, skills, or batch — and
+            start a conversation.
+          </p>
 
-      {/* ── Search Bar & Tab Selection ─────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Tabs */}
-          <div className="flex p-1 bg-muted/60 border border-border/50 rounded-xl h-10 w-fit">
-            {(["alumni", "opportunities"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => { setTab(t); setQuery(""); }}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all capitalize ${
-                  tab === t ? "bg-background text-foreground shadow-sm border border-border/60" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t === "alumni" ? <Users className="h-3.5 w-3.5" /> : <Briefcase className="h-3.5 w-3.5" />}
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Input */}
-          <div className="relative flex-1 group">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-              {isAtMode ? <AtSign className="h-4 w-4 text-blue-500" /> : <Search className="h-4 w-4 text-muted-foreground/50" />}
-            </div>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
-              placeholder={tab === "alumni" ? "Search by name, or @username..." : "Search by job title, company..."}
-              className={`w-full h-10 pl-10 pr-10 text-sm rounded-xl border bg-background transition-all outline-none ${
-                isAtMode ? "border-blue-500 ring-2 ring-blue-500/10" : "border-border/60 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-              }`}
-            />
-            {query && (
-              <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            )}
-
-            {/* Username Suggestions */}
-            {isAtMode && showSuggestions && suggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-popover border border-border shadow-xl rounded-xl z-50 overflow-hidden">
-                {suggestions.slice(0, 5).map((s) => (
-                  <button
-                    key={s.id}
-                    onMouseDown={() => router.push(`/alumni/${s.username}`)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={s.profile_picture} />
-                      <AvatarFallback className="bg-blue-600/10 text-blue-600 text-[10px] font-bold">{getInitials(s.display_name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{s.display_name}</p>
-                      <p className="text-xs text-muted-foreground">@{s.username}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
-                  </button>
-                ))}
+          {/* Search Bar */}
+          <div className="mt-8 group relative">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/20 via-primary/5 to-primary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition" />
+            <div className="relative flex items-center gap-2 rounded-2xl border border-border/60 bg-card p-2 shadow-sm focus-within:border-primary/40 focus-within:shadow-md transition">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/60">
+                {isAtMode ? (
+                  <AtSign className="h-5 w-5 text-primary" />
+                ) : (
+                  <Search className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
+              <Input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder={`Try "Stripe", "@username", or "Product Designer"…`}
+                className="h-11 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0 px-0"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Username Suggestions Dropdown */}
+            {isAtMode &&
+              showSuggestions &&
+              suggestions &&
+              suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-popover border border-border shadow-xl rounded-xl z-50 overflow-hidden">
+                  {suggestions.slice(0, 5).map((s: any) => (
+                    <button
+                      key={s.id}
+                      onMouseDown={() => router.push(`/profile/${s.id}`)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={s.profile_picture} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+                          {getInitials(s.display_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate">
+                          {s.display_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          @{s.username}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+                    </button>
+                  ))}
+                </div>
+              )}
+          </div>
+
+          {/* Filters */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <FilterPill
+              label="Company"
+              value={company}
+              onChange={setCompany}
+              options={
+                alumniResults
+                  ? (Array.from(
+                      new Set(
+                        alumniResults
+                          .map((a: any) => a.company)
+                          .filter(Boolean)
+                      )
+                    ).sort() as string[])
+                  : []
+              }
+            />
+            <FilterPill
+              label="Skill"
+              value={skill}
+              onChange={setSkill}
+              options={skillOptions}
+            />
+            <FilterPill
+              label="Batch"
+              value={batchYear}
+              onChange={setBatchYear}
+              options={
+                alumniResults
+                  ? (Array.from(
+                      new Set(
+                        alumniResults
+                          .map((a: any) => a.batch_year)
+                          .filter(Boolean)
+                      )
+                    ).sort() as string[])
+                  : []
+              }
+            />
+            <FilterPill
+              label="Degree"
+              value={degree}
+              onChange={setDegree}
+              options={
+                alumniResults
+                  ? (Array.from(
+                      new Set(
+                        alumniResults
+                          .map((a: any) => a.degree)
+                          .filter(Boolean)
+                      )
+                    ).sort() as string[])
+                  : []
+              }
+            />
+            {hasAlumniFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetAll}
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="mr-1 h-3.5 w-3.5" /> Clear all
+              </Button>
             )}
           </div>
         </div>
+      </header>
 
-        {/* ── Filter Bar ──────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3 py-1 animate-in fade-in slide-in-from-left-2 duration-300">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 rounded-lg text-[10px] uppercase font-bold tracking-widest text-muted-foreground border border-border/40">
-            <Filter className="h-3 w-3" />
-            Filters
+      {/* ── Results ─────────────────────────────────────────────────────────── */}
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        {!isLoading && (
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <h2 className="text-sm font-medium text-foreground">
+                {resultCount} {resultCount === 1 ? "result" : "results"}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sorted by relevance
+              </p>
+            </div>
           </div>
-
-          {tab === "alumni" ? (
-            <>
-              <FilterInput value={company} onChange={setCompany} placeholder="Company" />
-              <FilterSelect value={skill} onChange={setSkill} options={skillOptions} placeholder="Skill" />
-              <FilterInput value={batchYear} onChange={setBatchYear} placeholder="Batch" />
-              <FilterInput value={degree} onChange={setDegree} placeholder="Degree" />
-            </>
-          ) : (
-            <>
-              <FilterSelect
-                value={oppType}
-                onChange={setOppType}
-                options={[
-                  { value: "job", label: "Job" },
-                  { value: "internship", label: "Internship" },
-                  { value: "freelance", label: "Freelance" },
-                ]}
-                placeholder="Job Type"
-              />
-              <FilterSelect value={oppSkill} onChange={setOppSkill} options={skillOptions} placeholder="Skill" />
-              <FilterInput value={oppLocation} onChange={setOppLocation} placeholder="Location" />
-              <button
-                onClick={() => setIsRemote(isRemote === true ? undefined : true)}
-                className={`h-9 px-4 rounded-xl text-xs font-semibold border transition-all flex items-center gap-2 ${
-                  isRemote ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20" : "bg-background text-muted-foreground border-border/60 hover:border-border"
-                }`}
-              >
-                <Wifi className="h-3.5 w-3.5" />
-                Remote Only
-              </button>
-            </>
-          )}
-
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAll} className="h-9 px-3 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl gap-2">
-              <X className="h-3.5 w-3.5" />
-              Reset
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Separator className="opacity-50" />
-
-      {/* ── Results Section ───────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        {!isLoading && resultCount > 0 && (
-          <p className="text-xs font-medium text-muted-foreground pl-1">{resultCount} results matching your search</p>
         )}
 
-        <div className="grid grid-cols-1 gap-3">
-          {isLoading ? (
-            [1, 2, 3, 4].map(i => <ResultSkeleton key={i} type={tab} />)
-          ) : tab === "alumni" ? (
-            alumniResults?.length ? (
-              alumniResults.map(a => {
-                const status = getStatus(a.id);
-                const isPending = status === "pending";
-                const isConnected = status === "connected";
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        ) : alumniResults?.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {alumniResults.map((a: any) => {
+              const status = getStatus(a.id);
+              return (
+                <AlumniCard
+                  key={a.id}
+                  alumnus={a}
+                  status={status}
+                  onConnect={() => handleConnect(a.id)}
+                  onRequestCancelConfirm={() =>
+                    setPendingAction({
+                      type: "cancel",
+                      targetId: a.id,
+                      targetName: a.display_name,
+                    })
+                  }
+                  onRequestDisconnectConfirm={() =>
+                    setPendingAction({
+                      type: "disconnect",
+                      targetId: a.id,
+                      targetName: a.display_name,
+                    })
+                  }
+                  isLoading={isConnecting || isCancelling || isRemoving}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState onReset={resetAll} />
+        )}
+      </main>
 
-                return (
-                  <Card key={a.id} className="border-border/60 hover:border-blue-500/40 hover:shadow-sm transition-all duration-200 group">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <Link href={`/alumni/${a.username}`}>
-                        <Avatar className="h-12 w-12 border border-border/40 group-hover:scale-105 transition-transform">
-                          <AvatarImage src={a.profile_picture} />
-                          <AvatarFallback className="bg-blue-600/10 text-blue-600 font-bold text-sm">{getInitials(a.display_name)}</AvatarFallback>
-                        </Avatar>
-                      </Link>
-
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/alumni/${a.username}`} className="font-bold text-foreground hover:text-blue-600 transition-colors inline-block">{a.display_name}</Link>
-                        <p className="text-xs text-muted-foreground truncate">
-                          @{a.username} 
-                          {a.current_company && <span className="opacity-50 mx-2">|</span>}
-                          {a.current_company && <span className="inline-flex items-center gap-1 font-medium"><Building2 className="h-3 w-3" /> {a.current_company}</span>}
-                        </p>
-                        <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
-                          {a.skills?.slice(0, 3).map((s: string) => (
-                            <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40 font-medium whitespace-nowrap">{s}</span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {status !== "none" ? (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant={isPending ? "secondary" : "ghost"} size="sm" className="h-8 rounded-full px-4 text-xs font-bold transition-all">
-                                {isPending ? <><Clock className="h-3.5 w-3.5 mr-1.5" /> Pending</> : "Connected"}
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                              <DialogHeader>
-                                <DialogTitle>{isPending ? "Cancel Request" : "Remove Connection"}</DialogTitle>
-                                <DialogDescription>
-                                  Confirm if you want to {isPending ? "cancel your request to" : "remove"} <span className="font-semibold text-foreground">{a.display_name}</span>.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                                <DialogClose asChild><Button variant="outline" size="sm">Back</Button></DialogClose>
-                                <DialogClose asChild>
-                                  <Button variant="destructive" size="sm" onClick={() => isPending ? cancelRequest(a.id) : removeOldConnection(a.id)} disabled={isCancelling || isRemoving}>
-                                    Confirm
-                                  </Button>
-                                </DialogClose>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        ) : role === "student" ? (
-                          <Button variant="outline" size="sm" className="h-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 px-4 text-xs font-bold" onClick={() => handleConnect(a.id, "mentor")} disabled={isConnecting}>
-                            <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Connect
-                          </Button>
-                        ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm" className="h-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 px-4 text-xs font-bold" disabled={isConnecting}>
-                                <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Connect
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[180px]">
-                              <DropdownMenuItem onClick={() => handleConnect(a.id, "batchmate")} className="text-xs font-medium cursor-pointer">Connect as Batchmate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleConnect(a.id, "colleague")} className="text-xs font-medium cursor-pointer">Connect as Colleague</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                        <Link href={`/alumni/${a.username}`}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/30 hover:text-foreground transition-colors">
-                            <ChevronRight className="h-5 w-5" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            ) : (
-              <EmptySearch icon={<SearchX className="h-8 w-8 text-muted-foreground/30" />} title="No alumni found" description="Adjust your filters or try a broader search." />
-            )
-          ) : (
-            oppResults?.length ? (
-              oppResults.map(o => {
-                const meta = getTypeMeta(o.type);
-                return (
-                  <Card key={o.id} className="border-border/60 hover:border-blue-500/40 hover:shadow-sm transition-all duration-200 group">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <Link href={`/opportunities/${o.id}`}>
-                        <div className={`h-11 w-11 rounded-xl flex items-center justify-center border shadow-inner transition-transform group-hover:scale-105 ${meta.badge}`}>
-                          {meta.icon}
-                        </div>
-                      </Link>
-
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/opportunities/${o.id}`} className="font-bold text-foreground hover:text-blue-600 transition-colors truncate block">{o.title}</Link>
-                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 mt-1">
-                          {o.company && <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium"><Building2 className="h-3 w-3 opacity-70" /> {o.company}</span>}
-                          {o.location && o.location.toLowerCase() !== "none" && <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium"><MapPin className="h-3 w-3 opacity-70" /> {o.location}</span>}
-                          <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold h-5 px-2 bg-muted/40">{meta.label}</Badge>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs px-5 shadow-lg shadow-blue-600/5 group/btn"
-                          asChild
-                        >
-                          <Link href={`/opportunities/${o.id}`}>
-                            Details <ChevronRight className="ml-1 h-3.5 w-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            ) : (
-              <EmptySearch icon={<SearchX className="h-8 w-8 text-muted-foreground/30" />} title="No opportunities found" description="Try a different job title or broader location." />
-            )
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EmptySearch({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
-  return (
-    <div className="py-20 flex flex-col items-center text-center bg-muted/20 border-2 border-dashed border-border/40 rounded-3xl">
-      <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-300">{icon}</div>
-      <h3 className="text-lg font-bold text-foreground">{title}</h3>
-      <p className="text-sm text-muted-foreground mt-1 max-w-[280px] leading-relaxed">{description}</p>
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={
+          pendingAction?.type === "disconnect"
+            ? `Disconnect from ${pendingAction.targetName}?`
+            : `Cancel request to ${pendingAction?.targetName}?`
+        }
+        description={
+          pendingAction?.type === "disconnect"
+            ? `You will be removed from ${pendingAction.targetName}'s connections. You can always reconnect later.`
+            : `Your pending connection request to ${pendingAction?.targetName} will be withdrawn.`
+        }
+        confirmLabel={
+          pendingAction?.type === "disconnect" ? "Disconnect" : "Cancel Request"
+        }
+        confirmVariant={pendingAction?.type === "disconnect" ? "danger" : "warning"}
+        onConfirm={handleConfirm}
+        onCancel={handleDialogCancel}
+      />
     </div>
   );
 }

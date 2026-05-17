@@ -13,7 +13,7 @@ export const searchAlumni = async (params: {
   batch_year?: string;
   degree?: string;
 }): Promise<AlumniSearchResult[]> => {
-  const { data } = await api.get("/api/search/alumni", { params });
+  const { data } = await api.get("/api/search/users", { params });
   return data;
 };
 export const searchOpportunities = async (params: {
