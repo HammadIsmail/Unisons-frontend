@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOpportunityById, deleteOpportunity } from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
 import { useRouter, useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -94,9 +94,17 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { profile, role } = useAuthStore();
+  const authState = useAuthStore();
+  const [profile, setProfile] = useState(authState.profile);
+  const [role, setRole] = useState(authState.role);
   const [saved, setSaved] = useState(false);
   const [confirm, setConfirm] = useState(false);
+
+  // Handle Next.js hydration for Zustand persist
+  useEffect(() => {
+    setProfile(authState.profile);
+    setRole(authState.role);
+  }, [authState.profile, authState.role]);
 
   const { data: opp, isLoading } = useQuery({
     queryKey: ["opportunity", id],
@@ -111,7 +119,8 @@ export default function OpportunityDetailPage() {
     },
   });
 
-  const isOwner = opp?.posted_by?.id && opp.posted_by.id === profile?.id;
+  const posterId = opp?.posted_by?.id || (opp?.posted_by as any)?._id;
+  const isOwner = posterId && profile?.id && String(posterId) === String(profile?.id);
 
   const isExpired = opp?.deadline ? new Date(opp.deadline) < new Date() : false;
 

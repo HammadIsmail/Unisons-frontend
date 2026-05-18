@@ -1,14 +1,35 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMyOpportunities, deleteOpportunity, updateOpportunity } from "@/lib/api/opportunities.api";
+import { getMyOpportunities, deleteOpportunity } from "@/lib/api/opportunities.api";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Briefcase,
+  MapPin,
+  Clock,
+  Eye,
+  Users,
+  Pencil,
+  Trash2,
+  Plus,
+  Search,
+  GraduationCap,
+  Building2,
+  Calendar,
+  Loader2,
+  FileText,
+  X,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -16,67 +37,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  AlertTriangle,
-  CheckCircle2,
-  CalendarClock,
-  Building2,
-  Briefcase,
-  GraduationCap,
-  Zap,
-  Loader2,
-  FileText,
-  X,
-} from "lucide-react";
 import { toast } from "sonner";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Status = "open" | "closed";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const TYPE_META: Record<string, { badge: string; icon: React.ReactNode }> = {
-  job: {
-    badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
-    icon: <Briefcase className="h-3 w-3" />,
-  },
-  internship: {
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
-    icon: <GraduationCap className="h-3 w-3" />,
-  },
-  freelance: {
-    badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
-    icon: <Zap className="h-3 w-3" />,
-  },
+const statusStyles: Record<Status, string> = {
+  open: "bg-blue-100 text-blue-700 border-blue-200",
+  closed: "bg-slate-200 text-slate-500 border-slate-300",
 };
 
-function getTypeMeta(type: string) {
-  return TYPE_META[type] ?? TYPE_META.job;
-}
-
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-PK", { month: "short", day: "numeric", year: "numeric" });
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-PK", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function OppSkeleton() {
   return (
-    <Card className="border-border/60">
+    <Card className="border-slate-200 shadow-none">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2 flex-1">
-            <div className="flex gap-2">
-              <Skeleton className="h-5 w-16 rounded-full" />
-              <Skeleton className="h-5 w-14 rounded-full" />
+          <div className="flex items-start gap-3 flex-1">
+            <Skeleton className="h-10 w-10 rounded-lg flex-shrink-0" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-3/5 rounded" />
+              <Skeleton className="h-4 w-2/5 rounded" />
             </div>
-            <Skeleton className="h-5 w-3/5 rounded" />
-            <Skeleton className="h-4 w-2/5 rounded" />
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <Skeleton className="h-8 w-16 rounded-lg" />
-            <Skeleton className="h-8 w-16 rounded-lg" />
+            <Skeleton className="h-8 w-20 rounded-lg" />
           </div>
         </div>
       </CardContent>
@@ -84,300 +83,435 @@ function OppSkeleton() {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── StatCard ──────────────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  accent?: boolean;
+}) {
+  return (
+    <Card className="border-slate-200 shadow-none">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+            <p className={`mt-2 text-2xl font-semibold ${accent ? "text-blue-600" : "text-slate-900"}`}>
+              {value}
+            </p>
+          </div>
+          <div
+            className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+              accent ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Meta ──────────────────────────────────────────────────────────────────────
+
+function Meta({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Icon className="h-3.5 w-3.5 text-slate-400" />
+      {children}
+    </span>
+  );
+}
+
+// ── EmptyState ────────────────────────────────────────────────────────────────
+
+function EmptyState({ onClear }: { onClear: () => void }) {
+  return (
+    <Card className="border-dashed border-slate-300 bg-white shadow-none">
+      <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+          <Briefcase className="h-6 w-6" />
+        </div>
+        <h3 className="mt-4 text-base font-semibold text-slate-900">No opportunities found</h3>
+        <p className="mt-1 max-w-sm text-sm text-slate-500">
+          Try adjusting your filters or search, or post a new opportunity for students.
+        </p>
+        <Button
+          variant="outline"
+          className="mt-5 border-blue-200 text-blue-700 hover:bg-blue-50"
+          onClick={onClear}
+        >
+          Clear filters
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── NoPostsState ──────────────────────────────────────────────────────────────
+
+function NoPostsState() {
+  return (
+    <Card className="border-dashed border-slate-300 bg-white shadow-none">
+      <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600 mb-4">
+          <FileText className="h-6 w-6" />
+        </div>
+        <p className="text-[15px] font-semibold text-slate-900 mb-1">No opportunities posted yet</p>
+        <p className="text-sm text-slate-500 mb-5 max-w-xs">
+          Share jobs, internships, or freelance opportunities with the alumni network.
+        </p>
+        <Button
+          className="h-9 gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+          asChild
+        >
+          <Link href="/post-opportunity">
+            <Plus className="h-4 w-4" />
+            Post your first opportunity
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── OpportunityCard ───────────────────────────────────────────────────────────
+
+function OpportunityCard({
+  opp,
+  onDelete,
+  onEdit,
+}: {
+  opp: any;
+  onDelete: () => void;
+  onEdit: () => void;
+}) {
+  const isExpired = opp.deadline ? new Date(opp.deadline) < new Date() : false;
+
+  return (
+    <Card className="border-slate-200 shadow-none transition-colors hover:border-blue-300">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 flex-shrink-0">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/opportunities/${opp.id}`}
+                  className="text-base font-semibold text-slate-900 hover:text-blue-600 transition-colors"
+                >
+                  {opp.title}
+                </Link>
+                <Badge
+                  variant="outline"
+                  className={`capitalize ${statusStyles[opp.status as Status] ?? statusStyles.closed}`}
+                >
+                  {opp.status}
+                </Badge>
+                {isExpired && (
+                  <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200">
+                    Expired
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-slate-600">
+                {opp.company && (
+                  <>
+                    {opp.company} ·{" "}
+                  </>
+                )}
+                <span className="text-slate-500 capitalize">{opp.type}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200"
+              onClick={onEdit}
+            >
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+              onClick={onDelete}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {opp.description && (
+          <p className="text-sm text-slate-600">{opp.description}</p>
+        )}
+
+        {opp.tags?.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {opp.tags.map((t: string) => (
+              <span
+                key={t}
+                className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
+          {opp.location && <Meta icon={MapPin}>{opp.location}</Meta>}
+          <Meta icon={Calendar}>
+            <span className={isExpired ? "text-rose-600 font-medium" : ""}>
+              Deadline {formatDate(opp.deadline)}
+            </span>
+          </Meta>
+          {typeof opp.applicants === "number" && (
+            <Meta icon={Users}>
+              <span className="font-medium text-slate-700">{opp.applicants}</span> applicants
+            </Meta>
+          )}
+          {typeof opp.views === "number" && (
+            <Meta icon={Eye}>
+              <span className="font-medium text-slate-700">{opp.views}</span> views
+            </Meta>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── DeleteConfirm ─────────────────────────────────────────────────────────────
+
+function DeleteConfirm({
+  opp,
+  onCancel,
+  onConfirm,
+  isPending,
+}: {
+  opp: any;
+  onCancel: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <Card className="border-slate-200 shadow-none">
+      <CardContent className="p-5">
+        <div className="p-4 rounded-xl border border-rose-200 bg-rose-50">
+          <div className="flex items-start gap-2.5 mb-3">
+            <AlertTriangle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-rose-700">Delete this opportunity?</p>
+              <p className="text-xs text-rose-600/80 mt-0.5">
+                "{opp.title}" will be permanently removed. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-8 text-xs gap-1.5"
+              onClick={onConfirm}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting…
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" /> Yes, delete
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs border-rose-200 text-rose-700 hover:bg-rose-100"
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MyOpportunitiesPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editDeadline, setEditDeadline] = useState("");
-  const [editStatus, setEditStatus] = useState<"open" | "closed">("open");
+  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<"all" | "open" | "closed">("all");
 
-  const { data: opportunities, isLoading } = useQuery({
+  const { data: opportunities = [], isLoading } = useQuery({
     queryKey: ["my-opportunities"],
     queryFn: getMyOpportunities,
   });
-
-  const flash = (msg: string) => {
-    toast.success(msg, {
-      action: {
-        label: "OK",
-        onClick: () => {},
-      },
-    })
-  };
 
   const deleteMutation = useMutation({
     mutationFn: deleteOpportunity,
     onSuccess: () => {
       setDeleteId(null);
-      flash("Opportunity deleted successfully.");
+      toast.success("Opportunity deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) => updateOpportunity(id, payload),
-    onSuccess: () => {
-      setEditId(null);
-      flash("Opportunity updated successfully.");
-      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-    },
+  const filtered = opportunities.filter((o: any) => {
+    const matchesTab = tab === "all" ? true : o.status === tab;
+    const q = query.trim().toLowerCase();
+    const matchesQuery =
+      !q ||
+      o.title?.toLowerCase().includes(q) ||
+      o.company?.toLowerCase().includes(q) ||
+      o.tags?.some((t: string) => t.toLowerCase().includes(q));
+    return matchesTab && matchesQuery;
   });
 
-  const openEdit = (opp: any) => {
-    setEditId(opp.id);
-    setEditDeadline(opp.deadline?.split("T")[0] ?? "");
-    setEditStatus(opp.status);
-    setDeleteId(null);
+  const counts = {
+    all: opportunities.length,
+    open: opportunities.filter((o: any) => o.status === "open").length,
+    closed: opportunities.filter((o: any) => o.status === "closed").length,
+    expired: opportunities.filter((o: any) => o.deadline ? new Date(o.deadline) < new Date() : false).length,
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="min-h-screen">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Opportunities</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {opportunities?.length
-              ? `${opportunities.length} posting${opportunities.length !== 1 ? "s" : ""}`
-              : "Manage your posted opportunities"}
-          </p>
-        </div>
-        <Button
-          className="h-9 gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 flex-shrink-0"
-          asChild
-        >
-          <Link href="/post-opportunity">
-            <Plus className="h-4 w-4" />
-            Post New
-          </Link>
-        </Button>
-      </div>
-
-      {/* ── List ────────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => <OppSkeleton key={i} />)}
-        </div>
-      ) : opportunities?.length ? (
-        <div className="space-y-3">
-          {opportunities.map((opp) => {
-            const meta = getTypeMeta(opp.type);
-            const isEditing = editId === opp.id;
-            const isDeleting = deleteId === opp.id;
-            const isExpired = opp.deadline ? new Date(opp.deadline) < new Date() : false;
-
-            return (
-              <Card
-                key={opp.id}
-                className={`border-border/60 transition-all duration-200 ${isEditing ? "border-blue-500/40 shadow-md shadow-blue-500/5" : ""}`}
-              >
-                <CardContent className="p-5">
-                  {isEditing ? (
-                    /* ── Edit form ── */
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground line-clamp-1">{opp.title}</p>
-                        <button
-                          onClick={() => setEditId(null)}
-                          className="text-muted-foreground/60 hover:text-foreground transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Deadline
-                          </Label>
-                          <Input
-                            type="date"
-                            value={editDeadline}
-                            onChange={(e) => setEditDeadline(e.target.value)}
-                            min={new Date().toISOString().split("T")[0]}
-                            className="h-9 text-sm border-border/60"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Status
-                          </Label>
-                          <Select value={editStatus} onValueChange={(v) => setEditStatus(v as "open" | "closed")}>
-                            <SelectTrigger className="h-9 text-sm border-border/60">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Open</SelectItem>
-                              <SelectItem value="closed">Closed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
-                          onClick={() => updateMutation.mutate({ id: opp.id, payload: { deadline: editDeadline, status: editStatus } })}
-                          disabled={updateMutation.isPending}
-                        >
-                          {updateMutation.isPending
-                            ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-                            : "Save changes"
-                          }
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs border-border/60"
-                          onClick={() => setEditId(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* ── Normal view ── */
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          {/* Badges */}
-                          <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${meta.badge}`}>
-                              {meta.icon}
-                              {opp.type}
-                            </span>
-                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                              opp.status === "open"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                                : "bg-muted text-muted-foreground border-border/60"
-                            }`}>
-                              {opp.status}
-                            </span>
-                            {isExpired && (
-                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800">
-                                Expired
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Title */}
-                          <Link
-                            href={`/opportunities/${opp.id}`}
-                            className="text-[15px] font-semibold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1"
-                          >
-                            {opp.title}
-                          </Link>
-
-                          {/* Meta */}
-                          <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            {opp.company && (
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Building2 className="h-3 w-3" />
-                                {opp.company}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <CalendarClock className={`h-3 w-3 ${isExpired ? "text-rose-500" : ""}`} />
-                              <span className={isExpired ? "text-rose-600 dark:text-rose-400 font-medium" : ""}>
-                                Deadline {formatDate(opp.deadline)}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs gap-1.5 border-border/60"
-                            onClick={() => openEdit(opp)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs gap-1.5 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                            onClick={() => { setDeleteId(opp.id); setEditId(null); }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Delete confirm */}
-                      {isDeleting && (
-                        <div className="mt-2 p-4 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 animate-in fade-in slide-in-from-top-1 duration-200">
-                          <div className="flex items-start gap-2.5 mb-3">
-                            <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Delete this opportunity?</p>
-                              <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">This action cannot be undone.</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-8 text-xs gap-1.5"
-                              onClick={() => deleteMutation.mutate(opp.id)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              {deleteMutation.isPending
-                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting…</>
-                                : <><Trash2 className="h-3.5 w-3.5" /> Yes, delete</>
-                              }
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40"
-                              onClick={() => setDeleteId(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <Card className="border-border/60 border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <FileText className="h-6 w-6 text-muted-foreground/40" />
-            </div>
-            <p className="text-[15px] font-semibold text-foreground mb-1">No opportunities posted yet</p>
-            <p className="text-sm text-muted-foreground mb-5 max-w-xs">
-              Share jobs, internships, or freelance opportunities with the alumni network.
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        {/* Page heading */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-blue-600">Posted by you</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
+              My Opportunities
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-slate-600">
+              Manage the opportunities you've shared with students. Edit details, track applicants,
+              or close listings that are no longer accepting candidates.
             </p>
-            <Button
-              className="h-9 gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
-              asChild
-            >
-              <Link href="/post-opportunity">
-                <Plus className="h-4 w-4" />
-                Post your first opportunity
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          <Button
+            className="bg-white hover:scale-103 hover:!bg-white border !border-blue-600 !text-blue-600 shadow-md"
+            asChild
+          >
+            <Link href="/post-opportunity">
+              <Plus className="mr-2 h-4 w-4" />
+              New opportunity
+            </Link>
+          </Button>
+        </div>
 
+        {/* Stats */}
+        {!isLoading && (
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <StatCard label="Total posts" value={counts.all} icon={Briefcase} />
+            <StatCard label="Active" value={counts.open} icon={Calendar} accent />
+            <StatCard label="Expired" value={counts.expired} icon={AlertTriangle} />
+            <StatCard label="Closed" value={counts.closed} icon={X} />
+          </div>
+        )}
+
+        {/* Filters */}
+        {!isLoading && opportunities.length > 0 && (
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+              <TabsList className="bg-white border border-slate-200">
+                <TabsTrigger
+                  value="all"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  All <span className="ml-1.5 text-xs opacity-70">{counts.all}</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="open"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  Active <span className="ml-1.5 text-xs opacity-70">{counts.open}</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="closed"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  Closed <span className="ml-1.5 text-xs opacity-70">{counts.closed}</span>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value={tab} />
+            </Tabs>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search title, company, tag…"
+                className="pl-9 bg-white border-slate-200 focus-visible:ring-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* List */}
+        <div className="mt-6 space-y-4">
+          {isLoading ? (
+            [1, 2, 3].map((i) => <OppSkeleton key={i} />)
+          ) : opportunities.length === 0 ? (
+            <NoPostsState />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              onClear={() => {
+                setQuery("");
+                setTab("all");
+              }}
+            />
+          ) : (
+            filtered.map((opp: any) => {
+              if (deleteId === opp.id) {
+                return (
+                  <DeleteConfirm
+                    key={opp.id}
+                    opp={opp}
+                    onCancel={() => setDeleteId(null)}
+                    onConfirm={() => deleteMutation.mutate(opp.id)}
+                    isPending={deleteMutation.isPending}
+                  />
+                );
+              }
+
+              return (
+                <OpportunityCard
+                  key={opp.id}
+                  opp={opp}
+                  onEdit={() => router.push(`/opportunities/${opp.id}/edit`)}
+                  onDelete={() => setDeleteId(opp.id)}
+                />
+              );
+            })
+          )}
+        </div>
+      </main>
     </div>
   );
 }

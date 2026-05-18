@@ -597,155 +597,163 @@ function FeaturedCard({
   const deadline = formatDeadline(opp.deadline);
 
   return (
-    <article className="group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-shadow hover:shadow-xl">
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10 opacity-50"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 80% at 90% 0%, oklch(0.7 0.2 255 / 0.18), transparent 60%)",
-        }}
-      />
+    <Link href={`/opportunities/${opp.id}`} className="group block">
+      <article className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-xl">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 opacity-50"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 80% at 90% 0%, oklch(0.7 0.2 255 / 0.18), transparent 60%)",
+          }}
+        />
 
-      <div className="grid grid-cols-1 gap-6 p-5 sm:gap-8 sm:p-6 lg:grid-cols-[1fr_auto] lg:p-10">
-        {/* LEFT SIDE */}
-        <div className="min-w-0">
-          {/* badges */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className="gap-1.5 border-transparent bg-foreground/5 px-2.5 py-1 font-medium"
-            >
-              <Sparkles className="h-3 w-3" />
-              Featured
-            </Badge>
+        <div className="grid grid-cols-1 gap-6 p-5 sm:gap-8 sm:p-6 lg:grid-cols-[1fr_auto] lg:p-10">
+          {/* LEFT SIDE */}
+          <div className="min-w-0">
+            {/* badges */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-transparent bg-foreground/5 px-2.5 py-1 font-medium"
+              >
+                <Sparkles className="h-3 w-3" />
+                Featured
+              </Badge>
 
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                meta.chip
-              )}
-            >
-              <meta.Icon className="h-3 w-3" />
-              {meta.label}
-            </span>
-
-            {opp.is_remote && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                <Wifi className="h-3 w-3" />
-                Remote
-              </span>
-            )}
-          </div>
-
-          {/* header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-            <CompanyLogo opp={opp} size={52} />
-
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">
-                {opp.title}
-              </h2>
-
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {opp.company}
-                </span>
-
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {opp.location}
-                </span>
-
-                {opp.salary && (
-                  <span className="font-medium text-foreground">
-                    {opp.salary}
-                  </span>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                  meta.chip
                 )}
+              >
+                <meta.Icon className="h-3 w-3" />
+                {meta.label}
+              </span>
+
+              {opp.is_remote && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  <Wifi className="h-3 w-3" />
+                  Remote
+                </span>
+              )}
+            </div>
+
+            {/* header */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+              <CompanyLogo opp={opp} size={52} />
+
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl group-hover:text-[oklch(0.55_0.22_255)] transition-colors">
+                  {opp.title}
+                </h2>
+
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {opp.company}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {opp.location}
+                  </span>
+
+                  {opp.salary && (
+                    <span className="font-medium text-foreground">
+                      {opp.salary}
+                    </span>
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* description */}
+            {opp.description && (
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+                {opp.description}
+              </p>
+            )}
+
+            {/* skills */}
+            {opp.required_skills?.length ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {opp.required_skills.map((s) => (
+                  <span
+                    key={s}
+                    className="rounded-full border border-border bg-background px-2.5 py-1 text-xs"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {/* footer meta */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+              <PostedBy opp={opp} />
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Posted {timeAgo(opp.posted_at)}
+              </span>
             </div>
           </div>
 
-          {/* description */}
-          {opp.description && (
-            <p className="mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-3">
-              {opp.description}
-            </p>
-          )}
-
-          {/* skills */}
-{opp.required_skills?.length ? (
-  <div className="mt-4 flex flex-wrap gap-2">
-    {opp.required_skills.map((s) => (
-      <span
-        key={s}
-        className="rounded-full border border-border bg-background px-2.5 py-1 text-xs"
-      >
-        {s}
-      </span>
-    ))}
-  </div>
-) : null}
-          {/* footer meta */}
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            <PostedBy opp={opp} />
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
-              Posted {timeAgo(opp.posted_at)}
-            </span>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE (ACTIONS) */}
-        <div className="flex flex-col gap-3 lg:items-end lg:justify-between">
-          {/* deadline */}
-          <span
-            className={cn(
-              "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-              deadline.urgent
-                ? "bg-[oklch(0.95_0.05_25)] text-[oklch(0.5_0.2_25)] dark:bg-[oklch(0.3_0.1_25)] dark:text-[oklch(0.85_0.15_30)]"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            <CalendarClock className="h-3 w-3" />
-            {deadline.label}
-          </span>
-
-          {/* buttons */}
-          <div className="flex w-full flex-col gap-2 sm:flex-row lg:flex-col lg:w-auto">
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="
-                w-full sm:w-auto lg:w-full
-                gap-2 rounded-lg
-                !border-blue-600 !bg-white !text-blue-600
-                shadow-sm transition-all duration-200
-                hover:!border-blue-700 hover:!text-blue-700
-                hover:shadow-lg hover:scale-[1.02]
-                active:scale-[0.98]
-              "
+          {/* RIGHT SIDE (ACTIONS) */}
+          <div className="flex flex-col gap-3 lg:items-end lg:justify-between">
+            {/* deadline */}
+            <span
+              className={cn(
+                "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+                deadline.urgent
+                  ? "bg-[oklch(0.95_0.05_25)] text-[oklch(0.5_0.2_25)] dark:bg-[oklch(0.3_0.1_25)] dark:text-[oklch(0.85_0.15_30)]"
+                  : "bg-muted text-muted-foreground"
+              )}
             >
-              <a href={opp.apply_link} target="_blank" rel="noopener noreferrer">
+              <CalendarClock className="h-3 w-3" />
+              {deadline.label}
+            </span>
+
+            {/* buttons */}
+            <div className="flex w-full flex-col gap-2 sm:flex-row lg:flex-col lg:w-auto">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(opp.apply_link, "_blank", "noopener,noreferrer");
+                }}
+                className="
+                  w-full sm:w-auto lg:w-full
+                  gap-2 rounded-lg
+                  !border-blue-600 !bg-white !text-blue-600
+                  shadow-sm transition-all duration-200
+                  hover:!border-blue-700 hover:!text-blue-700
+                  hover:shadow-lg hover:scale-[1.02]
+                  active:scale-[0.98]
+                "
+              >
                 Apply now
                 <ArrowRight className="h-4 w-4" />
-              </a>
-            </Button>
+              </Button>
 
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={onSave}
-              className="w-full sm:w-auto lg:w-full gap-2"
-            >
-              <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
-              {saved ? "Saved" : "Save"}
-            </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSave();
+                }}
+                className="w-full sm:w-auto lg:w-full gap-2"
+              >
+                <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+                {saved ? "Saved" : "Save"}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }
 
@@ -770,6 +778,14 @@ function OppCard({
   return (
     <Link href={`/opportunities/${opp.id}`} className="group block">
       <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-lg">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-50"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 80% at 90% 0%, oklch(0.7 0.2 255 / 0.18), transparent 60%)",
+          }}
+        />
         {/* Save button — stop propagation so Link doesn't fire */}
         <button
           onClick={(e) => {
