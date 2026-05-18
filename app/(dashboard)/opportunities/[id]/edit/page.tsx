@@ -1,5 +1,4 @@
 "use client";
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Briefcase,
   GraduationCap,
@@ -31,27 +31,41 @@ import {
   Building2,
 } from "lucide-react";
 
-// Field helpers
+// ── Field helpers ─────────────────────────────────────────────────────────────
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-1">
+    <p className="text-xs text-rose-600 flex items-center gap-1 mt-1">
       <AlertCircle className="h-3 w-3 flex-shrink-0" />
       {message}
     </p>
   );
 }
 
-function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function SectionLabel({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
   return (
-    <div className="flex items-center gap-2 mb-4">
-      <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+    <div className="flex items-start gap-3 mb-6">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100">
         {icon}
       </div>
-      <span className="text-[13px] font-semibold text-foreground">{children}</span>
+      <div>
+        <h2 className="text-base font-semibold text-slate-900 leading-tight">{title}</h2>
+        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+      </div>
     </div>
   );
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const TYPES = [
   { value: "job", label: "Job", icon: <Briefcase className="h-4 w-4" /> },
@@ -59,12 +73,17 @@ const TYPES = [
   { value: "freelance", label: "Freelance", icon: <Zap className="h-4 w-4" /> },
 ] as const;
 
+const inputCls =
+  "h-11 text-sm border-slate-200 bg-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500";
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 export default function EditOpportunityPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { profile } = useAuthStore();
-  
+
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingMediaUrls, setExistingMediaUrls] = useState<string[]>([]);
@@ -166,178 +185,220 @@ export default function EditOpportunityPage() {
   if (!opp) return null;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-      <div>
+    <div className="min-h-screen">
+      <div className="max-w-3xl mx-auto px-6 py-10">
+        {/* Header */}
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-6 group"
         >
-          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
         </button>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Edit Opportunity</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Update the details of your opportunity listing
-        </p>
-      </div>
 
-      {serverError && (
-        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800">
-          <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-rose-700 dark:text-rose-300">{serverError}</p>
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium ring-1 ring-blue-100 mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+            Editing listing
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900">Edit Opportunity</h1>
+          <p className="text-slate-500 mt-2 text-[15px] leading-relaxed max-w-xl">
+            Update the details of your opportunity listing. Changes will be reflected immediately
+            across the network.
+          </p>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionLabel icon={<Briefcase className="h-3.5 w-3.5" />}>
-              Basic Info
-            </SectionLabel>
+        {/* Server error */}
+        {serverError && (
+          <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-rose-50 border border-rose-200 mb-5">
+            <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-rose-700">{serverError}</p>
+          </div>
+        )}
 
-            <div className="space-y-1.5 mb-5">
-              <Label className="text-sm font-medium text-foreground">Opportunity Type</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
-                {TYPES.map(({ value, label, icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setValue("type", value, { shouldValidate: true })}
-                    className={`
-                      flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150
-                      ${selectedType === value
-                        ? "border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                        : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-                      }
-                    `}
-                  >
-                    {icon}
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <FieldError message={errors.type?.message} />
-            </div>
-
-            <div className="space-y-1.5 mb-4">
-              <Label htmlFor="title" className="text-sm font-medium text-foreground">Job Title</Label>
-              <Input
-                {...register("title")}
-                id="title"
-                placeholder="e.g. Frontend Developer"
-                className={`h-10 text-sm ${errors.title ? "border-rose-400" : "border-border/60"}`}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Section 1 — Basics */}
+          <Card className="border-slate-200/70 shadow-sm shadow-slate-200/40">
+            <CardContent className="p-7 space-y-6">
+              <SectionLabel
+                icon={<FileText className="h-4 w-4" />}
+                title="Basic Info"
+                subtitle="What kind of opportunity is this?"
               />
-              <FieldError message={errors.title?.message} />
-            </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="company_name" className="text-sm font-medium text-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground/60" />
-                  Company Name
-                </span>
-              </Label>
-              <Input
-                {...register("company_name")}
-                id="company_name"
-                placeholder="e.g. Netsol Technologies"
-                className={`h-10 text-sm ${errors.company_name ? "border-rose-400" : "border-border/60"}`}
-              />
-              <FieldError message={errors.company_name?.message} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionLabel icon={<MapPin className="h-3.5 w-3.5" />}>Location</SectionLabel>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="location" className="text-sm font-medium text-foreground">City</Label>
-                <Input
-                  {...register("location")}
-                  id="location"
-                  placeholder="e.g. Lahore"
-                  className={`h-10 text-sm ${errors.location ? "border-rose-400" : "border-border/60"}`}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">Opportunity Type</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {TYPES.map(({ value, label, icon }) => {
+                    const active = selectedType === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setValue("type", value, { shouldValidate: true })}
+                        className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 w-full ${
+                          active
+                            ? "border-blue-600 bg-white text-blue-600 shadow-md shadow-blue-600/20"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/40"
+                        }`}
+                      >
+                        {icon}
+                        <span className="truncate">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <FieldError
+                  message={
+                    errors.type?.message ===
+                    'Invalid option: expected one of "job"|"internship"|"freelance"'
+                      ? "Please pick a type"
+                      : errors.type?.message
+                  }
                 />
-                <FieldError message={errors.location?.message} />
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-foreground">Remote Work</Label>
-                <div className="flex items-center gap-3 h-10">
-                  <button
-                    type="button"
-                    onClick={() => setValue("is_remote", !isRemote, { shouldValidate: true })}
-                    role="switch"
-                    aria-checked={isRemote}
-                    className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${isRemote ? "bg-blue-600" : "bg-muted border border-border/60"
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-sm font-medium text-slate-700">
+                  Job Title
+                </Label>
+                <Input
+                  {...register("title")}
+                  id="title"
+                  placeholder="Senior Frontend Engineer"
+                  className={`${inputCls} ${errors.title ? "border-rose-400" : ""}`}
+                />
+                <FieldError message={errors.title?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="company_name"
+                  className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
+                >
+                  <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                  Company Name
+                </Label>
+                <Input
+                  {...register("company_name")}
+                  id="company_name"
+                  placeholder="Acme Inc."
+                  className={`${inputCls} ${errors.company_name ? "border-rose-400" : ""}`}
+                />
+                <FieldError message={errors.company_name?.message} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 2 — Location */}
+          <Card className="border-slate-200/70 shadow-sm shadow-slate-200/40">
+            <CardContent className="p-7 space-y-6">
+              <SectionLabel
+                icon={<MapPin className="h-4 w-4" />}
+                title="Location"
+                subtitle="Where will this role be based?"
+              />
+
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-sm font-medium text-slate-700">
+                    City
+                  </Label>
+                  <Input
+                    {...register("location")}
+                    id="location"
+                    placeholder="San Francisco"
+                    className={`${inputCls} ${errors.location ? "border-rose-400" : ""}`}
+                  />
+                  <FieldError message={errors.location?.message} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Remote Work</Label>
+                  <div className="flex items-center gap-3 h-11 px-4 rounded-md border border-slate-200 bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setValue("is_remote", !isRemote, { shouldValidate: true })}
+                      role="switch"
+                      aria-checked={isRemote}
+                      className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                        isRemote ? "bg-blue-600" : "bg-slate-200"
                       }`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${isRemote ? "translate-x-5" : "translate-x-0"
-                      }`} />
-                  </button>
-                  <span className={`text-sm font-medium transition-colors ${isRemote ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
-                    <span className="flex items-center gap-1.5">
-                      {isRemote && <Wifi className="h-3.5 w-3.5" />}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                          isRemote ? "translate-x-5" : ""
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                      {isRemote && <Wifi className="h-3.5 w-3.5 text-blue-600" />}
                       {isRemote ? "Remote" : "On-site"}
                     </span>
-                  </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-border/60">
-          <CardContent className="p-6 space-y-5">
-            <SectionLabel icon={<FileText className="h-3.5 w-3.5" />}>Details</SectionLabel>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="description" className="text-sm font-medium text-foreground">Description</Label>
-              <textarea
-                {...register("description")}
-                id="description"
-                rows={4}
-                placeholder="Describe the role, responsibilities, and what the team does…"
-                className={`w-full px-3.5 py-2.5 text-sm border rounded-xl outline-none resize-none transition-all bg-background text-foreground placeholder:text-muted-foreground/50
-                  focus:ring-2 focus:ring-blue-500/15
-                  ${errors.description ? "border-rose-400 focus:border-rose-400" : "border-border/60 focus:border-blue-500"}
-                `}
+          {/* Section 3 — Details */}
+          <Card className="border-slate-200/70 shadow-sm shadow-slate-200/40">
+            <CardContent className="p-7 space-y-6">
+              <SectionLabel
+                icon={<FileText className="h-4 w-4" />}
+                title="Details"
+                subtitle="Describe the role and what's expected."
               />
-              <FieldError message={errors.description?.message} />
-            </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="requirements" className="text-sm font-medium text-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CheckSquare className="h-3.5 w-3.5 text-muted-foreground/60" />
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium text-slate-700">
+                  Description
+                </Label>
+                <Textarea
+                  {...register("description")}
+                  id="description"
+                  rows={5}
+                  placeholder="We're looking for a passionate engineer to join our growing team…"
+                  className={`text-sm border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 resize-none ${
+                    errors.description ? "border-rose-400" : ""
+                  }`}
+                />
+                <FieldError message={errors.description?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="requirements"
+                  className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
+                >
+                  <CheckSquare className="h-3.5 w-3.5 text-slate-400" />
                   Requirements
-                </span>
-              </Label>
-              <textarea
-                {...register("requirements")}
-                id="requirements"
-                rows={3}
-                placeholder="List required qualifications, experience, and skills…"
-                className={`w-full px-3.5 py-2.5 text-sm border rounded-xl outline-none resize-none transition-all bg-background text-foreground placeholder:text-muted-foreground/50
-                  focus:ring-2 focus:ring-blue-500/15
-                  ${errors.requirements ? "border-rose-400 focus:border-rose-400" : "border-border/60 focus:border-blue-500"}
-                `}
+                </Label>
+                <Textarea
+                  {...register("requirements")}
+                  id="requirements"
+                  rows={4}
+                  placeholder="• 3+ years experience&#10;• Strong portfolio&#10;• Team player"
+                  className={`text-sm border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 resize-none ${
+                    errors.requirements ? "border-rose-400" : ""
+                  }`}
+                />
+                <FieldError message={errors.requirements?.message} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 4 — Skills */}
+          <Card className="border-slate-200/70 shadow-sm shadow-slate-200/40">
+            <CardContent className="p-7">
+              <SectionLabel
+                icon={<Tag className="h-4 w-4" />}
+                title="Required Skills"
+                subtitle="Add the tools and skills candidates should have."
               />
-              <FieldError message={errors.requirements?.message} />
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionLabel icon={<Tag className="h-3.5 w-3.5" />}>Required Skills</SectionLabel>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-2">
-                <div className="flex-1 space-y-1.5">
+              <div className="space-y-4">
+                <div className="flex gap-2">
                   <Input
                     value={skillInput}
                     onChange={(e) => setSkillInput(e.target.value)}
@@ -348,91 +409,108 @@ export default function EditOpportunityPage() {
                       }
                     }}
                     placeholder="Type a skill and press Enter"
-                    className={`h-10 text-sm ${errors.required_skills ? "border-rose-400" : "border-border/60"}`}
+                    className={`flex-1 ${inputCls} ${errors.required_skills ? "border-rose-400" : ""}`}
                   />
-                  <FieldError message={errors.required_skills?.message as string} />
-                </div>
-                <Button
-                  type="button"
-                  onClick={addSkill}
-                  className="h-10 px-5 bg-muted text-foreground border border-border/60 hover:bg-muted/80 shadow-sm"
-                >
-                  Add
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2 min-h-[40px] items-center">
-                {selectedSkills.map((skill) => (
-                  <div
-                    key={skill}
-                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium transition-all duration-150 border bg-blue-600 text-white border-blue-600 shadow-sm"
+                  <Button
+                    type="button"
+                    onClick={addSkill}
+                    className="h-11 px-6 bg-white !text-blue-600 border !border-blue-600 !shadow-md cursor-pointer hover:scale-104 font-normal"
                   >
-                    {skill}
-                    <button
-                      type="button"
-                      onClick={() => removeSkill(skill)}
-                      className="hover:bg-white/20 rounded-full p-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+                    Add
+                  </Button>
+                </div>
+                <FieldError message={errors.required_skills?.message as string} />
+
+                <div className="flex flex-wrap gap-2 min-h-[40px] items-center">
+                  {selectedSkills.map((skill) => (
+                    <div
+                      key={skill}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                {selectedSkills.length === 0 && (
-                  <span className="text-sm text-muted-foreground/70">No skills added yet</span>
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill)}
+                        className="hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {selectedSkills.length === 0 && (
+                    <span className="text-sm text-slate-400">No skills added yet</span>
+                  )}
+                </div>
+
+                {selectedSkills.length > 0 && (
+                  <p className="text-xs text-blue-600 font-medium text-right">
+                    {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} added
+                  </p>
                 )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-border/60">
-          <CardContent className="p-6 space-y-4">
-            <SectionLabel icon={<LinkIcon className="h-3.5 w-3.5" />}>Application Details</SectionLabel>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="apply_link" className="text-sm font-medium text-foreground">Apply Link</Label>
-              <Input
-                {...register("apply_link")}
-                id="apply_link"
-                type="url"
-                placeholder="https://company.com/careers/role"
-                className={`h-10 text-sm ${errors.apply_link ? "border-rose-400" : "border-border/60"}`}
+          {/* Section 5 — Apply + Deadline */}
+          <Card className="border-slate-200/70 shadow-sm shadow-slate-200/40">
+            <CardContent className="p-7 space-y-6">
+              <SectionLabel
+                icon={<LinkIcon className="h-4 w-4" />}
+                title="Application Details"
+                subtitle="How and when should candidates apply?"
               />
-              <FieldError message={errors.apply_link?.message} />
-            </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="deadline" className="text-sm font-medium text-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CalendarClock className="h-3.5 w-3.5 text-muted-foreground/60" />
+              <div className="space-y-2">
+                <Label htmlFor="apply_link" className="text-sm font-medium text-slate-700">
+                  Apply Link
+                </Label>
+                <Input
+                  {...register("apply_link")}
+                  id="apply_link"
+                  type="url"
+                  placeholder="https://company.com/careers/role"
+                  className={`${inputCls} ${errors.apply_link ? "border-rose-400" : ""}`}
+                />
+                <FieldError message={errors.apply_link?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="deadline"
+                  className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
+                >
+                  <CalendarClock className="h-3.5 w-3.5 text-slate-400" />
                   Application Deadline
-                </span>
-              </Label>
-              <Input
-                {...register("deadline")}
-                id="deadline"
-                type="date"
-                min={new Date().toISOString().split("T")[0]}
-                className={`h-10 text-sm ${errors.deadline ? "border-rose-400" : "border-border/60"}`}
+                </Label>
+                <Input
+                  {...register("deadline")}
+                  id="deadline"
+                  type="date"
+                  min={new Date().toISOString().split("T")[0]}
+                  className={`${inputCls} ${errors.deadline ? "border-rose-400" : ""}`}
+                />
+                <FieldError message={errors.deadline?.message} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 6 — Media */}
+          <Card className="border-slate-200/70 shadow-sm shadow-slate-200/40">
+            <CardContent className="p-7">
+              <SectionLabel
+                icon={<ImagePlus className="h-4 w-4" />}
+                title="Attachments"
+                subtitle="Optional — up to 5 images total (existing + new)."
               />
-              <FieldError message={errors.deadline?.message} />
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-border/60">
-          <CardContent className="p-6">
-            <SectionLabel icon={<ImagePlus className="h-3.5 w-3.5" />}>
-              Attachments{" "}
-              <span className="text-muted-foreground font-normal">(optional, max 5 total)</span>
-            </SectionLabel>
-
-            <div className="space-y-4">
-              <label className="flex flex-col items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-all duration-150 group">
-                <ImagePlus className="h-5 w-5 text-muted-foreground/40 group-hover:text-blue-500/60 transition-colors" />
-                <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                  Click to upload new images
+              <label className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-all duration-150 group">
+                <div className="h-10 w-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+                  <ImagePlus className="h-5 w-5 text-blue-600" />
+                </div>
+                <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                  <span className="text-blue-600 font-medium">Click to upload</span> new images
                 </span>
+                <span className="text-xs text-slate-400">PNG, JPG up to 5MB · max 5 files total</span>
                 <input
                   type="file"
                   multiple
@@ -451,34 +529,46 @@ export default function EditOpportunityPage() {
               </label>
 
               {(existingMediaUrls.length > 0 || selectedFiles.length > 0) && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
                   {existingMediaUrls.map((url, i) => (
-                    <div key={`existing-${i}`} className="relative flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/30">
-                      <ImagePlus className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-xs truncate font-medium flex-1">Existing Media {i + 1}</span>
+                    <div
+                      key={`existing-${i}`}
+                      className="relative flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50"
+                    >
+                      <ImagePlus className="h-4 w-4 text-slate-400 shrink-0" />
+                      <span className="text-xs truncate font-medium flex-1 text-slate-700">
+                        Existing Media {i + 1}
+                      </span>
                       <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           setExistingMediaUrls(existingMediaUrls.filter((_, index) => index !== i));
                         }}
-                        className="text-muted-foreground hover:text-rose-500 transition-colors p-1"
+                        className="text-slate-400 hover:text-rose-500 transition-colors"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ))}
                   {selectedFiles.map((file, i) => (
-                    <div key={`new-${i}`} className="relative flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/30">
-                      <ImagePlus className="h-4 w-4 text-blue-500 shrink-0" />
-                      <span className="text-xs truncate font-medium flex-1 text-blue-600" title={file.name}>{file.name}</span>
+                    <div
+                      key={`new-${i}`}
+                      className="relative flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50"
+                    >
+                      <ImagePlus className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span
+                        className="text-xs truncate font-medium flex-1 text-blue-600"
+                        title={file.name}
+                      >
+                        {file.name}
+                      </span>
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setSelectedFiles(selectedFiles.filter((_, index) => index !== i));
-                        }}
-                        className="text-muted-foreground hover:text-rose-500 transition-colors p-1"
+                        onClick={() =>
+                          setSelectedFiles(selectedFiles.filter((_, index) => index !== i))
+                        }
+                        className="text-slate-400 hover:text-rose-500 transition-colors"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -486,31 +576,35 @@ export default function EditOpportunityPage() {
                   ))}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <div className="flex gap-3 pt-1">
-          <Button
-            type="submit"
-            disabled={isSubmitting || mutation.isPending}
-            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm shadow-blue-600/20 gap-2"
-          >
-            {mutation.isPending ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Updating…</>
-            ) : "Save Changes"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 px-5 border-border/60 text-sm"
-            onClick={() => router.back()}
-          >
-            Cancel
-          </Button>
-        </div>
-
-      </form>
+          {/* Submit */}
+          <div className="flex gap-3 pt-2 pb-10">
+            <Button
+              type="submit"
+              disabled={isSubmitting || mutation.isPending}
+              className="flex-1 h-12 bg-white !text-blue-600 border !border-blue-600 text-sm shadow-md hover:scale-104 cursor-pointer shadow-blue-600/25 gap-2"
+            >
+              {mutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Updating…
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 px-6 border-slate-200 text-slate-700 hover:bg-slate-50 text-sm"
+              onClick={() => router.back()}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
