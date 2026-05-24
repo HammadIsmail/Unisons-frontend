@@ -19,6 +19,8 @@ import {
   UserCog,
   BookOpen,
   MessageSquare,
+  CalendarDays,
+  CalendarCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,10 +33,12 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",     href: "/dashboard",        icon: <LayoutDashboard className="h-4 w-4" />, roles: ["alumni", "student"] },
   { label: "Opportunities", href: "/opportunities",    icon: <Briefcase className="h-4 w-4" />,       roles: ["alumni", "student"] },
+  { label: "Events",        href: "/events",           icon: <CalendarDays className="h-4 w-4" />,    roles: ["alumni", "student"] },
   { label: "Search",        href: "/search",           icon: <Search className="h-4 w-4" />,          roles: ["alumni", "student"] },
   { label: "My Network",    href: "/my-network",       icon: <Network className="h-4 w-4" />,         roles: ["alumni"] },
   { label: "Batch Mates",   href: "/batch-mates",      icon: <Users className="h-4 w-4" />,           roles: ["alumni"] },
   { label: "My Posts",      href: "/my-opportunities", icon: <FileText className="h-4 w-4" />,        roles: ["alumni"] },
+  { label: "My Events",     href: "/my-events",        icon: <CalendarCheck className="h-4 w-4" />,   roles: ["alumni"] },
   { label: "Mentors",       href: "/mentors",          icon: <GraduationCap className="h-4 w-4" />,   roles: ["student"] },
   { label: "Messages",      href: "/chat",             icon: <MessageSquare className="h-4 w-4" />,   roles: ["alumni", "student"] },
   { label: "Notifications", href: "/notifications",    icon: <Bell className="h-4 w-4" />,            roles: ["alumni", "student"] },

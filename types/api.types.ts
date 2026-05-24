@@ -344,6 +344,46 @@ export interface UserByUsername {
   skills: string[];
 }
 
+// ── Events ────────────────────────────────────────
+export type EventType = "reunion" | "webinar" | "workshop" | "networking" | "other";
+export type RSVPStatus = "attending" | "maybe";
+
+export interface EventHost {
+  id: string;
+  name: string;
+  username: string;
+  profile_picture: string | null;
+  role: string;
+}
+
+export interface EventListItem {
+  id: string;
+  title: string;
+  type: EventType;
+  date: string;
+  is_online: boolean;
+  location: string | null;
+  banner_url: string | null;
+  attendee_count: number;
+  max_attendees: number | null;
+  host: EventHost;
+}
+
+export interface EventDetail extends EventListItem {
+  description: string;
+  meeting_link: string | null;
+  my_rsvp_status: RSVPStatus | null;
+}
+
+export interface EventAttendee {
+  id: string;
+  display_name: string;
+  username: string;
+  profile_picture: string | null;
+  role: string;
+  bio: string | null;
+}
+
 // ── Chat ──────────────────────────────────────────
 export interface Message {
   _id: string;

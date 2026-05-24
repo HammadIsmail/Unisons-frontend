@@ -9,7 +9,6 @@ export const connectSocket = (token: string): Socket => {
     if (socket.connected && (socket as any).auth?.token === token) return socket;
     socket.disconnect();
   }
-  console.log(token)
   socket = io(
     process.env.NEXT_PUBLIC_SOCKET_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
@@ -24,18 +23,6 @@ export const connectSocket = (token: string): Socket => {
       },
     }
   );
-
-  socket.on("connect", () => {
-    console.log("Socket connected! ID:", socket?.id);
-  });
-
-  socket.on("connect_error", (error) => {
-    console.error("Socket auth/connection failed:", error.message);
-  });
-
-  socket.on("disconnect", (reason) => {
-    console.warn("Socket disconnected:", reason);
-  });
 
   return socket;
 };
