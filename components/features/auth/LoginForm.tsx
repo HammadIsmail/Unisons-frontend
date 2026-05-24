@@ -88,9 +88,8 @@ export default function LoginForm() {
               id="email"
               placeholder="Enter your email or username"
               autoComplete="username"
-              className={`h-11 pl-10 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
-                errors.email ? "border-red-400 focus-visible:ring-red-500/10" : ""
-              }`}
+              className={`h-11 pl-10 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${errors.email ? "border-red-400 focus-visible:ring-red-500/10" : ""
+                }`}
             />
           </div>
           {errors.email && (
@@ -127,9 +126,8 @@ export default function LoginForm() {
               type={showPassword ? "text" : "password"}
               placeholder="Enter your password"
               autoComplete="current-password"
-              className={`h-11 pl-10 pr-10 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
-                errors.password ? "border-red-400 focus-visible:ring-red-500/10" : ""
-              }`}
+              className={`h-11 pl-10 pr-10 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${errors.password ? "border-red-400 focus-visible:ring-red-500/10" : ""
+                }`}
             />
             <button
               type="button"

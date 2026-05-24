@@ -20,18 +20,20 @@ interface AuthState {
   updateProfile: (profile: UserProfile) => void;
 }
 
-const safeStorage = {
+// Cookie storage for middleware access
+const cookieStorage = {
   getItem: (name: string) => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem(name);
+    const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+    return match ? decodeURIComponent(match[2]) : null;
   },
   setItem: (name: string, value: string) => {
     if (typeof window === "undefined") return;
-    localStorage.setItem(name, value);
+    document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
   },
   removeItem: (name: string) => {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(name);
+    document.cookie = `${name}=; path=/; max-age=0`;
   },
 };
 
@@ -45,16 +47,12 @@ const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (token, role, account_status, profile) => {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("unison_token", token);
-        }
+        localStorage.setItem("unison_token", token);
         set({ token, role, account_status, profile, isAuthenticated: true });
       },
 
       clearAuth: () => {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("unison_token");
-        }
+        localStorage.removeItem("unison_token");
         set({
           token: null,
           role: null,
@@ -68,7 +66,7 @@ const useAuthStore = create<AuthState>()(
     }),
     {
       name: "unison_auth",
-      storage: createJSONStorage(() => safeStorage),
+      storage: createJSONStorage(() => cookieStorage),
       partialize: (state) => ({
         token: state.token,
         role: state.role,
@@ -81,4 +79,4 @@ const useAuthStore = create<AuthState>()(
 );
 
 export { useAuthStore };
-export default useAuthStore;
+export default useAuthStore;
