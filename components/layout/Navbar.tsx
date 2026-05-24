@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import useAuthStore from "@/store/authStore";
 import { useNotifications } from "@/hooks/useNotifications";
 import useUiStore from "@/store/uiStore";
-import { MessageSquare, Search, Home, Users, Briefcase, Bell, User, LogOut, Settings, Menu, Calendar } from "lucide-react";
+import { MessageSquare, Search, Home, Users, Briefcase, Bell, User, LogOut, Menu, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -135,12 +135,7 @@ export default function Navbar() {
                     <span>View Profile</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="flex items-center gap-2 p-2.5 rounded-lg cursor-pointer">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}

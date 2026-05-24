@@ -170,14 +170,6 @@ export default function TopBar() {
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
                   My Profile
                 </Link>
-                <Link
-                  href="/settings"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-foreground rounded-xl hover:bg-muted/70 transition-colors duration-100"
-                >
-                  <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-                  Settings
-                </Link>
               </div>
 
               <Separator className="my-1 opacity-60" />
