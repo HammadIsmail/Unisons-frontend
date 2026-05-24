@@ -158,3 +158,25 @@ body {
     @apply font-sans;
   }
 }
+
+/* Mobile responsive navbar overrides */
+@media (max-width: 599px) {
+  .has-bottom-nav {
+    padding-bottom: 4.5rem !important;
+  }
+  
+  .hide-on-mobile-nav {
+    display: none !important;
+  }
+  
+  .flex-on-mobile-nav {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 600px) {
+  .show-on-mobile-nav,
+  .flex-on-mobile-nav {
+    display: none !important;
+  }
+}

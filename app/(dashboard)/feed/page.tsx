@@ -156,7 +156,7 @@ function SidebarSkeleton() {
 function CopyLinkButton({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(`${window.location.origin}/opportunities/${id}`).catch(() => {});
+    navigator.clipboard.writeText(`${window.location.origin}/opportunities/${id}`).catch(() => { });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [id]);
@@ -181,7 +181,7 @@ function Caption({ text }: { text: string }) {
   const display = expanded || !truncated ? text : text.slice(0, MAX);
 
   return (
-    <p className="text-sm leading-relaxed text-foreground/90">
+    <p className="text-[12px] sm:text-sm leading-relaxed text-foreground/90">
       {display}
       {truncated && !expanded && (
         <>
@@ -209,33 +209,52 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
       className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-soft transition-shadow hover:shadow-elevated"
     >
       {/* Header */}
-      <div className="flex items-start gap-3 px-5 pt-5">
-        <Link href={`/profile/${opp.posted_by.id}`} className="flex-shrink-0">
-          <Avatar className="h-11 w-11 ring-2 ring-primary/10">
-            <AvatarImage src={opp.posted_by.profile_picture ?? undefined} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm">
-              {getInitials(opp.posted_by.display_name)}
-            </AvatarFallback>
-          </Avatar>
-        </Link>
+<div className="flex items-start gap-3 px-3 sm:px-5 pt-4 sm:pt-5">
+  <Link href={`/profile/${opp.posted_by.id}`} className="flex-shrink-0">
+    <Avatar className="h-7 w-7 sm:h-9 sm:w-9 ring-2 ring-primary/10">
+      <AvatarImage src={opp.posted_by.profile_picture ?? undefined} />
+      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-xs">
+        {getInitials(opp.posted_by.display_name)}
+      </AvatarFallback>
+    </Avatar>
+  </Link>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Link href={`/profile/${opp.posted_by.id}`}>
-              <h4 className="truncate text-sm font-semibold hover:text-primary transition-colors">
-                {opp.posted_by.display_name}
-              </h4>
-            </Link>
-            <span className="text-xs text-muted-foreground">· {timeAgo(opp.posted_at)}</span>
-          </div>
-          <p className="truncate text-xs text-muted-foreground">{opp.posted_by.role}</p>
-        </div>
+  {/* middle section MUST be allowed to shrink properly */}
+  <div className="min-w-0 flex-1">
+    
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <Link href={`/profile/${opp.posted_by.id}`} className="min-w-0">
+        <h4 className="truncate text-[12px] sm:text-base font-semibold hover:text-primary transition-colors">
+          {opp.posted_by.display_name}
+        </h4>
+      </Link>
 
-        <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold flex-shrink-0 ${meta.pillClass}`}>
-          {meta.icon}
-          {meta.label}
-        </span>
-      </div>
+      <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+        · {timeAgo(opp.posted_at)}
+      </span>
+    </div>
+
+    <p className="truncate text-[11px] sm:text-sm text-muted-foreground">
+      {opp.posted_by.role}
+    </p>
+  </div>
+
+  {/* badge */}
+  <span
+    className={`
+      flex items-center gap-1 flex-shrink-0
+      rounded-full
+      px-2 py-0.5 sm:px-2.5 sm:py-1
+      text-[9px] sm:text-[10px]
+      font-semibold
+      whitespace-nowrap
+      ${meta.pillClass}
+    `}
+  >
+    {meta.icon}
+    <span className="">{meta.label}</span>
+  </span>
+</div>
 
       {/* Caption */}
       <div className="px-5 pt-3">
@@ -259,40 +278,40 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
       <div className="mx-5 mt-4 rounded-2xl border border-border/70 bg-gradient-to-br from-secondary/40 to-transparent p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold">{opp.title}</h3>
-            <p className="text-sm text-muted-foreground">{opp.company}</p>
+            <h3 className="truncate text-sm md:text-base font-semibold">{opp.title}</h3>
+            <p className="text-xs md:text-sm text-muted-foreground">{opp.company}</p>
           </div>
-          <Link
-            href={`/opportunities/${opp.id}`}
-            className="group flex flex-shrink-0 items-center gap-1.5 rounded-full bg-white pl-4 pr-3 py-2 text-xs text-blue-600 border border-blue-600 shadow-sm transition-transform hover:scale-105"
-          >
-            View
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+<Link
+  href={`/opportunities/${opp.id}`}
+  className="group flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] md:px-4 md:py-2 md:text-xs text-blue-600 border border-blue-600 shadow-sm transition-transform hover:scale-105"
+>
+  View
+  <ArrowRight className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 transition-transform group-hover:translate-x-0.5" />
+</Link>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
           {opp.location && (
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" />
+            <span className="flex items-center gap-1 text-xs md:text-sm">
+              <MapPin className="h-3 w-3" />
               {opp.location}
             </span>
           )}
           {opp.is_remote && (
-            <span className="flex items-center gap-1 text-emerald-600">
-              <Wifi className="h-3.5 w-3.5" />
+            <span className="flex items-center gap-1 text-emerald-600 text-xs md:text-sm">
+              <Wifi className="h-3 w-3" />
               Remote
             </span>
           )}
-          <span className={`flex items-center gap-1 ${dl.urgent ? "text-amber-600 font-medium" : ""}`}>
-            <CalendarClock className="h-3.5 w-3.5" />
+          <span className={`flex items-center gap-1 ${dl.urgent ? "text-amber-600 font-medium" : ""} text-xs md:text-sm`}>
+            <CalendarClock className="h-3 w-3" />
             {dl.urgent ? dl.label : `Due ${dl.label}`}
           </span>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {opp.required_skills?.slice(0, 4).map((s) => (
-            <span key={s} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-medium text-foreground/80 ring-1 ring-border">
+            <span key={s} className="rounded-full bg-card px-2.5 py-0.5 md:px-2.5 md:py-1 text-[9px] md:text-[11px] font-medium text-foreground/80 ring-1 ring-border">
               {s}
             </span>
           ))}
@@ -326,7 +345,7 @@ function Composer({ profilePicture, displayName }: { profilePicture?: string; di
         </Avatar>
         <Link
           href="/post-opportunity"
-          className="h-11 flex-1 rounded-full bg-secondary/60 px-5 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary flex items-center"
+          className="h-11 flex-1 rounded-full bg-secondary/60 px-5 text-left sm:text-sm text-[11px] text-muted-foreground transition-colors hover:bg-secondary flex items-center"
         >
           Share an opportunity or update…
         </Link>
@@ -402,7 +421,7 @@ function ConnectionsStrip({ connections, isLoading }: { connections: Connection[
               >
                 <div className="rounded-full bg-gradient-to-br from-primary/60 to-primary p-[2px] transition-transform group-hover:scale-105">
                   <div className="rounded-full border-2 border-card">
-                    <Avatar className="h-14 w-14">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14">
                       <AvatarImage src={c.profile_picture ?? undefined} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm">
                         {getInitials(c.display_name)}
@@ -676,7 +695,7 @@ export default function FeedPage() {
         }}
       />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto px-1 py-2 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)_300px]">
 
           {/* ── LEFT sidebar ── */}
@@ -686,7 +705,7 @@ export default function FeedPage() {
           </aside>
 
           {/* ── CENTER feed ── */}
-          <section className="space-y-5">
+          <section className="w-full min-w-0 space-y-5">
             {/* Composer — alumni only */}
             {role === "alumni" && (
               <Composer profilePicture={profile?.profile_picture} displayName={profile?.display_name} />
@@ -696,18 +715,17 @@ export default function FeedPage() {
             <ConnectionsStrip connections={connections} isLoading={connectionsLoading} />
 
             {/* Filter + heading */}
-            <div className="flex items-center justify-between px-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">
               <h2 className="text-lg font-semibold tracking-tight">Latest opportunities</h2>
-              <div className="flex gap-1 rounded-full border border-border bg-card p-1">
+              <div className="flex gap-1 rounded-full border border-border bg-card p-1 overflow-x-auto max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {FILTER_TABS.map((t) => (
                   <button
                     key={t}
                     onClick={() => setActiveTab(t)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      activeTab === t
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap ${activeTab === t
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                      }`}
                   >
                     {t}
                   </button>

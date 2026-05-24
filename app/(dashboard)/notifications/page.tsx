@@ -231,7 +231,7 @@ export default function NotificationsPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* ── Stats row ────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
             {
               label: "Total",
@@ -254,10 +254,10 @@ export default function NotificationsPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-border/60 bg-card px-4 py-4 text-center space-y-0.5 hover:border-border transition-colors"
+              className="rounded-xl sm:rounded-2xl border border-border/60 bg-card px-2 py-3 sm:px-4 sm:py-4 text-center space-y-0.5 hover:border-border transition-colors"
             >
-              <p className={`text-3xl font-bold tabular-nums leading-none ${s.color}`}>{s.value}</p>
-              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-semibold">{s.label}</p>
+              <p className={`text-xl sm:text-3xl font-bold tabular-nums leading-none ${s.color}`}>{s.value}</p>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground/60 uppercase tracking-widest font-semibold">{s.label}</p>
             </div>
           ))}
         </div>
@@ -304,7 +304,7 @@ export default function NotificationsPage() {
                   onTouchMove={cancelPress}
                   onMouseLeave={cancelPress}
                   className={`
-    group relative overflow-hidden flex gap-4 px-5 py-5 rounded-2xl
+    group relative overflow-hidden flex gap-3 sm:gap-4 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl
     border transition-all duration-300
 
     ${selectedNotification && selectedNotification !== n.id
@@ -324,7 +324,7 @@ export default function NotificationsPage() {
                   <div className="flex-shrink-0 z-10 relative">
                     {n.sender_profile_picture || n.sender_display_name ? (
                       <div className="relative">
-                        <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-background shadow-sm">
                           <AvatarImage
                             src={n.sender_profile_picture ?? ""}
                             alt={n.sender_display_name ?? ""}
@@ -334,16 +334,16 @@ export default function NotificationsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div
-                          className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br ${config.gradient} flex items-center justify-center ring-2 ring-background shadow-sm text-white`}
+                          className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-gradient-to-br ${config.gradient} flex items-center justify-center ring-2 ring-background shadow-sm text-white`}
                         >
-                          <span className="scale-75">{config.icon}</span>
+                          <span className="scale-50 sm:scale-75">{config.icon}</span>
                         </div>
                       </div>
                     ) : (
                       <div
-                        className={`h-10 w-10 rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center text-white shadow-sm ring-2 ring-background`}
+                        className={`h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center text-white shadow-sm ring-2 ring-background`}
                       >
-                        {config.icon}
+                        <span className="scale-75 sm:scale-100">{config.icon}</span>
                       </div>
                     )}
                   </div>
@@ -373,7 +373,7 @@ export default function NotificationsPage() {
 
                     {/* Message */}
                     <p
-                      className={`text-sm leading-relaxed ${!n.is_read
+                      className={`text-xs sm:text-sm leading-relaxed ${!n.is_read
                         ? "text-foreground font-medium"
                         : "text-muted-foreground"
                         }`}
@@ -388,7 +388,7 @@ export default function NotificationsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleClick(n.id, n.reference_link, n.is_read)}
-                          className="h-7 gap-1.5 text-[11px] border-border/60 px-3 rounded-lg"
+                          className="h-6.5 sm:h-7 gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] border-border/60 px-2.5 sm:px-3 rounded-lg"
                         >
                           View details
                           <ArrowUpRight className="h-3 w-3" />
@@ -399,7 +399,7 @@ export default function NotificationsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => markAsRead(n.id)}
-                          className="h-7 gap-1 text-[11px] text-muted-foreground px-2 rounded-lg"
+                          className="h-6.5 sm:h-7 gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] text-muted-foreground px-1.5 sm:px-2 rounded-lg"
                         >
                           <CheckCheck className="h-3 w-3" />
                           Mark read

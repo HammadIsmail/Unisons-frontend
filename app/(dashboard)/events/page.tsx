@@ -24,6 +24,7 @@ import {
   GraduationCap,
   Globe,
   Clock,
+  Filter, // <-- Added Filter icon import just in case you want to use it
 } from "lucide-react";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -249,18 +250,24 @@ export default function EventsPage() {
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          {/* Type filters */}
-          <div className="flex flex-wrap gap-2 flex-1">
+        <div className="flex flex-col lg:flex-row gap-4 mb-8 justify-between">
+          
+          {/* ── UPDATED: Slider Type Filters ── */}
+          <div 
+            className="flex items-center gap-2 overflow-x-auto p-2 pb-1 flex-1 min-w-0 pr-4 [&::-webkit-scrollbar]:hidden" 
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
             {EVENT_TYPES.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setSelectedType(t.value)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  selectedType === t.value
-                    ? "bg-white !text-blue-600 border !border-blue-600 hover:scale-103 cursor-pointer shrink-0"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-blue-600 hover:cursor-pointer hover:scale-103 hover:text-blue-700"
-                }`}
+                className={`
+                  inline-flex items-center gap-1.5 flex-shrink-0 px-3.5 py-1.5 cursor-pointer rounded-full text-[11px] font-medium transition-all duration-150 border
+                  ${selectedType === t.value
+                    ? "bg-white !text-blue-600 border !border-blue-600 shadow-sm scale-[1.02]"
+                    : "border-slate-200 text-slate-600 hover:border-blue-600 hover:!text-blue-600 hover:scale-[1.03]"
+                  }
+                `}
               >
                 {t.icon}
                 {t.label}
@@ -269,9 +276,9 @@ export default function EventsPage() {
           </div>
 
           {/* Right-side toggles */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-row items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0" style={{ scrollbarWidth: "none" }}>
             {/* Online/Offline */}
-            <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium">
+            <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium shrink-0">
               {(
                 [
                   { label: "All", value: undefined },
@@ -294,7 +301,7 @@ export default function EventsPage() {
             </div>
 
             {/* Upcoming / Past */}
-            <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium">
+            <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium shrink-0">
               {(["upcoming", "past"] as const).map((s) => (
                 <button
                   key={s}
@@ -321,29 +328,13 @@ export default function EventsPage() {
           </div>
         ) : events && events.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
+             {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
-              <CalendarDays className="h-7 w-7 text-slate-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-700 mb-1">No events found</h3>
-            <p className="text-sm text-slate-500 max-w-xs">
-              {statusFilter === "upcoming"
-                ? "No upcoming events match your filters. Try adjusting them."
-                : "No past events match your filters."}
-            </p>
-            {canCreate && (
-              <Link href="/events/create" className="mt-5">
-                <Button variant="outline" className="gap-2 border-slate-200">
-                  <Plus className="h-4 w-4" />
-                  Create the first event
-                </Button>
-              </Link>
-            )}
+          <div className="py-24 flex flex-col items-center justify-center text-center px-6">
+            <p className="text-slate-500">No events found matching your criteria.</p>
           </div>
         )}
       </div>
