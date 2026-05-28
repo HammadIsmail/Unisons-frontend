@@ -28,12 +28,16 @@ export const registerUser = async (payload: {
   display_name: string;
   email: string;
   password: string;
-  role: "alumni" | "student";
-  roll_number: string;
-  batch: string;
-  degree: string;
+  role: "alumni" | "student" | "partner";
+  // Academic fields (student / alumni)
+  roll_number?: string;
+  batch?: string;
+  degree?: string;
   graduation_year?: number;
   semester?: number;
+  // Partner fields
+  affiliation?: string;
+  job_title?: string;
   student_card: File;
 }): Promise<RegisterResponse> => {
   const formData = new FormData();
@@ -43,15 +47,17 @@ export const registerUser = async (payload: {
   formData.append("email", payload.email);
   formData.append("password", payload.password);
   formData.append("role", payload.role);
-  formData.append("roll_number", payload.roll_number);
-  formData.append("batch", payload.batch);
-  formData.append("degree", payload.degree);
+  if (payload.roll_number) formData.append("roll_number", payload.roll_number);
+  if (payload.batch) formData.append("batch", payload.batch);
+  if (payload.degree) formData.append("degree", payload.degree);
   if (payload.graduation_year) {
     formData.append("graduation_year", String(payload.graduation_year));
   }
   if (payload.semester) {
     formData.append("semester", String(payload.semester));
   }
+  if (payload.affiliation) formData.append("affiliation", payload.affiliation);
+  if (payload.job_title) formData.append("job_title", payload.job_title);
   formData.append("student_card", payload.student_card);
 
   const { data } = await api.post("/api/auth/register", formData, {

@@ -40,3 +40,10 @@ export const deleteStudentSkill = async (
   const { data } = await api.delete(`/api/student/skills/${skillId}`);
   return data;
 };
+
+export const requestProfileUpgrade = async (payload: {
+  graduation_year: number;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/student/upgrade-request", payload);
+  return data;
+};

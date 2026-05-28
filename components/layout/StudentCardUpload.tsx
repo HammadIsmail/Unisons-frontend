@@ -9,9 +9,12 @@ interface StudentCardUploadProps {
   error?: string;
   onFileChange: (file: File) => void;
   onRemove: () => void;
+  /** Custom label shown in the drop zone. Defaults to "Upload student / alumni card". */
+  label?: string;
 }
 
-export function StudentCardUpload({ file, error, onFileChange, onRemove }: StudentCardUploadProps) {
+export function StudentCardUpload({ file, error, onFileChange, onRemove, label }: StudentCardUploadProps) {
+  const uploadLabel = label ?? "Upload student / alumni card";
   return (
     <div className="space-y-2">
       <Label htmlFor="student_card" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
@@ -76,7 +79,7 @@ export function StudentCardUpload({ file, error, onFileChange, onRemove }: Stude
               <p className={`text-sm font-bold transition-all duration-200 ${
                 error ? "text-red-600" : "text-foreground group-hover:text-[#0a66c2]"
               }`}>
-                Upload student / alumni card
+                {uploadLabel}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
                 Drag and drop or click to browse (Max 5MB)

@@ -34,11 +34,19 @@ import {
   Layers,
   ArrowLeft,
   CheckCircle2,
+  Building2,
+  Briefcase,
 } from "lucide-react";
 import { StudentCardUpload } from "@/components/layout/StudentCardUpload";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DEGREES = ["BSCS", "BSIT", "BSSE", "BSEE", "BSME", "BSCE", "MBA", "MS", "PhD"];
+
+const ROLE_OPTIONS = [
+  { value: "student", label: "Student", icon: <BookOpen className="h-6 w-6" /> },
+  { value: "alumni", label: "Alumni", icon: <GraduationCap className="h-6 w-6" /> },
+  { value: "partner", label: "Partner", icon: <Briefcase className="h-6 w-6" /> },
+] as const;
 
 export default function StepRegister() {
   const router = useRouter();
@@ -62,19 +70,24 @@ export default function StepRegister() {
   });
 
   const selectedRole = watch("role");
+  const isPartner = selectedRole === "partner";
 
   const onSubmit = async (formData: RegisterInput) => {
     setServerError("");
     setStudentCardError("");
-    
+
     const isValid = await trigger();
     if (!isValid) return;
-    
+
     if (!studentCardFile) {
-      setStudentCardError("Please upload your student or alumni card.");
+      setStudentCardError(
+        isPartner
+          ? "Please upload your Business / Company Card."
+          : "Please upload your student or alumni card."
+      );
       return;
     }
-    
+
     try {
       await registerUser({
         verified_token: verifiedToken,
@@ -88,6 +101,8 @@ export default function StepRegister() {
         degree: formData.degree,
         graduation_year: formData.graduation_year,
         semester: formData.semester,
+        affiliation: formData.affiliation,
+        job_title: formData.job_title,
         student_card: studentCardFile,
       });
       reset();
@@ -143,30 +158,30 @@ export default function StepRegister() {
             <Users className="h-3.5 w-3.5 text-[#0a66c2]" />
             I am a
           </Label>
-          <div className="grid grid-cols-2 gap-3">
-            {(["student", "alumni"] as const).map((r) => (
+          <div className="grid grid-cols-3 gap-3">
+            {ROLE_OPTIONS.map((r) => (
               <button
-                key={r}
+                key={r.value}
                 type="button"
-                onClick={() => setValue("role", r, { shouldValidate: true })}
+                onClick={() => setValue("role", r.value, { shouldValidate: true })}
                 className={`
                   flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200
-                  ${selectedRole === r
+                  ${selectedRole === r.value
                     ? "border-[#0a66c2] bg-blue-50/50 text-[#0a66c2] ring-4 ring-blue-500/5 shadow-sm"
                     : "border-border/60 text-muted-foreground hover:border-border hover:bg-muted/30"
                   }
                 `}
               >
-                {r === "alumni" ? <GraduationCap className="h-6 w-6" /> : <BookOpen className="h-6 w-6" />}
-                <span className="text-sm font-bold capitalize">{r}</span>
+                {r.icon}
+                <span className="text-sm font-bold capitalize">{r.label}</span>
               </button>
             ))}
           </div>
           {errors.role && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.role.message}</p>}
         </div>
 
+        {/* Common fields: Display Name + Username */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Display Name */}
           <div className="space-y-2">
             <Label htmlFor="display_name" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
               <UserCircle2 className="h-3.5 w-3.5 text-[#0a66c2]" />
@@ -183,7 +198,6 @@ export default function StepRegister() {
             {errors.display_name && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.display_name.message}</p>}
           </div>
 
-          {/* Username */}
           <div className="space-y-2">
             <Label htmlFor="username" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
               <AtSign className="h-3.5 w-3.5 text-[#0a66c2]" />
@@ -228,112 +242,158 @@ export default function StepRegister() {
           {errors.password && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.password.message}</p>}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Roll Number */}
-          <div className="space-y-2">
-            <Label htmlFor="roll_number" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
-              <Hash className="h-3.5 w-3.5 text-[#0a66c2]" />
-              Roll Number
-            </Label>
-            <Input
-              {...register("roll_number")}
-              id="roll_number"
-              placeholder="e.g. 2020-CS-45"
-              className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
-                errors.roll_number ? "border-red-400" : ""
-              }`}
-            />
-            {errors.roll_number && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.roll_number.message}</p>}
-          </div>
-
-          {/* Batch */}
-          <div className="space-y-2">
-            <Label htmlFor="batch" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-[#0a66c2]" />
-              Batch
-            </Label>
-            <Input
-              {...register("batch")}
-              id="batch"
-              type="text"
-              placeholder="e.g. Fall 2020 or 2020"
-              className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
-                errors.batch ? "border-red-400" : ""
-              }`}
-            />
-            {errors.batch && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.batch.message}</p>}
-          </div>
-
-          {/* Degree */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
-              <GraduationCap className="h-3.5 w-3.5 text-[#0a66c2]" />
-              Degree
-            </Label>
-            <Select onValueChange={(v) => setValue("degree", v, { shouldValidate: true })}>
-              <SelectTrigger className={`h-11 bg-muted/30 border-border/60 rounded-xl ${errors.degree ? "border-red-400" : ""}`}>
-                <SelectValue placeholder="Select Degree" />
-              </SelectTrigger>
-              <SelectContent>
-                {DEGREES.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.degree && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.degree.message}</p>}
-          </div>
-        </div>
-
-        {/* Role Specific Fields */}
+        {/* Role-specific fields */}
         <AnimatePresence mode="wait">
-          {selectedRole === "alumni" && (
+          {/* ── Partner fields ── */}
+          {isPartner && (
             <motion.div
-              key="alumni-fields"
+              key="partner-fields"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="space-y-2 overflow-hidden"
+              className="space-y-4 overflow-hidden"
             >
-              <Label htmlFor="graduation_year" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
-                <CalendarDays className="h-3.5 w-3.5 text-[#0a66c2]" />
-                Graduation Year
-              </Label>
-              <Input
-                {...register("graduation_year", { valueAsNumber: true })}
-                id="graduation_year"
-                type="number"
-                placeholder="e.g. 2024"
-                className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
-                  errors.graduation_year ? "border-red-400" : ""
-                }`}
-              />
-              {errors.graduation_year && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.graduation_year.message}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="affiliation" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Affiliation
+                  </Label>
+                  <Input
+                    {...register("affiliation")}
+                    id="affiliation"
+                    placeholder="e.g. Acme Corp"
+                    className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                      errors.affiliation ? "border-red-400" : ""
+                    }`}
+                  />
+                  {errors.affiliation && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.affiliation.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="job_title" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <Briefcase className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Job Title
+                  </Label>
+                  <Input
+                    {...register("job_title")}
+                    id="job_title"
+                    placeholder="e.g. CEO, HR Manager"
+                    className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                      errors.job_title ? "border-red-400" : ""
+                    }`}
+                  />
+                  {errors.job_title && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.job_title.message}</p>}
+                </div>
+              </div>
             </motion.div>
           )}
 
-          {selectedRole === "student" && (
+          {/* ── Student / Alumni academic fields ── */}
+          {!isPartner && selectedRole && (
             <motion.div
-              key="student-fields"
+              key="academic-fields"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="space-y-2 overflow-hidden"
+              className="space-y-4 overflow-hidden"
             >
-              <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
-                <Layers className="h-3.5 w-3.5 text-[#0a66c2]" />
-                Current Semester
-              </Label>
-              <Select onValueChange={(v) => setValue("semester", parseInt(v), { shouldValidate: true })}>
-                <SelectTrigger className={`h-11 bg-muted/30 border-border/60 rounded-xl ${errors.semester ? "border-red-400" : ""}`}>
-                  <SelectValue placeholder="Select Semester" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                    <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.semester && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.semester.message}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Roll Number */}
+                <div className="space-y-2">
+                  <Label htmlFor="roll_number" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <Hash className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Roll Number
+                  </Label>
+                  <Input
+                    {...register("roll_number")}
+                    id="roll_number"
+                    placeholder="e.g. 2020-CS-45"
+                    className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                      errors.roll_number ? "border-red-400" : ""
+                    }`}
+                  />
+                  {errors.roll_number && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.roll_number.message}</p>}
+                </div>
+
+                {/* Batch */}
+                <div className="space-y-2">
+                  <Label htmlFor="batch" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <CalendarDays className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Batch
+                  </Label>
+                  <Input
+                    {...register("batch")}
+                    id="batch"
+                    type="text"
+                    placeholder="e.g. Fall 2020 or 2020"
+                    className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                      errors.batch ? "border-red-400" : ""
+                    }`}
+                  />
+                  {errors.batch && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.batch.message}</p>}
+                </div>
+
+                {/* Degree */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <GraduationCap className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Degree
+                  </Label>
+                  <Select onValueChange={(v) => setValue("degree", v, { shouldValidate: true })}>
+                    <SelectTrigger className={`h-11 bg-muted/30 border-border/60 rounded-xl ${errors.degree ? "border-red-400" : ""}`}>
+                      <SelectValue placeholder="Select Degree" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEGREES.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.degree && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.degree.message}</p>}
+                </div>
+              </div>
+
+              {/* Alumni: Graduation Year */}
+              {selectedRole === "alumni" && (
+                <div className="space-y-2">
+                  <Label htmlFor="graduation_year" className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <CalendarDays className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Graduation Year
+                  </Label>
+                  <Input
+                    {...register("graduation_year", { valueAsNumber: true })}
+                    id="graduation_year"
+                    type="number"
+                    placeholder="e.g. 2024"
+                    className={`h-11 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${
+                      errors.graduation_year ? "border-red-400" : ""
+                    }`}
+                  />
+                  {errors.graduation_year && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.graduation_year.message}</p>}
+                </div>
+              )}
+
+              {/* Student: Current Semester */}
+              {selectedRole === "student" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground ml-1 flex items-center gap-2">
+                    <Layers className="h-3.5 w-3.5 text-[#0a66c2]" />
+                    Current Semester
+                  </Label>
+                  <Select onValueChange={(v) => setValue("semester", parseInt(v), { shouldValidate: true })}>
+                    <SelectTrigger className={`h-11 bg-muted/30 border-border/60 rounded-xl ${errors.semester ? "border-red-400" : ""}`}>
+                      <SelectValue placeholder="Select Semester" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                        <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.semester && <p className="text-[11px] text-red-600 ml-1 font-medium">{errors.semester.message}</p>}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -341,6 +401,7 @@ export default function StepRegister() {
         <StudentCardUpload
           file={studentCardFile}
           error={studentCardError}
+          label={isPartner ? "Upload Business / Company Card" : undefined}
           onFileChange={(file) => { setStudentCardFile(file); setStudentCardError(""); }}
           onRemove={() => setStudentCardFile(null)}
         />

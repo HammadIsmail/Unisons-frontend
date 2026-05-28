@@ -310,7 +310,8 @@ export default function PublicProfilePage() {
   const status = connStatus?.status ?? profile.connection_status;
   const isConnected = status === "connected";
   const isPending = status === "pending";
-  const isAlumni = profile.role === "alumni";
+  const isAlumni = profile.role === "alumni" || profile.role === "partner";
+  const isPartner = profile.role === "partner";
   const p = profile as any;
 
   // ── Shared stat blocks (same structure as MyProfilePage) ─────────────────
@@ -364,21 +365,24 @@ export default function PublicProfilePage() {
         {p?.display_name}
       </h1>
       <p className="text-sm text-gray-400 mt-0.5">@{p?.username}</p>
-      {isAlumni && (p?.current_role || p?.current_company) && (
+      {isAlumni && !isPartner && (p?.current_role || p?.current_company) && (
         <p className="text-sm text-muted-foreground mt-0.5">
           {[p.current_role, p.current_company].filter(Boolean).join(" · ")}
         </p>
       )}
       <p className="text-sm text-muted-foreground mt-0.5">
-        {[
-          profile?.degree,
-          profile?.batch,
-          isAlumni
-            ? `Class of ${p?.graduation_year}`
-            : `Semester ${p?.semester}`,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+        {isPartner
+          ? [p?.job_title, p?.affiliation].filter(Boolean).join(" · ")
+          : [
+              profile?.degree,
+              profile?.batch,
+              isAlumni
+                ? `Class of ${p?.graduation_year}`
+                : `Semester ${p?.semester}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+        }
       </p>
     </div>
   );
@@ -542,10 +546,22 @@ export default function PublicProfilePage() {
               )}
 
               <div className="pt-1 space-y-2.5">
-                {isAlumni && p?.current_company && (
+                {isAlumni && !isPartner && p?.current_company && (
                   <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                     <Building2 className="h-4 w-4 flex-shrink-0" />
                     <span>{p.current_company}</span>
+                  </div>
+                )}
+                {isPartner && p?.affiliation && (
+                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4 flex-shrink-0" />
+                    <span>{p.affiliation}</span>
+                  </div>
+                )}
+                {isPartner && p?.job_title && (
+                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Briefcase className="h-4 w-4 flex-shrink-0" />
+                    <span>{p.job_title}</span>
                   </div>
                 )}
                 {p?.phone && (
@@ -568,17 +584,19 @@ export default function PublicProfilePage() {
                     </a>
                   </div>
                 )}
-                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                  <GraduationCap className="h-4 w-4 flex-shrink-0" />
-                  <span>{[profile?.degree, profile?.batch].filter(Boolean).join(", ")}</span>
-                </div>
+                {!isPartner && (
+                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <GraduationCap className="h-4 w-4 flex-shrink-0" />
+                    <span>{[profile?.degree, profile?.batch].filter(Boolean).join(", ")}</span>
+                  </div>
+                )}
                 {!isAlumni && p?.semester && (
                   <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4 flex-shrink-0" />
                     <span>Semester {p.semester}</span>
                   </div>
                 )}
-                {isAlumni && p?.graduation_year && (
+                {isAlumni && !isPartner && p?.graduation_year && (
                   <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4 flex-shrink-0" />
                     <span>Class of {p.graduation_year}</span>

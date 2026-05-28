@@ -26,14 +26,29 @@ export const registerSchema = z
       .regex(/[A-Z]/, "Must contain at least one uppercase letter")
       .regex(/[0-9]/, "Must contain at least one number")
       .regex(/[^A-Za-z0-9]/, "Must contain at least one special character"),
-    role: z.enum(["alumni", "student"]),
-    roll_number: z.string().min(1, "Roll number is required"),
-    batch: z.string().min(1, "Batch is required"),
-    degree: z.string().min(1, "Degree is required"),
+    role: z.enum(["alumni", "student", "partner"]),
+    // Academic fields (student / alumni)
+    roll_number: z.string().optional(),
+    batch: z.string().optional(),
+    degree: z.string().optional(),
     graduation_year: z.number().optional(),
     semester: z.number().min(1).max(8).optional(),
+    // Partner fields
+    affiliation: z.string().optional(),
+    job_title: z.string().optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.role !== "partner") {
+      if (!data.roll_number) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Roll number is required", path: ["roll_number"] });
+      }
+      if (!data.batch) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Batch is required", path: ["batch"] });
+      }
+      if (!data.degree) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Degree is required", path: ["degree"] });
+      }
+    }
     if (data.role === "alumni" && !data.graduation_year) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -47,6 +62,14 @@ export const registerSchema = z
         message: "Semester is required for students",
         path: ["semester"],
       });
+    }
+    if (data.role === "partner") {
+      if (!data.affiliation) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Affiliation is required for partners", path: ["affiliation"] });
+      }
+      if (!data.job_title) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Job title is required for partners", path: ["job_title"] });
+      }
     }
   });
 

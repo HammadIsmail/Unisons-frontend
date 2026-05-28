@@ -5,7 +5,7 @@ import {
   getMyAlumniProfile, updateAlumniProfile, addSkill,
   addWorkExperience, deleteWorkExperience,
 } from "@/lib/api/alumni.api";
-import { getMyStudentProfile, updateStudentProfile, addStudentSkill } from "@/lib/api/student.api";
+import { getMyStudentProfile, updateStudentProfile, addStudentSkill, requestProfileUpgrade } from "@/lib/api/student.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
 import { useState, useEffect, useRef } from "react";
@@ -132,8 +132,9 @@ export default function MyProfilePage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageHash, setImageHash] = useState(Date.now());
   const skillInputRef = useRef<HTMLInputElement>(null);
+  const [upgradeYear, setUpgradeYear] = useState<string>("");
 
-  const isAlumni = role === "alumni";
+  const isAlumni = role === "alumni" || role === "partner";
   const isReady = role !== undefined && role !== null;
 
   const { data: alumniProfile, isLoading: alumniLoading } = useQuery({
@@ -243,6 +244,19 @@ export default function MyProfilePage() {
     }
   });
 
+  const upgradeRequestMutation = useMutation({
+    mutationFn: requestProfileUpgrade,
+    onSuccess: (res) => {
+      setUpgradeYear("");
+      toast.success(res.message ?? "Profile upgrade request submitted successfully.", {
+        action: { label: "OK", onClick: () => { } },
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message ?? "Failed to submit upgrade request.");
+    },
+  });
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -341,10 +355,13 @@ export default function MyProfilePage() {
         </p>
       )}
       <p className="text-sm text-muted-foreground mt-0.5">
-        {[profile?.degree, profile?.batch, isAlumni
-          ? `Class of ${p?.graduation_year}`
-          : `Semester ${p?.semester}`
-        ].filter(Boolean).join(" · ")}
+        {role === "partner"
+          ? [p?.job_title, p?.affiliation].filter(Boolean).join(" · ")
+          : [profile?.degree, profile?.batch, isAlumni
+            ? `Class of ${p?.graduation_year}`
+            : `Semester ${p?.semester}`
+          ].filter(Boolean).join(" · ")
+        }
       </p>
     </div>
   );
@@ -502,6 +519,18 @@ export default function MyProfilePage() {
                     <GraduationCap className="h-4 w-4 flex-shrink-0" />
                     <span>{[profile?.degree, profile?.batch].filter(Boolean).join(", ")}</span>
                   </div>
+                  {role === "partner" && p?.affiliation && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Building2 className="h-4 w-4 flex-shrink-0" />
+                      <span>{p.affiliation}</span>
+                    </div>
+                  )}
+                  {role === "partner" && p?.job_title && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Briefcase className="h-4 w-4 flex-shrink-0" />
+                      <span>{p.job_title}</span>
+                    </div>
+                  )}
                   {!isAlumni && p?.semester && (
                     <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                       <CalendarDays className="h-4 w-4 flex-shrink-0" />
@@ -861,6 +890,62 @@ export default function MyProfilePage() {
                       </div>
                     </Link>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Request Profile Upgrade — student only */}
+          {!isAlumni && (
+            <Card className="border-amber-200 dark:border-amber-800 shadow-sm bg-amber-50/40 dark:bg-amber-950/10">
+              <CardContent className="p-5">
+                <SectionHeader
+                  icon={<GraduationCap className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                  title="Request Profile Upgrade"
+                />
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                  Already graduated? Submit a request to upgrade your profile from
+                  <span className="font-semibold text-blue-600"> Student </span>
+                  to
+                  <span className="font-semibold text-blue-600"> Alumni</span>.
+                  An admin will review and approve your request.
+                </p>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Graduation Year
+                    </Label>
+                    <Input
+                      id="upgrade-graduation-year"
+                      type="number"
+                      min={1990}
+                      max={new Date().getFullYear() + 5}
+                      placeholder={`e.g. ${new Date().getFullYear()}`}
+                      value={upgradeYear}
+                      onChange={(e) => setUpgradeYear(e.target.value)}
+                      className="h-9 text-sm border-amber-200 dark:border-amber-800 focus:border-amber-400"
+                      disabled={upgradeRequestMutation.isPending}
+                    />
+                  </div>
+                  <Button
+                    id="submit-upgrade-request"
+                    onClick={() => {
+                      const year = parseInt(upgradeYear, 10);
+                      if (!upgradeYear || isNaN(year)) {
+                        toast.error("Please enter a valid graduation year.");
+                        return;
+                      }
+                      upgradeRequestMutation.mutate({ graduation_year: year });
+                    }}
+                    disabled={upgradeRequestMutation.isPending || !upgradeYear.trim()}
+                    className="h-9 gap-1.5 cursor-pointer bg-white hover:scale-103 !text-blue-600 !border !border-blue-600 font-normal flex-shrink-0"
+                  >
+                    {upgradeRequestMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
+                    ) : (
+                      <><GraduationCap className="h-4 w-4" /> Request Upgrade</>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
