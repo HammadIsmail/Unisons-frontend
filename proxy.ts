@@ -3,7 +3,8 @@ import type { NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/pending"];
 
-const ALUMNI_ONLY = ["/post-opportunity", "/my-opportunities", "/batch-mates"];
+const ALUMNI_ONLY = ["/batch-mates"];
+const ALUMNI_AND_PARTNER = ["/post-opportunity", "/my-opportunities"];
 const STUDENT_ONLY = ["/mentors"];
 const ADMIN_ONLY = ["/admin"];
 
@@ -71,6 +72,10 @@ export function proxy(request: NextRequest) {
   }
 
   if (ALUMNI_ONLY.some((r) => pathname.startsWith(r)) && role !== "alumni") {
+    return NextResponse.redirect(new URL("/feed", request.url));
+  }
+
+  if (ALUMNI_AND_PARTNER.some((r) => pathname.startsWith(r)) && role !== "alumni" && role !== "partner") {
     return NextResponse.redirect(new URL("/feed", request.url));
   }
 

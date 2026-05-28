@@ -305,7 +305,7 @@ export default function OpportunitiesPage() {
                 remote-first to discover what fits.
               </p>
             </div>
-            {role === "alumni" && (
+            {(role === "alumni" || role === "partner") && (
               <Button
                 variant="outline"
                 size="lg"

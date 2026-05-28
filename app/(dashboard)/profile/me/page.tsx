@@ -6,13 +6,14 @@ import {
   addWorkExperience, deleteWorkExperience,
 } from "@/lib/api/alumni.api";
 import { getMyStudentProfile, updateStudentProfile, addStudentSkill, requestProfileUpgrade } from "@/lib/api/student.api";
+import { getMyPartnerProfile, updatePartnerProfile } from "@/lib/api/partner.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  updateAlumniProfileSchema, updateStudentProfileSchema, addSkillSchema,
+  updateAlumniProfileSchema, updateStudentProfileSchema, updatePartnerProfileSchema, addSkillSchema,
   AddSkillInput,
 } from "@/schemas/profile.schemas";
 import { addWorkExperienceSchema, AddWorkExperienceInput } from "@/schemas/workExperience.schemas";
@@ -134,23 +135,32 @@ export default function MyProfilePage() {
   const skillInputRef = useRef<HTMLInputElement>(null);
   const [upgradeYear, setUpgradeYear] = useState<string>("");
 
-  const isAlumni = role === "alumni" || role === "partner";
+  const isAlumniRole = role === "alumni";
+  const isPartnerRole = role === "partner";
+  const isStudentRole = role === "student";
+  const isAlumni = isAlumniRole || isPartnerRole;
   const isReady = role !== undefined && role !== null;
 
   const { data: alumniProfile, isLoading: alumniLoading } = useQuery({
     queryKey: ["alumni", "me"],
     queryFn: getMyAlumniProfile,
-    enabled: isReady && isAlumni,
+    enabled: isReady && isAlumniRole,
+  });
+
+  const { data: partnerProfile, isLoading: partnerLoading } = useQuery({
+    queryKey: ["partner", "me"],
+    queryFn: getMyPartnerProfile,
+    enabled: isReady && isPartnerRole,
   });
 
   const { data: studentProfile, isLoading: studentLoading } = useQuery({
     queryKey: ["student", "me"],
     queryFn: getMyStudentProfile,
-    enabled: isReady && !isAlumni,
+    enabled: isReady && isStudentRole,
   });
 
-  const profile = isAlumni ? alumniProfile : studentProfile;
-  const isLoading = isAlumni ? alumniLoading : studentLoading;
+  const profile = isPartnerRole ? partnerProfile : isAlumniRole ? alumniProfile : studentProfile;
+  const isLoading = isPartnerRole ? partnerLoading : isAlumniRole ? alumniLoading : studentLoading;
   const p = profile as any;
 
   useEffect(() => {
@@ -166,13 +176,14 @@ export default function MyProfilePage() {
   });
 
   const profileForm = useForm<any>({
-    resolver: zodResolver(isAlumni ? updateAlumniProfileSchema : updateStudentProfileSchema),
+    resolver: zodResolver(isPartnerRole ? updatePartnerProfileSchema : isAlumniRole ? updateAlumniProfileSchema : updateStudentProfileSchema),
     values: {
-      display_name: p?.display_name ?? "",
+      ...(!isPartnerRole && { display_name: p?.display_name ?? "" }),
       bio: profile?.bio ?? "",
       phone: (profile as any)?.phone ?? "",
-      ...(!isAlumni && { semester: p?.semester ?? undefined }),
-      ...(isAlumni && { linkedin_url: (profile as any)?.linkedin_url ?? "" }),
+      ...(isStudentRole && { semester: p?.semester ?? undefined }),
+      ...(isPartnerRole && { affiliation: p?.affiliation ?? "", job_title: p?.job_title ?? "" }),
+      ...((isAlumniRole || isPartnerRole) && { linkedin_url: (profile as any)?.linkedin_url ?? "" }),
     },
   });
 
@@ -189,17 +200,19 @@ export default function MyProfilePage() {
   const profileMutation = useMutation({
     mutationFn: async (data: any) => {
       const formData = new FormData();
-      if (data.display_name?.trim()) formData.append("display_name", data.display_name.trim());
+      if (!isPartnerRole && data.display_name?.trim()) formData.append("display_name", data.display_name.trim());
       if (data.bio?.trim()) formData.append("bio", data.bio.trim());
       if (data.phone?.trim()) formData.append("phone", data.phone.trim());
-      if (!isAlumni && data.semester) formData.append("semester", String(data.semester));
-      if (isAlumni && data.linkedin_url?.trim()) formData.append("linkedin_url", data.linkedin_url.trim());
-      return isAlumni ? updateAlumniProfile(formData) : updateStudentProfile(formData);
+      if (isStudentRole && data.semester) formData.append("semester", String(data.semester));
+      if (isPartnerRole && data.affiliation?.trim()) formData.append("affiliation", data.affiliation.trim());
+      if (isPartnerRole && data.job_title?.trim()) formData.append("job_title", data.job_title.trim());
+      if ((isAlumniRole || isPartnerRole) && data.linkedin_url?.trim()) formData.append("linkedin_url", data.linkedin_url.trim());
+      return isPartnerRole ? updatePartnerProfile(formData) : isAlumniRole ? updateAlumniProfile(formData) : updateStudentProfile(formData);
     },
     onSuccess: () => {
       setEditMode(false);
       flash("Profile updated successfully.");
-      queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      queryClient.invalidateQueries({ queryKey: isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"] });
     },
   });
 
@@ -264,10 +277,11 @@ export default function MyProfilePage() {
     try {
       const formData = new FormData();
       formData.append("profile_picture", file);
-      if (isAlumni) await updateAlumniProfile(formData);
+      if (isPartnerRole) await updatePartnerProfile(formData);
+      else if (isAlumniRole) await updateAlumniProfile(formData);
       else await updateStudentProfile(formData);
       flash("Profile picture updated.");
-      queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      queryClient.invalidateQueries({ queryKey: isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"] });
       setImageHash(Date.now());
     } finally {
       setUploadingImage(false);
@@ -281,10 +295,11 @@ export default function MyProfilePage() {
     try {
       const formData = new FormData();
       formData.append("backDropImage", file);
-      if (isAlumni) await updateAlumniProfile(formData);
+      if (isPartnerRole) await updatePartnerProfile(formData);
+      else if (isAlumniRole) await updateAlumniProfile(formData);
       else await updateStudentProfile(formData);
       flash("Backdrop picture updated.");
-      queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      queryClient.invalidateQueries({ queryKey: isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"] });
       setImageHash(Date.now());
     } finally {
       setUploadingImage(false);
@@ -551,11 +566,13 @@ export default function MyProfilePage() {
                   onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))}
                   className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
                 >
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Name</Label>
-                    <Input {...profileForm.register("display_name")} placeholder="Your name" className="h-9 text-sm border-border/60" />
-                    <FieldError message={profileForm.formState.errors.display_name?.message as string} />
-                  </div>
+                  {!isPartnerRole && (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Name</Label>
+                      <Input {...profileForm.register("display_name")} placeholder="Your name" className="h-9 text-sm border-border/60" />
+                      <FieldError message={profileForm.formState.errors.display_name?.message as string} />
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bio</Label>
                     <textarea
@@ -565,11 +582,25 @@ export default function MyProfilePage() {
                       className="w-full px-3 py-2 text-sm border border-border/60 rounded-lg outline-none resize-none bg-background text-foreground placeholder:text-muted-foreground/50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 transition-all"
                     />
                   </div>
+                  {isPartnerRole && (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Affiliation</Label>
+                      <Input {...profileForm.register("affiliation")} placeholder="Company name" className="h-9 text-sm border-border/60" />
+                      <FieldError message={profileForm.formState.errors.affiliation?.message as string} />
+                    </div>
+                  )}
+                  {isPartnerRole && (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Title</Label>
+                      <Input {...profileForm.register("job_title")} placeholder="Your role" className="h-9 text-sm border-border/60" />
+                      <FieldError message={profileForm.formState.errors.job_title?.message as string} />
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</Label>
                     <Input {...profileForm.register("phone")} placeholder="+92-300-1234567" className="h-9 text-sm border-border/60" />
                   </div>
-                  {!isAlumni && (
+                  {isStudentRole && (
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Semester</Label>
                       <Select

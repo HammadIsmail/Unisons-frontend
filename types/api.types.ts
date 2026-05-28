@@ -84,7 +84,7 @@ export type UserProfile = AlumniProfile | StudentProfile;
 
 export interface LoginResponse {
   token: string;
-  role: "alumni" | "student" | "admin";
+  role: "alumni" | "student" | "admin" | "partner";
   account_status: "approved" | "pending" | "rejected";
   profile: UserProfile;
 }
@@ -242,7 +242,7 @@ export interface PendingAccount {
   id: string;
   display_name: string;
   email: string;
-  role: "alumni" | "student";
+  role: "alumni" | "student" | "partner";
   registered_at: string;
   student_card_url?: string;
 }

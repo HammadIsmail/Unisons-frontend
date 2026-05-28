@@ -3,7 +3,7 @@ import { AlumniProfile, StudentProfile } from "@/types/api.types";
 
 export type PublicProfile = Omit<AlumniProfile, "role"> &
   Omit<StudentProfile, "role"> & {
-    role: "alumni" | "student";
+    role: "alumni" | "student" | "partner";
     connection_status: "pending" | "connected" | "none";
     is_connection_sender: boolean;
     opportunities_posted: any[];

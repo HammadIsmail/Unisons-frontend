@@ -6,7 +6,8 @@ export const updateAlumniProfileSchema = z.object({
   phone: z
     .string()
     .regex(/^\+?[\d\s\-]{10,15}$/, "Enter a valid phone number")
-    .optional(),
+    .optional()
+    .or(z.literal("")),
   linkedin_url: z
     .string()
     .url("Enter a valid LinkedIn URL")
@@ -21,8 +22,26 @@ export const updateStudentProfileSchema = z.object({
   phone: z
     .string()
     .regex(/^\+?[\d\s\-]{10,15}$/, "Enter a valid phone number")
-    .optional(),
+    .optional()
+    .or(z.literal("")),
   semester: z.number().min(1).max(8).optional(),
+});
+
+export const updatePartnerProfileSchema = z.object({
+  bio: z.string().max(300, "Bio must be under 300 characters").optional(),
+  affiliation: z.string().max(100, "Affiliation must be under 100 characters").optional(),
+  job_title: z.string().max(100, "Job title must be under 100 characters").optional(),
+  phone: z
+    .string()
+    .regex(/^\+?[\d\s\-]{10,15}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  linkedin_url: z
+    .string()
+    .url("Enter a valid LinkedIn URL")
+    .includes("linkedin.com", { message: "Must be a LinkedIn URL" })
+    .optional()
+    .or(z.literal("")),
 });
 
 export const addSkillSchema = z.object({

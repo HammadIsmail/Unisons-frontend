@@ -218,7 +218,7 @@ export default function EventsPage() {
     queryFn: () => getEvents(params),
   });
 
-  const canCreate = role === "alumni" || role === "admin";
+  const canCreate = role === "alumni" || role === "admin" || role === "partner";
 
   return (
     <div className="min-h-screen">

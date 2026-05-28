@@ -31,17 +31,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",     href: "/dashboard",        icon: <LayoutDashboard className="h-4 w-4" />, roles: ["alumni", "student"] },
-  { label: "Opportunities", href: "/opportunities",    icon: <Briefcase className="h-4 w-4" />,       roles: ["alumni", "student"] },
-  { label: "Events",        href: "/events",           icon: <CalendarDays className="h-4 w-4" />,    roles: ["alumni", "student"] },
-  { label: "Search",        href: "/search",           icon: <Search className="h-4 w-4" />,          roles: ["alumni", "student"] },
-  { label: "My Network",    href: "/my-network",       icon: <Network className="h-4 w-4" />,         roles: ["alumni"] },
+  { label: "Dashboard",     href: "/dashboard",        icon: <LayoutDashboard className="h-4 w-4" />, roles: ["alumni", "student", "partner"] },
+  { label: "Opportunities", href: "/opportunities",    icon: <Briefcase className="h-4 w-4" />,       roles: ["alumni", "student", "partner"] },
+  { label: "Events",        href: "/events",           icon: <CalendarDays className="h-4 w-4" />,    roles: ["alumni", "student", "partner"] },
+  { label: "Search",        href: "/search",           icon: <Search className="h-4 w-4" />,          roles: ["alumni", "student", "partner"] },
+  { label: "My Network",    href: "/my-network",       icon: <Network className="h-4 w-4" />,         roles: ["alumni", "partner"] },
   { label: "Batch Mates",   href: "/batch-mates",      icon: <Users className="h-4 w-4" />,           roles: ["alumni"] },
-  { label: "My Posts",      href: "/my-opportunities", icon: <FileText className="h-4 w-4" />,        roles: ["alumni"] },
-  { label: "My Events",     href: "/my-events",        icon: <CalendarCheck className="h-4 w-4" />,   roles: ["alumni"] },
+  { label: "My Posts",      href: "/my-opportunities", icon: <FileText className="h-4 w-4" />,        roles: ["alumni", "partner"] },
+  { label: "My Events",     href: "/my-events",        icon: <CalendarCheck className="h-4 w-4" />,   roles: ["alumni", "partner"] },
   { label: "Mentors",       href: "/mentors",          icon: <GraduationCap className="h-4 w-4" />,   roles: ["student"] },
-  { label: "Messages",      href: "/chat",             icon: <MessageSquare className="h-4 w-4" />,   roles: ["alumni", "student"] },
-  { label: "Notifications", href: "/notifications",    icon: <Bell className="h-4 w-4" />,            roles: ["alumni", "student"] },
+  { label: "Messages",      href: "/chat",             icon: <MessageSquare className="h-4 w-4" />,   roles: ["alumni", "student", "partner"] },
+  { label: "Notifications", href: "/notifications",    icon: <Bell className="h-4 w-4" />,            roles: ["alumni", "student", "partner"] },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -56,6 +56,7 @@ const ROLE_META: Record<string, { label: string; color: string; bg: string; dot:
   alumni:  { label: "Alumni",   color: "text-blue-700 dark:text-blue-300",   bg: "bg-blue-50 dark:bg-blue-950/50",   dot: "bg-blue-500" },
   student: { label: "Student",  color: "text-violet-700 dark:text-violet-300", bg: "bg-violet-50 dark:bg-violet-950/50", dot: "bg-violet-500" },
   admin:   { label: "Admin",    color: "text-rose-700 dark:text-rose-300",   bg: "bg-rose-50 dark:bg-rose-950/50",   dot: "bg-rose-500" },
+  partner: { label: "Partner",  color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/50", dot: "bg-amber-500" },
 };
 
 export default function Sidebar() {

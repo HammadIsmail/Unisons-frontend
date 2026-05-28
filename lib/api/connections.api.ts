@@ -73,8 +73,8 @@ export const cancelSentRequest = async (
   return data;
 };
 
-export const getMyNetwork = async (role: "alumni" | "student"): Promise<any[]> => {
-  const endpoint = role === "alumni" ? "/api/alumni/connections" : "/api/student/connections";
+export const getMyNetwork = async (role: "alumni" | "student" | "partner"): Promise<any[]> => {
+  const endpoint = role === "partner" ? "/api/partner/connections" : role === "alumni" ? "/api/alumni/connections" : "/api/student/connections";
   const { data } = await api.get(endpoint);
   return data;
 };
