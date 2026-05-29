@@ -38,7 +38,7 @@ export const addWorkExperience = async (payload: {
   is_current: boolean;
   employment_type: string;
 }): Promise<{ message: string }> => {
-  const { data } = await api.post("/api/alumni/work-experience", payload);
+  const { data } = await api.post("/api/profile/work-experience", payload);
   return data;
 };
 
@@ -50,14 +50,45 @@ export const updateWorkExperience = async (
     is_current?: boolean;
   }
 ): Promise<{ message: string }> => {
-  const { data } = await api.put(`/api/alumni/work-experience/${id}`, payload);
+  const { data } = await api.put(`/api/profile/work-experience/${id}`, payload);
   return data;
 };
 
 export const deleteWorkExperience = async (
   id: string
 ): Promise<{ message: string }> => {
-  const { data } = await api.delete(`/api/alumni/work-experience/${id}`);
+  const { data } = await api.delete(`/api/profile/work-experience/${id}`);
+  return data;
+};
+
+export const addEducation = async (payload: {
+  university: string;
+  degree: string;
+  field_of_study?: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/profile/education", payload);
+  return data;
+};
+
+export const updateEducation = async (
+  id: string,
+  payload: {
+    degree?: string;
+    end_date?: string;
+    is_current?: boolean;
+  }
+): Promise<{ message: string }> => {
+  const { data } = await api.put(`/api/profile/education/${id}`, payload);
+  return data;
+};
+
+export const deleteEducation = async (
+  id: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/profile/education/${id}`);
   return data;
 };
 
@@ -67,7 +98,7 @@ export const addSkill = async (payload: {
   proficiency_level: string;
   years_experience?: number;
 }): Promise<{ message: string }> => {
-  const { data } = await api.post("/api/alumni/skills", payload);
+  const { data } = await api.post("/api/profile/skills", payload);
   return data;
 };
 

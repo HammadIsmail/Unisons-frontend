@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMyAlumniProfile, updateAlumniProfile, addSkill,
   addWorkExperience, deleteWorkExperience,
+  addEducation, deleteEducation, updateEducation,
 } from "@/lib/api/alumni.api";
 import { getMyStudentProfile, updateStudentProfile, addStudentSkill, requestProfileUpgrade } from "@/lib/api/student.api";
 import { getMyPartnerProfile, updatePartnerProfile } from "@/lib/api/partner.api";
@@ -17,6 +18,7 @@ import {
   AddSkillInput,
 } from "@/schemas/profile.schemas";
 import { addWorkExperienceSchema, AddWorkExperienceInput } from "@/schemas/workExperience.schemas";
+import { addEducationSchema, AddEducationInput } from "@/schemas/education.schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,6 +129,8 @@ export default function MyProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [showAddWork, setShowAddWork] = useState(false);
+  const [showAddEducation, setShowAddEducation] = useState(false);
+  const [editingEducation, setEditingEducation] = useState<any>(null);
   const [skillInput, setSkillInput] = useState("");
   const [skillCategory, setSkillCategory] = useState("");
   const [skillProficiency, setSkillProficiency] = useState<"beginner" | "intermediate" | "expert">("intermediate");
@@ -193,6 +197,12 @@ export default function MyProfilePage() {
   });
   const isCurrentJob = workForm.watch("is_current");
 
+  const educationForm = useForm<AddEducationInput>({
+    resolver: zodResolver(addEducationSchema),
+    defaultValues: { is_current: false },
+  });
+  const isCurrentEducation = educationForm.watch("is_current");
+
   const flash = (msg: string) => {
     toast.success(msg, { action: { label: "OK", onClick: () => { } } });
   };
@@ -253,6 +263,36 @@ export default function MyProfilePage() {
     mutationFn: deleteWorkExperience,
     onSuccess: () => {
       flash("Work experience deleted successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] })
+    }
+  });
+
+  const educationMutation = useMutation({
+    mutationFn: addEducation,
+    onSuccess: () => {
+      setShowAddEducation(false);
+      educationForm.reset();
+      flash("Education added.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+    },
+  });
+
+  const updateEducationMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      updateEducation(id, data),
+    onSuccess: () => {
+      setShowAddEducation(false);
+      setEditingEducation(null);
+      educationForm.reset();
+      flash("Education updated.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+    },
+  });
+
+  const deleteEducationMutation = useMutation({
+    mutationFn: deleteEducation,
+    onSuccess: () => {
+      flash("Education deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "me"] })
     }
   });
@@ -645,6 +685,155 @@ export default function MyProfilePage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Education — alumni and partner */}
+          {isAlumni && (
+            <Card className="border-border/60 shadow-sm">
+              <CardContent className="p-5">
+                <SectionHeader
+                  icon={<GraduationCap className="h-4 w-4" />}
+                  title="Education"
+                  action={
+                    <button
+                      onClick={() => {
+                        if (showAddEducation) {
+                          setShowAddEducation(false);
+                          setEditingEducation(null);
+                          educationForm.reset();
+                        } else {
+                          setEditingEducation(null);
+                          educationForm.reset();
+                          setShowAddEducation(true);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      {showAddEducation ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add</>}
+                    </button>
+                  }
+                />
+
+                {showAddEducation && (
+                  <form
+                    onSubmit={educationForm.handleSubmit((data) => {
+                      if (editingEducation) {
+                        updateEducationMutation.mutate({ id: editingEducation.id, data });
+                      } else {
+                        educationMutation.mutate(data);
+                      }
+                    })}
+                    className="mb-4 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 border border-border/40 rounded-xl"
+                  >
+                    {editingEducation && (
+                      <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Editing Education</p>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">University</Label>
+                      <Input {...educationForm.register("university")} placeholder="University name" className="h-9 text-sm border-border/60" />
+                      <FieldError message={educationForm.formState.errors.university?.message as string} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Degree</Label>
+                        <Input {...educationForm.register("degree")} placeholder="e.g. BSc" className="h-9 text-sm border-border/60" />
+                        <FieldError message={educationForm.formState.errors.degree?.message as string} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Field of Study</Label>
+                        <Input {...educationForm.register("field_of_study")} placeholder="e.g. Computer Science" className="h-9 text-sm border-border/60" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Start Date</Label>
+                        <Input {...educationForm.register("start_date")} type="date" className="h-9 text-sm border-border/60" />
+                        <FieldError message={educationForm.formState.errors.start_date?.message as string} />
+                      </div>
+                      {!isCurrentEducation && (
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">End Date</Label>
+                          <Input {...educationForm.register("end_date")} type="date" className="h-9 text-sm border-border/60" />
+                          <FieldError message={educationForm.formState.errors.end_date?.message as string} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="is_current_edu"
+                        {...educationForm.register("is_current")}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <Label htmlFor="is_current_edu" className="text-sm cursor-pointer text-foreground">
+                        I am currently studying here
+                      </Label>
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={educationMutation.isPending || updateEducationMutation.isPending}
+                      size="sm"
+                      className="w-full h-9 !bg-white !text-blue-600 !border cursor-pointer !border-blue-600 hover:bg-blue-50"
+                    >
+                      {(educationMutation.isPending || updateEducationMutation.isPending)
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Saving…</>
+                        : editingEducation ? "Update Education" : "Save Education"}
+                    </Button>
+                  </form>
+                )}
+
+                {p?.education?.length > 0 ? (
+                  <div className="space-y-4">
+                    {p.education.map((edu: any, i: number) => (
+                      <div key={edu.id || i} className="group relative pl-4 border-l-2 border-border/60 pb-4 last:pb-0">
+                        <div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5 ring-4 ring-background" />
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-foreground text-sm">{edu.degree} {edu.field_of_study && `in ${edu.field_of_study}`}</h3>
+                            <p className="text-sm text-muted-foreground font-medium">{edu.university}</p>
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              <span>
+                                {new Date(edu.start_date).getFullYear()} – {edu.is_current ? "Present" : edu.end_date ? new Date(edu.end_date).getFullYear() : ""}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                              onClick={() => {
+                                setEditingEducation(edu);
+                                educationForm.reset({
+                                  university: edu.university ?? "",
+                                  degree: edu.degree ?? "",
+                                  field_of_study: edu.field_of_study ?? "",
+                                  start_date: edu.start_date ? edu.start_date.slice(0, 10) : "",
+                                  end_date: edu.end_date ? edu.end_date.slice(0, 10) : "",
+                                  is_current: edu.is_current ?? false,
+                                });
+                                setShowAddEducation(true);
+                              }}
+                              className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-md transition-all"
+                              title="Edit education"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteEducationMutation.mutate(edu.id)}
+                              disabled={deleteEducationMutation.isPending}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md transition-all disabled:opacity-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No education added yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
         </div>
 
