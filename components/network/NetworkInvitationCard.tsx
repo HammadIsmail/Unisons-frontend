@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 
 interface NetworkInvitationCardProps {
   senderName: string;
+  senderUserName: string;
   senderHeadline: string;
   senderImage?: string;
   onAccept: () => void;
@@ -17,6 +18,7 @@ interface NetworkInvitationCardProps {
 
 export default function NetworkInvitationCard({
   senderName,
+  senderUserName,
   senderHeadline,
   senderImage,
   onAccept,
@@ -36,6 +38,9 @@ export default function NetworkInvitationCard({
           <div className="min-w-0">
             <h3 className="font-bold text-[15px] text-foreground truncate hover:underline cursor-pointer">
               {senderName}
+            </h3>
+            <h3 className="font-normal text-[12px] text-gray-500 truncate hover:underline cursor-pointer">
+              @{senderUserName}
             </h3>
             <p className="text-xs text-muted-foreground line-clamp-1">
               {senderHeadline}

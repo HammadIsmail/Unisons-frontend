@@ -343,7 +343,7 @@ export default function OpportunitiesPage() {
                   setPage(1);
                 }}
                 placeholder="Search by role, company, or keyword…"
-                className="h-full rounded-4xl border-border bg-card/80 pl-12 pr-4 text-base shadow-sm backdrop-blur placeholder:text-muted-foreground/70"
+                className="h-full rounded-4xl border-border bg-card/80 py-4 pl-12 pr-4 text-base shadow-sm backdrop-blur placeholder:text-muted-foreground/70"
               />
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
@@ -417,8 +417,8 @@ export default function OpportunitiesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All skills</SelectItem>
-              {skills?.map((s) => (
-                <SelectItem key={s} value={s}>
+              {skills?.map((s, i) => (
+                <SelectItem index={i+1} key={s} value={s}>
                   {s}
                 </SelectItem>
               ))}
@@ -640,7 +640,7 @@ function FeaturedCard({
             </div>
 
             {/* header */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="flex gap-3 sm:flex-row sm:items-start">
               <CompanyLogo opp={opp} size={52} />
 
               <div className="min-w-0">

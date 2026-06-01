@@ -4,6 +4,8 @@ import { useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getOpportunities } from "@/lib/api/opportunities.api";
 import { getMyNetwork } from "@/lib/api/connections.api";
+import { getProfileSuggestions, UserSuggestion } from "@/lib/api/profiles.api";
+import { getSkillTrends } from "@/lib/api/network.api";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -36,20 +38,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import type { Opportunity, Connection, SkillTrends } from "@/types/api.types";
-import api from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface UserSuggestion {
-  id: string;
-  display_name: string;
-  username: string;
-  profile_picture: string | null;
-  role: string;
-  degree: string;
-  batch: string;
-  mutual_connections?: number; // NEW: ask backend to include this in /api/profiles/suggestions
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -509,7 +499,7 @@ function TrendingSkillsCard() {
   const { data: skills, isLoading } = useQuery<SkillTrends>({
     queryKey: ["skill-trends"],
     queryFn: async () => {
-      const { data } = await api.get("/api/network/skill-trends");
+      const data = await getSkillTrends();
       return data as SkillTrends;
     },
   });
@@ -677,10 +667,7 @@ export default function FeedPage() {
 
   const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery<UserSuggestion[]>({
     queryKey: ["suggestions"],
-    queryFn: async () => {
-      const { data } = await api.get("/api/profiles/suggestions");
-      return data as UserSuggestion[];
-    },
+    queryFn: getProfileSuggestions,
     enabled: !!role,
   });
 

@@ -556,6 +556,7 @@ function NetworkPageContent() {
                   <NetworkInvitationCard
                     key={invite.sender_id}
                     senderName={invite.sender_display_name}
+                    senderUserName={invite.sender_username}
                     senderHeadline={
                       invite.connection_type
                         ? invite.connection_type.charAt(0).toUpperCase() +

@@ -99,7 +99,7 @@ function SelectContent({
           onAnimationEnd={() => {}}
           className={cn(
             // Base
-            "relative z-50 max-h-[--radix-select-content-available-height] min-w-[--radix-select-trigger-width] origin-[--radix-select-content-transform-origin] overflow-x-hidden overflow-y-auto",
+            "relative z-50 max-h-[min(320px,var(--radix-select-content-available-height))] min-w-[--radix-select-trigger-width] origin-[--radix-select-content-transform-origin] overflow-x-hidden overflow-y-auto",
             // Blue/white theme
             "rounded-xl border border-blue-100 bg-white text-blue-900 shadow-xl shadow-blue-900/10",
             // Top accent line

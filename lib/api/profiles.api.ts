@@ -15,3 +15,19 @@ export const getUserPublicProfile = async (
   const { data } = await api.get(`/api/profiles/user/${id}`);
   return data;
 };
+
+export interface UserSuggestion {
+  id: string;
+  display_name: string;
+  username: string;
+  profile_picture: string | null;
+  role: string;
+  degree: string;
+  batch: string;
+  mutual_connections?: number;
+}
+
+export const getProfileSuggestions = async (): Promise<UserSuggestion[]> => {
+  const { data } = await api.get("/api/profiles/suggestions");
+  return data as UserSuggestion[];
+};
