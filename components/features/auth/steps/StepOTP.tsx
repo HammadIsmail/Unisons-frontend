@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { verifyOTP, sendOTP } from "@/lib/api/auth.api";
 import useRegistrationStore from "@/store/registrationStore";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, KeyRound, ArrowLeft, Loader2, RotateCcw } from "lucide-react";
+import { AlertCircle, CheckCircle2, KeyRound, ArrowLeft, Loader2, RotateCcw, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+};
 
 export default function StepOTP() {
   const { email, otpType, setVerifiedToken, setStep } = useRegistrationStore();
@@ -14,7 +20,20 @@ export default function StepOTP() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const interval = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [retryAfter]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -51,8 +70,21 @@ export default function StepOTP() {
       setStep(3);
     } catch (error: any) {
       setServerError(error.response?.data?.message || "Invalid OTP. Please try again.");
-      setOtp(["", "", "", "", "", ""]);
-      setTimeout(() => inputRefs.current[0]?.focus(), 50);
+      if (error.response?.status === 429) {
+        const retrySeconds = Number(error.response?.data?.retry_after_seconds) || 60;
+        setRetryAfter(retrySeconds);
+        setFailedAttempts(0);
+      } else {
+        const next = failedAttempts + 1;
+        setOtp(["", "", "", "", "", ""]);
+        setTimeout(() => inputRefs.current[0]?.focus(), 50);
+        if (next >= 3) {
+          setRetryAfter(30);
+          setFailedAttempts(0);
+        } else {
+          setFailedAttempts(next);
+        }
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -69,6 +101,12 @@ export default function StepOTP() {
       setTimeout(() => inputRefs.current[0]?.focus(), 50);
     } catch (error: any) {
       setServerError(error.response?.data?.message || "Failed to resend. Try again.");
+      if (error.response?.status === 429 && error.response?.data?.retry_after_seconds) {
+        setRetryAfter(error.response.data.retry_after_seconds);
+      } else {
+        setOtp(["", "", "", "", "", ""]);
+        setTimeout(() => inputRefs.current[0]?.focus(), 50);
+      }
     } finally {
       setIsResending(false);
     }
@@ -163,10 +201,24 @@ export default function StepOTP() {
           ))}
         </div>
       </div>
+<div className="flex items-center justify-center gap-2 text-xs font-normal text-gray-500 dark:text-gray-400">OTP will expire in 10 minutes</div>
+      <AnimatePresence>
+        {retryAfter > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="flex items-center justify-center gap-2 text-xs font-normal text-gray-500 dark:text-gray-400"
+          >
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            <span>Try again in {formatCountdown(retryAfter)}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Button
         onClick={handleVerify}
-        disabled={isVerifying || filled < 6}
+        disabled={isVerifying || filled < 6 || retryAfter > 0}
         className="w-full h-11 bg-[#0a66c2] hover:bg-[#004182] text-white font-bold rounded-full transition-all active:scale-[0.98] shadow-md shadow-blue-500/10 disabled:opacity-50"
       >
         {isVerifying ? (
@@ -192,7 +244,7 @@ export default function StepOTP() {
         <button
           type="button"
           onClick={handleResend}
-          disabled={isResending}
+          disabled={isResending || retryAfter > 0}
           className="flex items-center gap-1.5 text-xs font-bold text-[#0a66c2] hover:underline disabled:opacity-50"
         >
           {isResending ? (

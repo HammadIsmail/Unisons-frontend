@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { loginSchema, LoginInput } from "@/schemas/auth.schemas";
 import { loginUser } from "@/lib/api/auth.api";
@@ -10,15 +10,33 @@ import useAuthStore from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Loader2, Eye, EyeOff, Lock, User } from "lucide-react";
+import { AlertCircle, Loader2, Eye, EyeOff, Lock, User, Clock } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+};
 
 export default function LoginForm() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0);
+
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const interval = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [retryAfter]);
 
   const {
     register,
@@ -48,6 +66,9 @@ export default function LoginForm() {
       setServerError(
         error.response?.data?.message || "Invalid credentials. Please try again."
       );
+      if (error.response?.status === 429 && error.response?.data?.retry_after_seconds) {
+        setRetryAfter(error.response.data.retry_after_seconds);
+      }
     }
   };
 
@@ -150,9 +171,23 @@ export default function LoginForm() {
           )}
         </div>
 
+        <AnimatePresence>
+          {retryAfter > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="flex items-center justify-center gap-2 text-xs font-normal text-gray-500 dark:text-gray-400"
+            >
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>Try again in {formatCountdown(retryAfter)}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || retryAfter > 0}
           className="w-full h-11 bg-[#0a66c2] hover:bg-[#004182] text-white font-bold rounded-full transition-all active:scale-[0.98] shadow-md shadow-blue-500/10"
         >
           {isSubmitting ? (

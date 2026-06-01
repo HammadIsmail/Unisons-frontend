@@ -2,19 +2,26 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { sendOTPSchema, SendOTPInput } from "@/schemas/auth.schemas";
 import { sendOTP } from "@/lib/api/auth.api";
 import useRegistrationStore from "@/store/registrationStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Loader2, Mail, Info } from "lucide-react";
+import { AlertCircle, Loader2, Mail, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+};
 
 export default function StepEmail() {
   const { setEmail, setStep, setOtpType } = useRegistrationStore();
   const [serverError, setServerError] = useState("");
+  const [retryAfter, setRetryAfter] = useState(0);
 
   const {
     register,
@@ -23,6 +30,17 @@ export default function StepEmail() {
   } = useForm<SendOTPInput>({
     resolver: zodResolver(sendOTPSchema),
   });
+
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const interval = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [retryAfter]);
 
   const onSubmit = async (formData: SendOTPInput) => {
     setServerError("");
@@ -33,6 +51,10 @@ export default function StepEmail() {
       setStep(2);
     } catch (error: any) {
       setServerError(error.response?.data?.message || "Failed to send OTP. Try again.");
+      if (error.response?.status === 429) {
+        const retrySeconds = Number(error.response?.data?.retry_after_seconds) || 60;
+        setRetryAfter(retrySeconds);
+      }
     }
   };
 
@@ -103,9 +125,23 @@ export default function StepEmail() {
           )}
         </div>
 
+        <AnimatePresence>
+          {retryAfter > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="flex items-center justify-center gap-2 text-xs font-normal text-gray-500 dark:text-gray-400"
+            >
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>Try again in {formatCountdown(retryAfter)}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || retryAfter > 0}
           className="w-full h-11 bg-[#0a66c2] hover:bg-[#004182] text-white font-bold rounded-full transition-all active:scale-[0.98] shadow-md shadow-blue-500/10"
         >
           {isSubmitting ? (
