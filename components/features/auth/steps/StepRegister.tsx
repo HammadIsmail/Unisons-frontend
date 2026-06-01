@@ -345,8 +345,8 @@ export default function StepRegister() {
                       <SelectValue placeholder="Select Degree" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEGREES.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      {DEGREES.map((d,i) => (
+                        <SelectItem index={i+1} key={d} value={d}>{d}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -386,8 +386,8 @@ export default function StepRegister() {
                       <SelectValue placeholder="Select Semester" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                        <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((s, i) => (
+                        <SelectItem index={i+1} key={s} value={String(s)}>Semester {s}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
