@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyOpportunities, deleteOpportunity } from "@/lib/api/opportunities.api";
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -57,6 +57,34 @@ function formatDate(dateStr: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function useClientInfiniteScroll<T>(items: T[] | undefined, limit = 10) {
+  const [visibleCount, setVisibleCount] = useState(limit);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(limit);
+  }, [items, limit]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && items && visibleCount < items.length) {
+          setVisibleCount((c) => c + limit);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [items, visibleCount, limit]);
+
+  return {
+    visibleItems: items?.slice(0, visibleCount) ?? [],
+    observerTarget,
+    hasMore: items ? visibleCount < items.length : false,
+  };
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -379,16 +407,18 @@ export default function MyOpportunitiesPage() {
     },
   });
 
-  const filtered = opportunities.filter((o: any) => {
-    const matchesTab = tab === "all" ? true : o.status === tab;
-    const q = query.trim().toLowerCase();
-    const matchesQuery =
-      !q ||
-      o.title?.toLowerCase().includes(q) ||
-      o.company?.toLowerCase().includes(q) ||
-      o.tags?.some((t: string) => t.toLowerCase().includes(q));
-    return matchesTab && matchesQuery;
-  });
+  const filtered = useMemo(() => {
+    return opportunities.filter((o: any) => {
+      const matchesTab = tab === "all" ? true : o.status === tab;
+      const q = query.trim().toLowerCase();
+      const matchesQuery =
+        !q ||
+        o.title?.toLowerCase().includes(q) ||
+        o.company?.toLowerCase().includes(q) ||
+        o.tags?.some((t: string) => t.toLowerCase().includes(q));
+      return matchesTab && matchesQuery;
+    });
+  }, [opportunities, tab, query]);
 
   const counts = {
     all: opportunities.length,
@@ -396,6 +426,8 @@ export default function MyOpportunitiesPage() {
     closed: opportunities.filter((o: any) => o.status === "closed").length,
     expired: opportunities.filter((o: any) => o.deadline ? new Date(o.deadline) < new Date() : false).length,
   };
+
+  const { visibleItems: visibleFiltered, observerTarget, hasMore } = useClientInfiniteScroll(filtered);
 
   return (
     <div className="min-h-screen">
@@ -487,28 +519,33 @@ export default function MyOpportunitiesPage() {
               }}
             />
           ) : (
-            filtered.map((opp: any) => {
-              if (deleteId === opp.id) {
+            <>
+              {visibleFiltered.map((opp: any) => {
+                if (deleteId === opp.id) {
+                  return (
+                    <DeleteConfirm
+                      key={opp.id}
+                      opp={opp}
+                      onCancel={() => setDeleteId(null)}
+                      onConfirm={() => deleteMutation.mutate(opp.id)}
+                      isPending={deleteMutation.isPending}
+                    />
+                  );
+                }
+
                 return (
-                  <DeleteConfirm
+                  <OpportunityCard
                     key={opp.id}
                     opp={opp}
-                    onCancel={() => setDeleteId(null)}
-                    onConfirm={() => deleteMutation.mutate(opp.id)}
-                    isPending={deleteMutation.isPending}
+                    onEdit={() => router.push(`/opportunities/${opp.id}/edit`)}
+                    onDelete={() => setDeleteId(opp.id)}
                   />
                 );
-              }
-
-              return (
-                <OpportunityCard
-                  key={opp.id}
-                  opp={opp}
-                  onEdit={() => router.push(`/opportunities/${opp.id}/edit`)}
-                  onDelete={() => setDeleteId(opp.id)}
-                />
-              );
-            })
+              })}
+              <div ref={observerTarget} className="h-10 flex items-center justify-center">
+                {hasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
+              </div>
+            </>
           )}
         </div>
       </main>

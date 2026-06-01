@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { getOpportunities } from "@/lib/api/opportunities.api";
 import { getMyNetwork } from "@/lib/api/connections.api";
 import { getProfileSuggestions, UserSuggestion } from "@/lib/api/profiles.api";
@@ -650,14 +650,46 @@ const TAB_TYPE_MAP: Record<FilterTab, string | undefined> = {
 export default function FeedPage() {
   const { profile, role } = useAuthStore();
   const [activeTab, setActiveTab] = useState<FilterTab>("All");
-  const [page] = useState(1);
 
   const typeFilter = TAB_TYPE_MAP[activeTab];
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["feed", { page, type: typeFilter }],
-    queryFn: () => getOpportunities({ page, limit: 10, type: typeFilter }),
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["feed", { type: typeFilter }],
+    queryFn: ({ pageParam = 1 }) => getOpportunities({ page: pageParam, limit: 10, type: typeFilter }),
+    getNextPageParam: (lastPage) => {
+      const limit = 10;
+      const totalPages = Math.ceil(lastPage.total / limit);
+      return lastPage.page < totalPages ? lastPage.page + 1 : undefined;
+    },
+    initialPageParam: 1,
   });
+
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const opportunities = data?.pages.flatMap((page) => page.data) || [];
 
   const { data: connections = [], isLoading: connectionsLoading } = useQuery<Connection[]>({
     queryKey: ["my-connections", role],
@@ -727,14 +759,26 @@ export default function FeedPage() {
                 <PostSkeleton />
                 <PostSkeleton />
               </div>
-            ) : data?.data?.length ? (
-              <AnimatePresence mode="popLayout">
-                <div className="space-y-5">
-                  {data.data.map((opp: Opportunity, i: number) => (
+            ) : opportunities.length > 0 ? (
+              <div className="space-y-5">
+                <AnimatePresence mode="popLayout">
+                  {opportunities.map((opp: Opportunity, i: number) => (
                     <PostCard key={opp.id} opp={opp} index={i} />
                   ))}
+                </AnimatePresence>
+                {/* Intersection Observer Target */}
+                <div ref={observerTarget} className="h-10 flex items-center justify-center text-muted-foreground text-sm">
+                  {isFetchingNextPage ? (
+                    <div className="flex gap-1 items-center">
+                      <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                      <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                      <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce"></div>
+                    </div>
+                  ) : hasNextPage ? null : (
+                    "You've reached the end."
+                  )}
                 </div>
-              </AnimatePresence>
+              </div>
             ) : (
               <div className="flex flex-col items-center py-16 px-6 text-center rounded-3xl border border-border/60 bg-card shadow-soft">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">

@@ -1,11 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { getEvents } from "@/lib/api/events.api";
 import { EventListItem, EventType } from "@/types/api.types";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -209,14 +209,45 @@ export default function EventsPage() {
     ...(selectedType !== "all" && { type: selectedType }),
     ...(isOnlineFilter !== undefined && { is_online: isOnlineFilter }),
     status: statusFilter,
-    limit: 20,
-    offset: 0,
   };
 
-  const { data: events, isLoading } = useQuery({
+  const LIMIT = 20;
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
     queryKey: ["events", params],
-    queryFn: () => getEvents(params),
+    queryFn: ({ pageParam = 0 }) => getEvents({ ...params, limit: LIMIT, offset: pageParam * LIMIT }),
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === LIMIT ? allPages.length : undefined;
+    },
+    initialPageParam: 0,
   });
+
+  const events = data?.pages.flatMap((page) => page) || [];
+
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const canCreate = role === "alumni" || role === "admin" || role === "partner";
 
@@ -327,11 +358,25 @@ export default function EventsPage() {
             ))}
           </div>
         ) : events && events.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-             {events.map((event) => (
-                <EventCard key={event.id} event={event} />
-             ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+               {events.map((event) => (
+                  <EventCard key={event.id} event={event} />
+               ))}
+            </div>
+            {/* Intersection Observer Target */}
+            <div ref={observerTarget} className="h-10 mt-8 flex items-center justify-center text-slate-500 text-sm">
+              {isFetchingNextPage ? (
+                <div className="flex gap-1 items-center">
+                  <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce"></div>
+                </div>
+              ) : hasNextPage ? null : (
+                "You've reached the end."
+              )}
+            </div>
+          </>
         ) : (
           <div className="py-24 flex flex-col items-center justify-center text-center px-6">
             <p className="text-slate-500">No events found matching your criteria.</p>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
 
@@ -177,7 +177,6 @@ function FeaturedCardSkeleton() {
 
 export default function OpportunitiesPage() {
   const { role } = useAuthStore();
-  const [page, setPage] = useState(1);
   const [type, setType] = useState<"" | OppType>("");
   const [skill, setSkill] = useState("");
   const [isRemote, setIsRemote] = useState<boolean | undefined>(undefined);
@@ -199,16 +198,28 @@ export default function OpportunitiesPage() {
     enabled: isSearching,
   });
 
-  const { data: listData, isLoading: listLoading } = useQuery({
-    queryKey: ["opportunities", { page, type, skill, is_remote: isRemote }],
-    queryFn: () =>
+  const {
+    data: listData,
+    isLoading: listLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["opportunities-list", { type, skill, is_remote: isRemote }],
+    queryFn: ({ pageParam = 1 }) =>
       getOpportunities({
-        page,
+        page: pageParam,
         limit: 9, // 1 featured + 8 in grid
         type: type || undefined,
         skill: skill || undefined,
         is_remote: isRemote,
       }),
+    getNextPageParam: (lastPage) => {
+      const limit = 9;
+      const totalPages = Math.ceil(lastPage.total / limit);
+      return lastPage.page < totalPages ? lastPage.page + 1 : undefined;
+    },
+    initialPageParam: 1,
     enabled: !isSearching,
   });
 
@@ -223,15 +234,30 @@ export default function OpportunitiesPage() {
   // Normalize data from either API
   const opportunities: Opportunity[] = isSearching
     ? searchData ?? []
-    : listData?.data ?? [];
+    : listData?.pages.flatMap((page) => page.data) ?? [];
 
-  const totalPages = !isSearching && listData
-    ? Math.ceil(listData.total / 9)
-    : 0;
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !isSearching) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isSearching]);
 
   const totalCount = isSearching
     ? opportunities.length
-    : listData?.total ?? 0;
+    : listData?.pages[0]?.total ?? 0;
 
   const featured = opportunities[0];
   const rest = opportunities.slice(1);
@@ -266,7 +292,6 @@ export default function OpportunitiesPage() {
     setSkill("");
     setIsRemote(undefined);
     setQuery("");
-    setPage(1);
   };
 
   return (
@@ -340,7 +365,6 @@ export default function OpportunitiesPage() {
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
-                  setPage(1);
                 }}
                 placeholder="Search by role, company, or keyword…"
                 className="h-full rounded-4xl border-border bg-card/80 py-4 pl-12 pr-4 text-base shadow-sm backdrop-blur placeholder:text-muted-foreground/70"
@@ -390,7 +414,6 @@ export default function OpportunitiesPage() {
                   key={t}
                   onClick={() => {
                     setType(t === "all" ? "" : (t as OppType));
-                    setPage(1);
                   }}
                   className={cn(
                     "rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-all",
@@ -409,7 +432,6 @@ export default function OpportunitiesPage() {
             value={skill || "all"}
             onValueChange={(v) => {
               setSkill(v === "all" ? "" : v);
-              setPage(1);
             }}
           >
             <SelectTrigger className="h-9 w-[160px] rounded-full border-border bg-card text-xs">
@@ -428,7 +450,6 @@ export default function OpportunitiesPage() {
           <button
             onClick={() => {
               setIsRemote(isRemote ? undefined : true);
-              setPage(1);
             }}
             className={cn(
               "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
@@ -508,74 +529,23 @@ export default function OpportunitiesPage() {
                     />
                   ))}
                 </div>
+                {/* Intersection Observer Target */}
+                {!isSearching && (
+                  <div ref={observerTarget} className="h-10 mt-8 flex items-center justify-center text-muted-foreground text-sm">
+                    {isFetchingNextPage ? (
+                      <div className="flex gap-1 items-center">
+                        <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce"></div>
+                      </div>
+                    ) : hasNextPage ? null : (
+                      "You've reached the end."
+                    )}
+                  </div>
+                )}
               </>
             )}
           </>
-        )}
-
-        {/* ── Pagination ─────────────────────────────────────────────── */}
-        {totalPages > 1 && (
-          <nav
-            aria-label="Pagination"
-            className="mt-14 flex items-center justify-center gap-2"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-full"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Prev
-            </Button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(
-                (p) =>
-                  p === 1 || p === totalPages || Math.abs(p - page) <= 1
-              )
-              .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                if (idx > 0 && p - (arr[idx - 1] as number) > 1)
-                  acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, i) =>
-                p === "..." ? (
-                  <span
-                    key={`ellipsis-${i}`}
-                    className="px-1 text-muted-foreground"
-                  >
-                    …
-                  </span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p as number)}
-                    className={cn(
-                      "h-9 w-9 rounded-full text-sm font-medium transition-colors",
-                      page === p
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    {p}
-                  </button>
-                )
-              )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-full"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              Next
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </nav>
         )}
       </main>
     </div>

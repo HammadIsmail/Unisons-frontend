@@ -20,9 +20,37 @@ import {
 import useAuthStore from "@/store/authStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+
+function useClientInfiniteScroll<T>(items: T[] | undefined, limit = 12) {
+  const [visibleCount, setVisibleCount] = useState(limit);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(limit);
+  }, [items, limit]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && items && visibleCount < items.length) {
+          setVisibleCount((c) => c + limit);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [items, visibleCount, limit]);
+
+  return {
+    visibleItems: items?.slice(0, visibleCount) ?? [],
+    observerTarget,
+    hasMore: items ? visibleCount < items.length : false,
+  };
+}
 
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
@@ -346,6 +374,11 @@ function NetworkPageContent() {
     return "none";
   };
 
+  const { visibleItems: visibleConnections, observerTarget: connectionsObserver, hasMore: connectionsHasMore } = useClientInfiniteScroll(myConnections);
+  const { visibleItems: visibleSuggestions, observerTarget: suggestionsObserver, hasMore: suggestionsHasMore } = useClientInfiniteScroll(suggestions);
+  const { visibleItems: visibleSentRequests, observerTarget: sentRequestsObserver, hasMore: sentRequestsHasMore } = useClientInfiniteScroll(sentRequests);
+  const { visibleItems: visibleInvitations, observerTarget: invitationsObserver, hasMore: invitationsHasMore } = useClientInfiniteScroll(invitations);
+
   return (
     <div className="flex flex-col gap-8">
       {/* ── Page Header ── */}
@@ -487,32 +520,38 @@ function NetworkPageContent() {
           <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
             {myConnectionsLoading ? (
               [1, 2, 3, 4, 5].map((i) => <SuggestionCardSkeleton key={i} />)
-            ) : myConnections && myConnections.length > 0 ? (
-              myConnections.map((conn: any, index: number) => (
-                <SuggestionCard
-                  key={conn.id}
-                  person={{
-                    id: conn.id,
-                    name: conn.display_name,
-                    username: conn.username,
-                    headline: conn.bio || conn.role || conn.company || (role === "alumni" ? "Alumni" : "Student"),
-                    image: conn.profile_picture,
-                    backDropImage: conn.backDropImage,
-                  }}
-                  index={index}
-                  status="connected"
-                  onConnect={() => { }}
-                  onCancel={() => { }}
-                  onRemove={() => removeOldConnection(conn.id)}
-                  isLoading={isRemoving}
-                  onRequestCancelConfirm={() => { }}
-                  onRequestDisconnectConfirm={() =>
-                    setPendingAction({ type: "disconnect", targetId: conn.id, targetName: conn.display_name })
-                  }
-                />
-              ))
+            ) : visibleConnections.length > 0 ? (
+              <>
+                {visibleConnections.map((conn: any, index: number) => (
+                  <SuggestionCard
+                    key={conn.id}
+                    person={{
+                      id: conn.id,
+                      name: conn.display_name,
+                      username: conn.username,
+                      headline: conn.bio || conn.role || conn.company || (role === "alumni" ? "Alumni" : "Student"),
+                      image: conn.profile_picture,
+                      backDropImage: conn.backDropImage,
+                    }}
+                    index={index}
+                    status="connected"
+                    onConnect={() => { }}
+                    onCancel={() => { }}
+                    onRemove={() => removeOldConnection(conn.id)}
+                    isLoading={isRemoving}
+                    onRequestCancelConfirm={() => { }}
+                    onRequestDisconnectConfirm={() =>
+                      setPendingAction({ type: "disconnect", targetId: conn.id, targetName: conn.display_name })
+                    }
+                  />
+                ))}
+                {/* Infinite Scroll Trigger */}
+                <div ref={connectionsObserver} className="col-span-full h-10 flex items-center justify-center">
+                  {connectionsHasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
+                </div>
+              </>
             ) : (
-              <div className="w-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
+              <div className="col-span-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
                   <Users className="h-5 w-5 text-blue-400" />
                 </div>
@@ -551,25 +590,30 @@ function NetworkPageContent() {
                     </div>
                   </div>
                 ))
-              ) : invitations && invitations.length > 0 ? (
-                invitations.map((invite: any) => (
-                  <NetworkInvitationCard
-                    key={invite.sender_id}
-                    senderName={invite.sender_display_name}
-                    senderUserName={invite.sender_username}
-                    senderHeadline={
-                      invite.connection_type
-                        ? invite.connection_type.charAt(0).toUpperCase() +
-                        invite.connection_type.slice(1) +
-                        " Request"
-                        : "Connection Request"
-                    }
-                    senderImage={invite.sender_profile_picture}
-                    onAccept={() => respondInvitation({ senderId: invite.sender_id, action: "accept" })}
-                    onIgnore={() => respondInvitation({ senderId: invite.sender_id, action: "reject" })}
-                    isLoading={isResponding}
-                  />
-                ))
+              ) : visibleInvitations.length > 0 ? (
+                <>
+                  {visibleInvitations.map((invite: any) => (
+                    <NetworkInvitationCard
+                      key={invite.sender_id}
+                      senderName={invite.sender_display_name}
+                      senderUserName={invite.sender_username}
+                      senderHeadline={
+                        invite.connection_type
+                          ? invite.connection_type.charAt(0).toUpperCase() +
+                          invite.connection_type.slice(1) +
+                          " Request"
+                          : "Connection Request"
+                      }
+                      senderImage={invite.sender_profile_picture}
+                      onAccept={() => respondInvitation({ senderId: invite.sender_id, action: "accept" })}
+                      onIgnore={() => respondInvitation({ senderId: invite.sender_id, action: "reject" })}
+                      isLoading={isResponding}
+                    />
+                  ))}
+                  <div ref={invitationsObserver} className="h-10 flex items-center justify-center">
+                    {invitationsHasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
+                  </div>
+                </>
               ) : (
                 <div className="py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
                   <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3">
@@ -605,30 +649,35 @@ function NetworkPageContent() {
                   <Skeleton className="h-8 w-20 rounded-lg flex-shrink-0" />
                 </div>
               ))
-            ) : sentRequests && sentRequests.length > 0 ? (
-              sentRequests.map((request: any) => (
-                <SentRequestCard
-                  key={request.target_id}
-                  targetId={request.target_id}
-                  targetName={request.target_display_name}
-                  targetHeadline={
-                    request.connection_type
-                      ? request.connection_type.charAt(0).toUpperCase() +
-                      request.connection_type.slice(1) +
-                      " Request"
-                      : "Connection Request"
-                  }
-                  targetImage={request.target_profile_picture}
-                  onCancel={() =>
-                    setPendingAction({
-                      type: "cancel",
-                      targetId: request.target_id,
-                      targetName: request.target_display_name,
-                    })
-                  }
-                  isLoading={isCancelling}
-                />
-              ))
+            ) : visibleSentRequests.length > 0 ? (
+              <>
+                {visibleSentRequests.map((request: any) => (
+                  <SentRequestCard
+                    key={request.target_id}
+                    targetId={request.target_id}
+                    targetName={request.target_display_name}
+                    targetHeadline={
+                      request.connection_type
+                        ? request.connection_type.charAt(0).toUpperCase() +
+                        request.connection_type.slice(1) +
+                        " Request"
+                        : "Connection Request"
+                    }
+                    targetImage={request.target_profile_picture}
+                    onCancel={() =>
+                      setPendingAction({
+                        type: "cancel",
+                        targetId: request.target_id,
+                        targetName: request.target_display_name,
+                      })
+                    }
+                    isLoading={isCancelling}
+                  />
+                ))}
+                <div ref={sentRequestsObserver} className="col-span-full h-10 flex items-center justify-center">
+                  {sentRequestsHasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
+                </div>
+              </>
             ) : (
               <div className="col-span-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
                 <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-3">
@@ -670,34 +719,39 @@ function NetworkPageContent() {
           <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
             {suggestionsLoading ? (
               [1, 2, 3, 4, 5, 6].map((i) => <SuggestionCardSkeleton key={i} />)
-            ) : suggestions && suggestions.length > 0 ? (
-              suggestions.map((person: any, index: number) => (
-                <SuggestionCard
-                  key={person.id}
-                  person={{
-                    id: person.id,
-                    name: person.name,
-                    username: person.username,
-                    headline: person.headline,
-                    image: person.image,
-                    backDropImage: person.backDropImage,
-                  }}
-                  index={index}
-                  status={getStatus(person.id)}
-                  onConnect={() => handleConnect(person.id)}
-                  onCancel={() => cancelRequest(person.id)}
-                  onRemove={() => removeOldConnection(person.id)}
-                  isLoading={isConnecting || isCancelling || isRemoving}
-                  onRequestCancelConfirm={() =>
-                    setPendingAction({ type: "cancel", targetId: person.id, targetName: person.name })
-                  }
-                  onRequestDisconnectConfirm={() =>
-                    setPendingAction({ type: "disconnect", targetId: person.id, targetName: person.name })
-                  }
-                />
-              ))
+            ) : visibleSuggestions.length > 0 ? (
+              <>
+                {visibleSuggestions.map((person: any, index: number) => (
+                  <SuggestionCard
+                    key={person.id}
+                    person={{
+                      id: person.id,
+                      name: person.name,
+                      username: person.username,
+                      headline: person.headline,
+                      image: person.image,
+                      backDropImage: person.backDropImage,
+                    }}
+                    index={index}
+                    status={getStatus(person.id)}
+                    onConnect={() => handleConnect(person.id)}
+                    onCancel={() => cancelRequest(person.id)}
+                    onRemove={() => removeOldConnection(person.id)}
+                    isLoading={isConnecting || isCancelling || isRemoving}
+                    onRequestCancelConfirm={() =>
+                      setPendingAction({ type: "cancel", targetId: person.id, targetName: person.name })
+                    }
+                    onRequestDisconnectConfirm={() =>
+                      setPendingAction({ type: "disconnect", targetId: person.id, targetName: person.name })
+                    }
+                  />
+                ))}
+                <div ref={suggestionsObserver} className="col-span-full h-10 flex items-center justify-center">
+                  {suggestionsHasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
+                </div>
+              </>
             ) : (
-              <div className="w-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
+              <div className="col-span-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
                 <div className="w-12 h-12 rounded-full bg-violet-50 flex items-center justify-center mb-3">
                   <Compass className="h-5 w-5 text-violet-400" />
                 </div>

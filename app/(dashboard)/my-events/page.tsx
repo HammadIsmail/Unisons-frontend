@@ -5,6 +5,7 @@ import { getMyEvents } from "@/lib/api/events.api";
 import { EventListItem } from "@/types/api.types";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
@@ -36,6 +37,34 @@ function formatEventDate(dateStr: string) {
     year: d.getFullYear(),
     time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
     isPast: d < new Date(),
+  };
+}
+
+function useClientInfiniteScroll<T>(items: T[] | undefined, limit = 8) {
+  const [visibleCount, setVisibleCount] = useState(limit);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(limit);
+  }, [items, limit]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && items && visibleCount < items.length) {
+          setVisibleCount((c) => c + limit);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [items, visibleCount, limit]);
+
+  return {
+    visibleItems: items?.slice(0, visibleCount) ?? [],
+    observerTarget,
+    hasMore: items ? visibleCount < items.length : false,
   };
 }
 
@@ -154,9 +183,11 @@ export default function MyEventsPage() {
     queryFn: getMyEvents,
   });
 
-  const now = new Date();
-  const upcoming = events?.filter((e) => new Date(e.date) >= now) ?? [];
-  const past = events?.filter((e) => new Date(e.date) < now) ?? [];
+  const upcoming = useMemo(() => events?.filter((e) => new Date(e.date) >= new Date()) ?? [], [events]);
+  const past = useMemo(() => events?.filter((e) => new Date(e.date) < new Date()) ?? [], [events]);
+
+  const { visibleItems: visibleUpcoming, observerTarget: upcomingObserver, hasMore: upcomingHasMore } = useClientInfiniteScroll(upcoming);
+  const { visibleItems: visiblePast, observerTarget: pastObserver, hasMore: pastHasMore } = useClientInfiniteScroll(past);
 
   return (
     <div className="min-h-screen">
@@ -220,7 +251,10 @@ export default function MyEventsPage() {
                   <span className="ml-1 text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">{upcoming.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {upcoming.map((e) => <EventCard key={e.id} event={e} />)}
+                  {visibleUpcoming.map((e) => <EventCard key={e.id} event={e} />)}
+                </div>
+                <div ref={upcomingObserver} className="h-10 flex items-center justify-center mt-4">
+                  {upcomingHasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
                 </div>
               </section>
             )}
@@ -234,7 +268,10 @@ export default function MyEventsPage() {
                   <span className="ml-1 text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">{past.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 opacity-75">
-                  {past.map((e) => <EventCard key={e.id} event={e} />)}
+                  {visiblePast.map((e) => <EventCard key={e.id} event={e} />)}
+                </div>
+                <div ref={pastObserver} className="h-10 flex items-center justify-center mt-4">
+                  {pastHasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
                 </div>
               </section>
             )}

@@ -6,6 +6,7 @@ import { getMyNetwork as getAlumniNetwork, searchAlumni } from "@/lib/api/alumni
 import { getMyNetwork as getStudentNetwork } from "@/lib/api/student.api";
 import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
+import { useCallback } from "react";
 
 export function useNetwork() {
   const queryClient = useQueryClient();
@@ -53,24 +54,25 @@ export function useNetwork() {
   });
 
   // 2. Suggestions (Discover All Alumni)
+  const selectSuggestions = useCallback((data: any[]) => {
+    return data.map((item) => ({
+      id: item.id || item.alumni_id || item.user_id,
+      username: item.username,
+      name: item.display_name,
+      headline:
+        item.bio ||
+        `${item.role || ""}${item.current_company || item.company ? ` • ${item.current_company || item.company}` : ""}` ||
+        "No description available",
+      image: item.profile_picture,
+      backDropImage: item.backDropImage,
+    }));
+  }, []);
+
   const { data: suggestions, isLoading: suggestionsLoading } = useQuery({
     queryKey: ["network-suggestions"],
     queryFn: () => searchAlumni(),
     enabled: !!role,
-    select: (data: any[]) => {
-      // Normalize data for the UI
-      return data.map((item) => ({
-        id: item.id || item.alumni_id || item.user_id,
-        username: item.username,
-        name: item.display_name,
-        headline:
-          item.bio ||
-          `${item.role || ""}${item.current_company || item.company ? ` • ${item.current_company || item.company}` : ""}` ||
-          "No description available",
-        image: item.profile_picture,
-        backDropImage: item.backDropImage,
-      }));
-    }
+    select: selectSuggestions
   });
 
   // Mutations

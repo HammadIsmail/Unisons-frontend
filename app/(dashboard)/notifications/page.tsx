@@ -3,7 +3,7 @@
 import { useNotifications } from "@/hooks/useNotifications";
 import { useRouter } from "next/navigation";
 import { timeAgo } from "@/lib/utils";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,34 @@ function getInitials(name?: string | null) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
+function useClientInfiniteScroll<T>(items: T[] | undefined, limit = 15) {
+  const [visibleCount, setVisibleCount] = useState(limit);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(limit);
+  }, [items, limit]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && items && visibleCount < items.length) {
+          setVisibleCount((c) => c + limit);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [items, visibleCount, limit]);
+
+  return {
+    visibleItems: items?.slice(0, visibleCount) ?? [],
+    observerTarget,
+    hasMore: items ? visibleCount < items.length : false,
+  };
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function NotificationSkeleton() {
@@ -158,18 +186,22 @@ export default function NotificationsPage() {
     notifications.filter((n) => !n.is_read).forEach((n) => markAsRead(n.id));
   };
 
-  const filtered = notifications?.filter((n) => {
-    if (activeFilter === "All") return true;
-    if (activeFilter === "Unread") return !n.is_read;
-    const cfg = getTypeConfig(n.type);
-    return cfg.label === activeFilter;
-  }) ?? [];
+  const filtered = useMemo(() => {
+    return notifications?.filter((n) => {
+      if (activeFilter === "All") return true;
+      if (activeFilter === "Unread") return !n.is_read;
+      const cfg = getTypeConfig(n.type);
+      return cfg.label === activeFilter;
+    }) ?? [];
+  }, [notifications, activeFilter]);
 
   const todayCount = notifications?.filter((n) => {
     const d = new Date(n.created_at);
     const now = new Date();
     return d.getDate() === now.getDate() && d.getMonth() === now.getMonth();
   }).length ?? 0;
+
+  const { visibleItems: visibleFiltered, observerTarget, hasMore } = useClientInfiniteScroll(filtered);
 
   return (
     <div className="min-h-screen bg-background w-full" onClick={() => setSelectedNotification(null)}>
@@ -291,7 +323,7 @@ export default function NotificationsPage() {
         ) : filtered.length ? (
           <div className="relative space-y-4">
 
-            {filtered.map((n, idx) => {
+            {visibleFiltered.map((n, idx) => {
               const config = getTypeConfig(n.type);
               const isLast = idx === filtered.length - 1;
 
@@ -470,6 +502,9 @@ export default function NotificationsPage() {
                 </div>
               );
             })}
+            <div ref={observerTarget} className="h-10 flex items-center justify-center mt-2">
+              {hasMore && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
+            </div>
           </div>
         ) : (
           /* ── Empty state ── */
