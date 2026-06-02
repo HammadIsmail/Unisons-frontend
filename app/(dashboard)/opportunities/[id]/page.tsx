@@ -100,6 +100,48 @@ export default function OpportunityDetailPage() {
   const [saved, setSaved] = useState(false);
   const [confirm, setConfirm] = useState(false);
 
+  // Load saved state from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("saved_opportunities");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setSaved(parsed.includes(id));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load saved state from localStorage:", e);
+    }
+  }, [id]);
+
+  const toggleSave = () => {
+    setSaved((prev) => {
+      const next = !prev;
+      try {
+        const stored = localStorage.getItem("saved_opportunities");
+        let parsed: string[] = [];
+        if (stored) {
+          const parsedVal = JSON.parse(stored);
+          if (Array.isArray(parsedVal)) {
+            parsed = parsedVal;
+          }
+        }
+        if (next) {
+          if (!parsed.includes(id)) {
+            parsed.push(id);
+          }
+        } else {
+          parsed = parsed.filter((item) => item !== id);
+        }
+        localStorage.setItem("saved_opportunities", JSON.stringify(parsed));
+      } catch (e) {
+        console.error("Failed to save opportunity to localStorage:", e);
+      }
+      return next;
+    });
+  };
+
   // Handle Next.js hydration for Zustand persist
   useEffect(() => {
     setProfile(authState.profile);
@@ -182,7 +224,7 @@ export default function OpportunityDetailPage() {
               variant="ghost"
               size="sm"
               className="gap-1.5 text-ink-soft hover:text-ink"
-              onClick={() => setSaved((s) => !s)}
+              onClick={toggleSave}
             >
               <Bookmark className={`h-4 w-4 ${saved ? "fill-ink text-ink" : ""}`} />
               {saved ? "Saved" : "Save"}

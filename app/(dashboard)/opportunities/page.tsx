@@ -181,7 +181,22 @@ export default function OpportunitiesPage() {
   const [skill, setSkill] = useState("");
   const [isRemote, setIsRemote] = useState<boolean | undefined>(undefined);
   const [query, setQuery] = useState("");
+  const [showSaved, setShowSaved] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("saved_opportunities");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setSaved(new Set(parsed));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load saved opportunities from localStorage:", e);
+    }
+  }, []);
 
   // Use search API when there's a query, else use list API
   const isSearching = !!query;
@@ -259,9 +274,14 @@ export default function OpportunitiesPage() {
     ? opportunities.length
     : listData?.pages[0]?.total ?? 0;
 
-  const featured = opportunities[0];
-  const rest = opportunities.slice(1);
-  const hasActiveFilters = !!(type || skill || isRemote || query);
+  // When the "Saved" filter is active, restrict to bookmarked opportunities
+  const visibleOpportunities = showSaved
+    ? opportunities.filter((o) => saved.has(o.id))
+    : opportunities;
+
+  const featured = visibleOpportunities[0];
+  const rest = visibleOpportunities.slice(1);
+  const hasActiveFilters = !!(type || skill || isRemote || query || showSaved);
 
   const stats = [
     { label: "Open roles", value: totalCount, Icon: Briefcase },
@@ -281,8 +301,16 @@ export default function OpportunitiesPage() {
   const toggleSave = (id: string) => {
     setSaved((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      try {
+        localStorage.setItem("saved_opportunities", JSON.stringify(Array.from(next)));
+      } catch (e) {
+        console.error("Failed to save opportunities to localStorage:", e);
+      }
       return next;
     });
   };
@@ -292,6 +320,7 @@ export default function OpportunitiesPage() {
     setSkill("");
     setIsRemote(undefined);
     setQuery("");
+    setShowSaved(false);
   };
 
   return (
@@ -462,6 +491,31 @@ export default function OpportunitiesPage() {
             Remote only
           </button>
 
+          <button
+            onClick={() => setShowSaved((p) => !p)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+              showSaved
+                ? "border-transparent bg-foreground text-background shadow-sm"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Bookmark className={cn("h-3.5 w-3.5", showSaved && "fill-current")} />
+            Saved
+            {saved.size > 0 && (
+              <span
+                className={cn(
+                  "ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold",
+                  showSaved
+                    ? "bg-background text-foreground"
+                    : "bg-foreground/10 text-foreground"
+                )}
+              >
+                {saved.size}
+              </span>
+            )}
+          </button>
+
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -491,10 +545,11 @@ export default function OpportunitiesPage() {
               </div>
             </div>
           </>
-        ) : opportunities.length === 0 ? (
+        ) : visibleOpportunities.length === 0 ? (
           <EmptyState
             onClear={clearFilters}
             hasActiveFilters={hasActiveFilters}
+            isSavedFilter={showSaved}
           />
         ) : (
           <>
@@ -918,20 +973,28 @@ function PostedBy({
 function EmptyState({
   onClear,
   hasActiveFilters,
+  isSavedFilter,
 }: {
   onClear: () => void;
   hasActiveFilters: boolean;
+  isSavedFilter?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card/50 px-6 py-20 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-        <SearchX className="h-6 w-6 text-muted-foreground" />
+        {isSavedFilter ? (
+          <Bookmark className="h-6 w-6 text-muted-foreground" />
+        ) : (
+          <SearchX className="h-6 w-6 text-muted-foreground" />
+        )}
       </div>
       <h3 className="mt-5 text-lg font-semibold text-foreground">
-        No opportunities found
+        {isSavedFilter ? "No saved opportunities" : "No opportunities found"}
       </h3>
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-        {hasActiveFilters
+        {isSavedFilter
+          ? "Bookmark opportunities you\'re interested in and they\'ll appear here."
+          : hasActiveFilters
           ? "Try adjusting your filters or search terms to see more results."
           : "No opportunities have been posted yet. Check back soon."}
       </p>
