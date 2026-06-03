@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { getEvents } from "@/lib/api/events.api";
+import { getEvents, getMyEvents } from "@/lib/api/events.api";
 import { EventListItem, EventType } from "@/types/api.types";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
@@ -201,6 +201,8 @@ export default function EventsPage() {
   const [isOnlineFilter, setIsOnlineFilter] = useState<boolean | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<"upcoming" | "past">("upcoming");
 
+  const [showMyEvents, setShowMyEvents] = useState(false);
+
   useEffect(() => {
     setRole(authState.role);
   }, [authState.role]);
@@ -213,9 +215,15 @@ export default function EventsPage() {
 
   const LIMIT = 20;
 
+  const { data: myEventsData, isLoading: isLoadingMyEvents } = useQuery({
+    queryKey: ["my-events"],
+    queryFn: getMyEvents,
+    enabled: showMyEvents,
+  });
+
   const {
-    data,
-    isLoading,
+    data: allEventsData,
+    isLoading: isLoadingAllEvents,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -226,16 +234,20 @@ export default function EventsPage() {
       return lastPage.length === LIMIT ? allPages.length : undefined;
     },
     initialPageParam: 0,
+    enabled: !showMyEvents,
   });
 
-  const events = data?.pages.flatMap((page) => page) || [];
+  const isLoading = showMyEvents ? isLoadingMyEvents : isLoadingAllEvents;
+  const events = showMyEvents 
+    ? (myEventsData || []) 
+    : (allEventsData?.pages.flatMap((page) => page) || []);
 
   const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !showMyEvents) {
           fetchNextPage();
         }
       },
@@ -247,7 +259,7 @@ export default function EventsPage() {
     }
 
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, showMyEvents]);
 
   const canCreate = role === "alumni" || role === "admin" || role === "partner";
 
@@ -308,6 +320,19 @@ export default function EventsPage() {
 
           {/* Right-side toggles */}
           <div className="flex flex-row items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0" style={{ scrollbarWidth: "none" }}>
+            {/* My Events */}
+            <button
+              onClick={() => setShowMyEvents((p) => !p)}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors shrink-0 ${
+                showMyEvents
+                  ? "border-transparent bg-blue-600 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              My Events
+            </button>
+
             {/* Online/Offline */}
             <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium shrink-0">
               {(
@@ -365,17 +390,19 @@ export default function EventsPage() {
                ))}
             </div>
             {/* Intersection Observer Target */}
-            <div ref={observerTarget} className="h-10 mt-8 flex items-center justify-center text-slate-500 text-sm">
-              {isFetchingNextPage ? (
-                <div className="flex gap-1 items-center">
-                  <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce"></div>
-                </div>
-              ) : hasNextPage ? null : (
-                "You've reached the end."
-              )}
-            </div>
+            {!showMyEvents && (
+              <div ref={observerTarget} className="h-10 mt-8 flex items-center justify-center text-slate-500 text-sm">
+                {isFetchingNextPage ? (
+                  <div className="flex gap-1 items-center">
+                    <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce"></div>
+                  </div>
+                ) : hasNextPage ? null : (
+                  "You've reached the end."
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className="py-24 flex flex-col items-center justify-center text-center px-6">

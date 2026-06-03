@@ -142,6 +142,7 @@ export default function EventDetailPage() {
     mutationFn: (status: RSVPStatus) => rsvpToEvent(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event", id] });
+      queryClient.invalidateQueries({ queryKey: ["event-attendees", id] });
     },
   });
 
@@ -149,6 +150,7 @@ export default function EventDetailPage() {
     mutationFn: () => cancelRsvp(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event", id] });
+      queryClient.invalidateQueries({ queryKey: ["event-attendees", id] });
     },
   });
 
@@ -177,7 +179,7 @@ export default function EventDetailPage() {
   const typeMeta = TYPE_META[event.type] ?? TYPE_META.other;
   const dateInfo = formatDate(event.date);
   const isOwner = event.host?.id && profile?.id && String(event.host.id) === String(profile.id);
-  const canRsvp = role === "alumni" || role === "admin";
+  const canRsvp = (role === "alumni" || role === "admin" || role === "partner") && !isOwner;
   const myRsvp = event.my_rsvp_status;
 
   return (
@@ -248,14 +250,10 @@ export default function EventDetailPage() {
 
           {/* RSVP bar */}
           {canRsvp && !dateInfo.isPast && (
-            <div className="mt-8 flex flex-wrap gap-3">
-              {myRsvp ? (
+            <div className="mt-8 flex items-center flex-wrap gap-3">
+              {myRsvp && myRsvp !== "none" ? (
                 <>
-                  <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border ${
-                    myRsvp === "attending"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200"
-                  }`}>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border bg-blue-100 text-blue-700 border-blue-200`}>
                     <CheckCircle2 className="h-4 w-4" />
                     {myRsvp === "attending" ? "You're attending" : "Maybe attending"}
                   </div>
@@ -271,12 +269,12 @@ export default function EventDetailPage() {
               ) : (
                 <>
                   <Button
-                    className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/25"
+                    className="gap-2 bg-white !text-blue-600 !border !border-blue-600 hover:scale-103"
                     onClick={() => rsvpMutation.mutate("attending")}
                     disabled={rsvpMutation.isPending}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    {rsvpMutation.isPending ? "Saving…" : "Attend"}
+                    {rsvpMutation.isPending ? "Saving…" : "I'm in!"}
                   </Button>
                   <Button
                     variant="outline"

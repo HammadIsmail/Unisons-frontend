@@ -346,7 +346,7 @@ export interface UserByUsername {
 
 // ── Events ────────────────────────────────────────
 export type EventType = "reunion" | "webinar" | "workshop" | "networking" | "other";
-export type RSVPStatus = "attending" | "maybe";
+export type RSVPStatus = "attending" | "maybe" | "none";
 
 export interface EventHost {
   id: string;
