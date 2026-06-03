@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { getOpportunities } from "@/lib/api/opportunities.api";
+import { getFeed } from "@/lib/api/feed.api";
 import { getMyNetwork } from "@/lib/api/connections.api";
 import { getProfileSuggestions, UserSuggestion } from "@/lib/api/profiles.api";
 import { getSkillTrends } from "@/lib/api/network.api";
@@ -34,10 +34,12 @@ import {
   Home,
   Users,
   Compass,
+  Megaphone,
+  CalendarDays,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import type { Opportunity, Connection, SkillTrends } from "@/types/api.types";
+import type { FeedItem, Connection, SkillTrends } from "@/types/api.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,11 +187,27 @@ function Caption({ text }: { text: string }) {
   );
 }
 
-// ─── Post Card ────────────────────────────────────────────────────────────────
+// ─── Feed Card ────────────────────────────────────────────────────────────────
 
-function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
-  const meta = TYPE_META[opp.type] ?? TYPE_META["job"];
-  const dl = formatDeadline(opp.deadline);
+function FeedCard({ item, index }: { item: FeedItem; index: number }) {
+  let badgeLabel = "";
+  let badgeIcon: React.ReactNode = <Briefcase className="h-3 w-3" />;
+  let badgeClass = "bg-primary/10 text-primary ring-1 ring-primary/20";
+
+  if (item.type === "announcement") {
+    badgeLabel = "Announcement";
+    badgeIcon = <Megaphone className="h-3 w-3" />;
+    badgeClass = "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
+  } else if (item.type === "opportunity") {
+    const meta = TYPE_META[item.opportunity_type] ?? TYPE_META["job"];
+    badgeLabel = meta.label;
+    badgeIcon = meta.icon;
+    badgeClass = meta.pillClass;
+  } else if (item.type === "event") {
+    badgeLabel = item.event_type ? item.event_type.charAt(0).toUpperCase() + item.event_type.slice(1) : "Event";
+    badgeIcon = <CalendarDays className="h-3 w-3" />;
+    badgeClass = "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
+  }
 
   return (
     <motion.article
@@ -199,123 +217,139 @@ function PostCard({ opp, index }: { opp: Opportunity; index: number }) {
       className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-soft transition-shadow hover:shadow-elevated"
     >
       {/* Header */}
-<div className="flex items-start gap-3 px-3 sm:px-5 pt-4 sm:pt-5">
-  <Link href={`/profile/${opp.posted_by.id}`} className="flex-shrink-0">
-    <Avatar className="h-7 w-7 sm:h-9 sm:w-9 ring-2 ring-primary/10">
-      <AvatarImage src={opp.posted_by.profile_picture ?? undefined} />
-      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-xs">
-        {getInitials(opp.posted_by.display_name)}
-      </AvatarFallback>
-    </Avatar>
-  </Link>
+      <div className="flex items-start gap-3 px-3 sm:px-5 pt-4 sm:pt-5">
+        <Link href={`/profile/${item.author.id}`} className="flex-shrink-0">
+          <Avatar className="h-7 w-7 sm:h-9 sm:w-9 ring-2 ring-primary/10">
+            <AvatarImage src={item.author.profile_picture ?? undefined} />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-xs">
+              {getInitials(item.author.display_name)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
 
-  {/* middle section MUST be allowed to shrink properly */}
-  <div className="min-w-0 flex-1">
-    
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-      <Link href={`/profile/${opp.posted_by.id}`} className="min-w-0">
-        <h4 className="truncate text-[12px] sm:text-base font-semibold hover:text-primary transition-colors">
-          {opp.posted_by.display_name}
-        </h4>
-      </Link>
+        {/* middle section MUST be allowed to shrink properly */}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Link href={`/profile/${item.author.id}`} className="min-w-0">
+              <h4 className="truncate text-[12px] sm:text-base font-semibold hover:text-primary transition-colors">
+                {item.author.display_name}
+              </h4>
+            </Link>
 
-      <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-        · {timeAgo(opp.posted_at)}
-      </span>
-    </div>
+            <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+              · {timeAgo(item.created_at)}
+            </span>
+          </div>
 
-    <p className="truncate text-[11px] sm:text-sm text-muted-foreground">
-      {opp.posted_by.role}
-    </p>
-  </div>
+          <p className="truncate text-[11px] sm:text-sm text-muted-foreground">
+            {item.author.role}
+          </p>
+        </div>
 
-  {/* badge */}
-  <span
-    className={`
-      flex items-center gap-1 flex-shrink-0
-      rounded-full
-      px-2 py-0.5 sm:px-2.5 sm:py-1
-      text-[9px] sm:text-[10px]
-      font-semibold
-      whitespace-nowrap
-      ${meta.pillClass}
-    `}
-  >
-    {meta.icon}
-    <span className="">{meta.label}</span>
-  </span>
-</div>
+        {/* badge */}
+        <span
+          className={`
+            flex items-center gap-1 flex-shrink-0
+            rounded-full
+            px-2 py-0.5 sm:px-2.5 sm:py-1
+            text-[9px] sm:text-[10px]
+            font-semibold
+            whitespace-nowrap
+            ${badgeClass}
+          `}
+        >
+          {badgeIcon}
+          <span className="">{badgeLabel}</span>
+        </span>
+      </div>
 
       {/* Caption */}
       <div className="px-5 pt-3">
-        <Caption text={opp.description ?? ""} />
+        <Caption text={item.type === "announcement" ? item.description : (item.title || "")} />
       </div>
 
       {/* Media */}
-      {opp.media && opp.media.length > 0 && (
+      {item.media_url && (
         <div className="mt-4 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={opp.media[0]}
-            alt="Opportunity media"
+            src={item.media_url}
+            alt="Media"
             className="aspect-[16/9] w-full object-cover"
             loading="lazy"
           />
         </div>
       )}
 
-      {/* Opportunity preview card */}
-      <div className="mx-5 mt-4 rounded-2xl border border-border/70 bg-gradient-to-br from-secondary/40 to-transparent p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-sm md:text-base font-semibold">{opp.title}</h3>
-            <p className="text-xs md:text-sm text-muted-foreground">{opp.company}</p>
+      {/* Item preview card */}
+      {item.type !== "announcement" && (
+        <div className="mx-5 mt-4 rounded-2xl border border-border/70 bg-gradient-to-br from-secondary/40 to-transparent p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate text-sm md:text-base font-semibold">{item.title}</h3>
+              {item.type === "opportunity" && <p className="text-xs md:text-sm text-muted-foreground">{item.company_name}</p>}
+              {item.type === "event" && <p className="text-xs md:text-sm text-muted-foreground">{item.location || "Online"}</p>}
+            </div>
+            <Link
+              href={item.type === "opportunity" ? `/opportunities/${item.id}` : `/events/${item.id}`}
+              className="group flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] md:px-4 md:py-2 md:text-xs text-blue-600 border border-blue-600 shadow-sm transition-transform hover:scale-105"
+            >
+              View
+              <ArrowRight className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
-<Link
-  href={`/opportunities/${opp.id}`}
-  className="group flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] md:px-4 md:py-2 md:text-xs text-blue-600 border border-blue-600 shadow-sm transition-transform hover:scale-105"
->
-  View
-  <ArrowRight className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 transition-transform group-hover:translate-x-0.5" />
-</Link>
-        </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-          {opp.location && (
-            <span className="flex items-center gap-1 text-xs md:text-sm">
-              <MapPin className="h-3 w-3" />
-              {opp.location}
-            </span>
-          )}
-          {opp.is_remote && (
-            <span className="flex items-center gap-1 text-emerald-600 text-xs md:text-sm">
-              <Wifi className="h-3 w-3" />
-              Remote
-            </span>
-          )}
-          <span className={`flex items-center gap-1 ${dl.urgent ? "text-amber-600 font-medium" : ""} text-xs md:text-sm`}>
-            <CalendarClock className="h-3 w-3" />
-            {dl.urgent ? dl.label : `Due ${dl.label}`}
-          </span>
-        </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {item.type === "opportunity" && item.location && (
+              <span className="flex items-center gap-1 text-xs md:text-sm">
+                <MapPin className="h-3 w-3" />
+                {item.location}
+              </span>
+            )}
+            {item.type === "opportunity" && item.is_remote && (
+              <span className="flex items-center gap-1 text-emerald-600 text-xs md:text-sm">
+                <Wifi className="h-3 w-3" />
+                Remote
+              </span>
+            )}
+            {item.type === "opportunity" && (
+              <span className={`flex items-center gap-1 ${formatDeadline(item.deadline).urgent ? "text-amber-600 font-medium" : ""} text-xs md:text-sm`}>
+                <CalendarClock className="h-3 w-3" />
+                {formatDeadline(item.deadline).urgent ? formatDeadline(item.deadline).label : `Due ${formatDeadline(item.deadline).label}`}
+              </span>
+            )}
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {opp.required_skills?.slice(0, 4).map((s) => (
-            <span key={s} className="rounded-full bg-card px-2.5 py-0.5 md:px-2.5 md:py-1 text-[9px] md:text-[11px] font-medium text-foreground/80 ring-1 ring-border">
-              {s}
-            </span>
-          ))}
-          {opp.required_skills && opp.required_skills.length > 4 && (
-            <span className="rounded-full px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-              +{opp.required_skills.length - 4} more
-            </span>
-          )}
+            {item.type === "event" && (
+              <span className="flex items-center gap-1 text-xs md:text-sm">
+                <CalendarDays className="h-3 w-3" />
+                {new Date(item.event_date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "numeric" })}
+              </span>
+            )}
+            {item.type === "event" && item.is_online && (
+              <span className="flex items-center gap-1 text-emerald-600 text-xs md:text-sm">
+                <Wifi className="h-3 w-3" />
+                Online
+              </span>
+            )}
+            {item.type === "event" && !item.is_online && item.location && (
+              <span className="flex items-center gap-1 text-xs md:text-sm">
+                <MapPin className="h-3 w-3" />
+                {item.location}
+              </span>
+            )}
+            {item.type === "event" && (
+              <span className="flex items-center gap-1 text-xs md:text-sm">
+                <Users className="h-3 w-3" />
+                {item.attendee_count} attending
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Footer */}
       <div className="mt-3 flex items-center justify-end border-t border-border/60 px-3 py-2">
-        <CopyLinkButton id={opp.id} />
+        <CopyLinkButton id={item.id} />
       </div>
     </motion.article>
   );
@@ -635,14 +669,14 @@ function MakeMoreConnections({
 
 // ─── Feed filter tabs ─────────────────────────────────────────────────────────
 
-const FILTER_TABS = ["All", "Jobs", "Internships", "Freelance"] as const;
+const FILTER_TABS = ["All", "Announcements", "Opportunities", "Events"] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
 const TAB_TYPE_MAP: Record<FilterTab, string | undefined> = {
   All: undefined,
-  Jobs: "job",
-  Internships: "internship",
-  Freelance: "freelance",
+  Announcements: "announcement",
+  Opportunities: "opportunity",
+  Events: "event",
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -661,7 +695,7 @@ export default function FeedPage() {
     fetchNextPage,
   } = useInfiniteQuery({
     queryKey: ["feed", { type: typeFilter }],
-    queryFn: ({ pageParam = 1 }) => getOpportunities({ page: pageParam, limit: 10, type: typeFilter }),
+    queryFn: ({ pageParam = 1 }) => getFeed({ page: pageParam, limit: 10, type: typeFilter }),
     getNextPageParam: (lastPage) => {
       const limit = 10;
       const totalPages = Math.ceil(lastPage.total / limit);
@@ -689,7 +723,7 @@ export default function FeedPage() {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const opportunities = data?.pages.flatMap((page) => page.data) || [];
+  const feedItems = data?.pages.flatMap((page) => page.data) || [];
 
   const { data: connections = [], isLoading: connectionsLoading } = useQuery<Connection[]>({
     queryKey: ["my-connections", role],
@@ -735,7 +769,7 @@ export default function FeedPage() {
 
             {/* Filter + heading */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">
-              <h2 className="text-lg font-semibold tracking-tight">Latest opportunities</h2>
+              <h2 className="text-lg font-semibold tracking-tight">Discovery Feed</h2>
               <div className="flex gap-1 rounded-full border border-border bg-card p-1 overflow-x-auto max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {FILTER_TABS.map((t) => (
                   <button
@@ -759,11 +793,11 @@ export default function FeedPage() {
                 <PostSkeleton />
                 <PostSkeleton />
               </div>
-            ) : opportunities.length > 0 ? (
+            ) : feedItems.length > 0 ? (
               <div className="space-y-5">
                 <AnimatePresence mode="popLayout">
-                  {opportunities.map((opp: Opportunity, i: number) => (
-                    <PostCard key={opp.id} opp={opp} index={i} />
+                  {feedItems.map((item: FeedItem, i: number) => (
+                    <FeedCard key={item.id} item={item} index={i} />
                   ))}
                 </AnimatePresence>
                 {/* Intersection Observer Target */}
@@ -782,11 +816,11 @@ export default function FeedPage() {
             ) : (
               <div className="flex flex-col items-center py-16 px-6 text-center rounded-3xl border border-border/60 bg-card shadow-soft">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Briefcase className="h-7 w-7 text-primary" />
+                  <Megaphone className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="text-base font-bold">No opportunities yet</h3>
+                <h3 className="text-base font-bold">No items found</h3>
                 <p className="text-sm text-muted-foreground mt-1 max-w-[240px]">
-                  Be the first to share something with the community.
+                  There is no activity in this feed yet.
                 </p>
                 {role === "alumni" && (
                   <Link

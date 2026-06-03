@@ -416,3 +416,62 @@ export interface Conversation {
   };
   participantProfile: ParticipantProfile;
 }
+
+// ── Feed ──────────────────────────────────────────
+export interface FeedAuthor {
+  id: string;
+  display_name: string;
+  username?: string;
+  profile_picture?: string;
+  role: string;
+}
+
+export interface FeedAnnouncement {
+  type: "announcement";
+  id: string;
+  title: string;
+  description: string;
+  created_at: string;
+  media_url?: string;
+  media_type?: string;
+  author: FeedAuthor;
+}
+
+export interface FeedOpportunity {
+  type: "opportunity";
+  id: string;
+  title: string;
+  company_name: string;
+  location: string;
+  is_remote: boolean;
+  opportunity_type: "job" | "internship" | "freelance";
+  apply_link: string;
+  deadline: string;
+  media_url?: string;
+  created_at: string;
+  author: FeedAuthor;
+}
+
+export interface FeedEvent {
+  type: "event";
+  id: string;
+  title: string;
+  event_date: string;
+  event_type: string;
+  location: string;
+  is_online: boolean;
+  meeting_link?: string | null;
+  max_attendees?: number | null;
+  attendee_count: number;
+  media_url?: string;
+  created_at: string;
+  author: FeedAuthor;
+}
+
+export type FeedItem = FeedAnnouncement | FeedOpportunity | FeedEvent;
+
+export interface PaginatedFeed {
+  total: number;
+  page: number;
+  data: FeedItem[];
+}
