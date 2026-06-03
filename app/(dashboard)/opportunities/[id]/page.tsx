@@ -94,11 +94,14 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const authState = useAuthStore();
-  const [profile, setProfile] = useState(authState.profile);
-  const [role, setRole] = useState(authState.role);
+  const { profile, role } = useAuthStore();
+  const [isMounted, setIsMounted] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirm, setConfirm] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Load saved state from localStorage
   useEffect(() => {
@@ -142,11 +145,7 @@ export default function OpportunityDetailPage() {
     });
   };
 
-  // Handle Next.js hydration for Zustand persist
-  useEffect(() => {
-    setProfile(authState.profile);
-    setRole(authState.role);
-  }, [authState.profile, authState.role]);
+
 
   const { data: opp, isLoading } = useQuery({
     queryKey: ["opportunity", id],
@@ -162,7 +161,8 @@ export default function OpportunityDetailPage() {
   });
 
   const posterId = opp?.posted_by?.id || (opp?.posted_by as any)?._id;
-  const isOwner = posterId && profile?.id && String(posterId) === String(profile?.id);
+  const profileId = profile?.id || (profile as any)?._id;
+  const isOwner = isMounted && Boolean(posterId && profileId && String(posterId) === String(profileId));
 
   const isExpired = opp?.deadline ? new Date(opp.deadline) < new Date() : false;
 
