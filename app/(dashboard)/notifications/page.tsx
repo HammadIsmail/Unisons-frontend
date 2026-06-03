@@ -145,25 +145,43 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("All");
 
-  const [selectedNotification, setSelectedNotification] = useState<string | null>(null);
+  const [swipedNotification, setSwipedNotification] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const holdTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
-  const startPress = (id: string) => {
-    holdTimer.current = setTimeout(() => {
-      setSelectedNotification(id);
-    }, 600); // hold for 600ms
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+    touchStartX.current = e.touches[0].clientX;
   };
 
-  const cancelPress = () => {
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current);
+  const handleTouchMove = (e: React.TouchEvent, id: string) => {
+    if (touchStartX.current === null) return;
+    const currentX = e.touches[0].clientX;
+    const diff = touchStartX.current - currentX;
+
+    if (diff > 40) {
+      setSwipedNotification(id);
+      touchStartX.current = null;
+    } else if (diff < -40) {
+      if (swipedNotification === id) {
+        setSwipedNotification(null);
+      }
+      touchStartX.current = null;
     }
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteNotification(id);
-    setSelectedNotification(null);
+  const handleTouchEnd = () => {
+    touchStartX.current = null;
+  };
+
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+    deleteNotification(id, {
+      onSettled: () => {
+        setDeletingId(null);
+      },
+    });
+    setSwipedNotification(null);
   };
 
   const {
@@ -204,7 +222,7 @@ export default function NotificationsPage() {
   const { visibleItems: visibleFiltered, observerTarget, hasMore } = useClientInfiniteScroll(filtered);
 
   return (
-    <div className="min-h-screen bg-background w-full" onClick={() => setSelectedNotification(null)}>
+    <div className="min-h-screen bg-background w-full" onClick={() => setSwipedNotification(null)}>
 
       {/* ── Sticky top bar ──────────────────────────────────────────────── */}
       <div className="border-b border-border/60 bg-background/80 backdrop-blur-sm sticky top-0 z-20">
@@ -330,22 +348,27 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={n.id}
-                  onTouchStart={() => startPress(n.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  onTouchEnd={cancelPress}
-                  onTouchMove={cancelPress}
-                  onMouseLeave={cancelPress}
+                  onTouchStart={(e) => handleTouchStart(e, n.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (swipedNotification && swipedNotification !== n.id) {
+                      setSwipedNotification(null);
+                    }
+                  }}
+                  onTouchMove={(e) => handleTouchMove(e, n.id)}
+                  onTouchEnd={handleTouchEnd}
+                  onMouseLeave={handleTouchEnd}
                   className={`
     group relative overflow-hidden flex gap-3 sm:gap-4 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl
     border transition-all duration-300
 
-    ${selectedNotification && selectedNotification !== n.id
-                      ? "blur-sm scale-[0.98] opacity-40"
+    ${swipedNotification && swipedNotification !== n.id
+                      ? "blur-[1px] scale-[0.98] opacity-60"
                       : ""
                     }
 
-    ${selectedNotification === n.id
-                      ? "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-800 scale-[1.02]"
+    ${swipedNotification === n.id
+                      ? "bg-red-50/50 border-red-200 dark:bg-red-950/10 dark:border-red-900/50"
                       : !n.is_read
                         ? "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900"
                         : "bg-gray-50 border-gray-200 dark:bg-white/[0.03] dark:border-white/10"
@@ -384,6 +407,7 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0 space-y-2">
                     {/* Meta row */}
                     <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex flex-col items-start gap-2">
                       <span
                         className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ring-1 ${config.pill}`}
                       >
@@ -394,6 +418,7 @@ export default function NotificationsPage() {
                           @{n.sender_username}
                         </span>
                       )}
+                      </div>
                       <span className="flex items-center gap-1 text-[11px] text-muted-foreground/50 ml-auto">
                         <Clock className="h-3 w-3" />
                         {timeAgo(n.created_at)}
@@ -440,65 +465,30 @@ export default function NotificationsPage() {
                     </div>
                   </div>
 
-                  {/* Delete */}
-{/* Desktop hover delete */}
-{selectedNotification !== n.id && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      handleDelete(n.id);
-    }}
-    disabled={isDeletingNotification}
-    className="
-      hidden md:flex
-      absolute top-0 right-0 h-full w-[5%] min-w-[52px]
-      translate-x-full group-hover:translate-x-0
-      transition-transform duration-300 ease-out
-      bg-red-600 hover:bg-rose-700
-      items-center justify-center
-      rounded-tr-2xl rounded-br-2xl
-      z-10
-    "
-  >
-    {isDeletingNotification ? (
-      <Loader2 className="h-4 w-4 animate-spin text-white" />
-    ) : (
-      <Trash2 className="h-4 w-4 text-white" />
-    )}
-  </button>
-)}
-
-{/* Mobile long press delete mode */}
-{selectedNotification === n.id && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      handleDelete(n.id);
-    }}
-    disabled={isDeletingNotification}
-    className="
-      md:hidden
-      absolute inset-0 z-20
-      flex items-center justify-center
-      bg-red-600/10 backdrop-blur-[2px]
-    "
-  >
-    <div
-      className="
-        h-14 w-14 rounded-full
-        bg-red-600 hover:bg-red-700
-        flex items-center justify-center
-        shadow-lg transition-all duration-200 active:scale-90
-      "
-    >
-      {isDeletingNotification ? (
-        <Loader2 className="h-6 w-6 animate-spin text-white" />
-      ) : (
-        <Trash2 className="h-6 w-6 text-white" />
-      )}
-    </div>
-  </button>
-)}
+                  {/* Delete Button (Unified for Desktop and Mobile) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(n.id);
+                    }}
+                    disabled={deletingId === n.id}
+                    className={`
+                      flex
+                      absolute top-0 right-0 h-full w-[5%] min-w-[52px]
+                      transition-transform duration-300 ease-out
+                      bg-red-600 hover:bg-rose-700
+                      items-center justify-center
+                      rounded-tr-xl sm:rounded-tr-2xl rounded-br-xl sm:rounded-br-2xl
+                      z-10
+                      ${swipedNotification === n.id ? "translate-x-0" : "translate-x-full md:group-hover:translate-x-0"}
+                    `}
+                  >
+                    {deletingId === n.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 text-white" />
+                    )}
+                  </button>
                 </div>
               );
             })}
