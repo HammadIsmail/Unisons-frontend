@@ -5,7 +5,7 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
 
-import { getOpportunities } from "@/lib/api/opportunities.api";
+import { getOpportunities, getMyOpportunities } from "@/lib/api/opportunities.api";
 import { searchOpportunities } from "@/lib/api/search.api";
 import { getAllSkills } from "@/lib/api/skill.api";
 import { Opportunity } from "@/types/api.types";
@@ -176,12 +176,13 @@ function FeaturedCardSkeleton() {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function OpportunitiesPage() {
-  const { role } = useAuthStore();
+  const { role, profile } = useAuthStore();
   const [type, setType] = useState<"" | OppType>("");
   const [skill, setSkill] = useState("");
   const [isRemote, setIsRemote] = useState<boolean | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [showSaved, setShowSaved] = useState(false);
+  const [showMyOpportunities, setShowMyOpportunities] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -210,7 +211,7 @@ export default function OpportunitiesPage() {
         skill: skill || undefined,
         is_remote: isRemote,
       }),
-    enabled: isSearching,
+    enabled: isSearching && !showMyOpportunities,
   });
 
   const {
@@ -235,7 +236,13 @@ export default function OpportunitiesPage() {
       return lastPage.page < totalPages ? lastPage.page + 1 : undefined;
     },
     initialPageParam: 1,
-    enabled: !isSearching,
+    enabled: !isSearching && !showMyOpportunities,
+  });
+
+  const { data: myOpportunitiesData, isLoading: myOpportunitiesLoading } = useQuery({
+    queryKey: ["my-opportunities"],
+    queryFn: getMyOpportunities,
+    enabled: showMyOpportunities,
   });
 
   const { data: skills } = useQuery({
@@ -244,19 +251,39 @@ export default function OpportunitiesPage() {
     staleTime: Infinity,
   });
 
-  const isLoading = isSearching ? searchLoading : listLoading;
+  const isLoading = showMyOpportunities 
+    ? myOpportunitiesLoading 
+    : isSearching 
+      ? searchLoading 
+      : listLoading;
 
   // Normalize data from either API
-  const opportunities: Opportunity[] = isSearching
-    ? searchData ?? []
-    : listData?.pages.flatMap((page) => page.data) ?? [];
+  const opportunities: Opportunity[] = showMyOpportunities
+    ? (myOpportunitiesData?.map((myOpp) => ({
+        ...myOpp,
+        type: (myOpp.type as "job" | "internship" | "freelance") || "job",
+        is_remote: false,
+        location: "",
+        apply_link: "",
+        media: [],
+        posted_by: {
+          id: profile?.id || "",
+          display_name: profile?.display_name || "",
+          username: profile?.username || "",
+          profile_picture: profile?.profile_picture || null,
+          role: role || "",
+        },
+      })) as Opportunity[]) ?? []
+    : isSearching
+      ? searchData ?? []
+      : listData?.pages.flatMap((page) => page.data) ?? [];
 
   const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !isSearching) {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !isSearching && !showMyOpportunities) {
           fetchNextPage();
         }
       },
@@ -268,11 +295,13 @@ export default function OpportunitiesPage() {
     }
 
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isSearching]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isSearching, showMyOpportunities]);
 
-  const totalCount = isSearching
+  const totalCount = showMyOpportunities
     ? opportunities.length
-    : listData?.pages[0]?.total ?? 0;
+    : isSearching
+      ? opportunities.length
+      : listData?.pages[0]?.total ?? 0;
 
   // When the "Saved" filter is active, restrict to bookmarked opportunities
   const visibleOpportunities = showSaved
@@ -281,7 +310,7 @@ export default function OpportunitiesPage() {
 
   const featured = visibleOpportunities[0];
   const rest = visibleOpportunities.slice(1);
-  const hasActiveFilters = !!(type || skill || isRemote || query || showSaved);
+  const hasActiveFilters = !!(type || skill || isRemote || query || showSaved || showMyOpportunities);
 
   const stats = [
     { label: "Open roles", value: totalCount, Icon: Briefcase },
@@ -321,6 +350,7 @@ export default function OpportunitiesPage() {
     setIsRemote(undefined);
     setQuery("");
     setShowSaved(false);
+    setShowMyOpportunities(false);
   };
 
   return (
@@ -492,7 +522,12 @@ export default function OpportunitiesPage() {
           </button>
 
           <button
-            onClick={() => setShowSaved((p) => !p)}
+            onClick={() => {
+              setShowSaved((p) => {
+                if (!p) setShowMyOpportunities(false);
+                return !p;
+              });
+            }}
             className={cn(
               "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
               showSaved
@@ -515,6 +550,26 @@ export default function OpportunitiesPage() {
               </span>
             )}
           </button>
+
+          {(role === "alumni" || role === "partner") && (
+            <button
+              onClick={() => {
+                setShowMyOpportunities((p) => {
+                  if (!p) setShowSaved(false);
+                  return !p;
+                });
+              }}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+                showMyOpportunities
+                  ? "border-transparent bg-foreground text-background shadow-sm"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Briefcase className={cn("h-3.5 w-3.5", showMyOpportunities && "text-background")} />
+              My opportunities
+            </button>
+          )}
 
           {hasActiveFilters && (
             <button
@@ -585,7 +640,7 @@ export default function OpportunitiesPage() {
                   ))}
                 </div>
                 {/* Intersection Observer Target */}
-                {!isSearching && (
+                {!isSearching && !showMyOpportunities && (
                   <div ref={observerTarget} className="h-10 mt-8 flex items-center justify-center text-muted-foreground text-sm">
                     {isFetchingNextPage ? (
                       <div className="flex gap-1 items-center">
