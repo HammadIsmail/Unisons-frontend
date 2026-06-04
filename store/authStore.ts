@@ -62,7 +62,7 @@ const useAuthStore = create<AuthState>()(
         });
       },
 
-      updateProfile: (profile) => set({ profile }),
+      updateProfile: (profile) => set((state) => ({ profile: { ...state.profile, ...profile } })),
     }),
     {
       name: "unison_auth",

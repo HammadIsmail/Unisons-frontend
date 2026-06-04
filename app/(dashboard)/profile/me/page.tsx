@@ -114,12 +114,15 @@ function FollowsDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string;
+  userId?: string;
   type: "followers" | "following";
 }) {
   const { data, isLoading } = useQuery({
     queryKey: [type, userId],
-    queryFn: () => type === "followers" ? getFollowers(userId) : getFollowing(userId),
+    queryFn: () => {
+      if (!userId) return [];
+      return type === "followers" ? getFollowers(userId) : getFollowing(userId);
+    },
     enabled: open && !!userId,
   });
 
@@ -262,7 +265,7 @@ function ProfileStatsFolder({ stats, small = false }: { stats: StatBox[]; small?
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function MyProfilePage() {
-  const { role, updateProfile } = useAuthStore();
+  const { role, updateProfile, profile: authProfile } = useAuthStore();
   const queryClient = useQueryClient();
   const [editMode, setEditMode] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
@@ -307,7 +310,6 @@ export default function MyProfilePage() {
   const profile = isPartnerRole ? partnerProfile : isAlumniRole ? alumniProfile : studentProfile;
   const isLoading = isPartnerRole ? partnerLoading : isAlumniRole ? alumniLoading : studentLoading;
   const p = profile as any;
-
   useEffect(() => {
     if (profile) {
       updateProfile(profile as any);
@@ -513,18 +515,18 @@ export default function MyProfilePage() {
   // ── Stat definitions per role ─────────────────────────────────────────────
 
   const alumniStatBoxes: StatBox[] = [
-    { label: "Followers",    value: p?.followerCount ?? 0,   color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
-    { label: "Following",    value: p?.followingCount ?? 0,   color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
-    { label: "Connections",  value: p?.connections_count ?? 0, color: "#10b981" },
-    { label: "Opportunities",value: myOpportunities?.length ?? 0, color: "#f59e0b" },
-    { label: "Skills",       value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+    { label: "Followers", value: p?.followerCount ?? 0, color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
+    { label: "Following", value: p?.followingCount ?? 0, color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
+    { label: "Connections", value: p?.connections_count ?? 0, color: "#10b981" },
+    { label: "Opportunities", value: myOpportunities?.length ?? 0, color: "#f59e0b" },
+    { label: "Skills", value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
   ];
 
   const studentStatBoxes: StatBox[] = [
-    { label: "Followers", value: p?.followerCount ?? 0,  color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
-    { label: "Following", value: p?.followingCount ?? 0,  color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
-    { label: "Semester",  value: `Sem ${p?.semester ?? "—"}`, color: "#f59e0b" },
-    { label: "Skills",    value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+    { label: "Followers", value: p?.followerCount ?? 0, color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
+    { label: "Following", value: p?.followingCount ?? 0, color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
+    { label: "Semester", value: `Sem ${p?.semester ?? "—"}`, color: "#f59e0b" },
+    { label: "Skills", value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
   ];
 
   const activeStats = isAlumni ? alumniStatBoxes : studentStatBoxes;
@@ -1317,7 +1319,7 @@ export default function MyProfilePage() {
       <FollowsDialog
         open={followsDialogOpen}
         onOpenChange={setFollowsDialogOpen}
-        userId={p?.id}
+        userId={authProfile?.id}
         type={followsDialogType}
       />
     </div>

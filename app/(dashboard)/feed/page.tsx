@@ -737,10 +737,6 @@ export default function FeedPage() {
     enabled: !!role,
   });
 
-  useEffect(()=>{
-    console.log(profile)
-  })
-
   return (
     <div className="min-h-screen bg-background">
       {/* Ambient gradient mesh */}
