@@ -2,11 +2,15 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getUserPublicProfile } from "@/lib/api/profiles.api";
-import { sendConnectionRequest, removeConnection, getConnectionStatus, cancelSentRequest } from "@/lib/api/connections.api";
+import { 
+  sendConnectionRequest, removeConnection, getConnectionStatus, cancelSentRequest,
+  followUser, unfollowUser, blockUser, unblockUser, getFollowers, getFollowing
+} from "@/lib/api/connections.api";
 import useAuthStore from "@/store/authStore";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import Folder from "@/components/Folder";
 import {
   GraduationCap,
   Building2,
@@ -29,10 +33,21 @@ import {
   MapPin,
   AlertTriangle,
   X,
+  MoreHorizontal,
+  ShieldAlert,
+  Users,
+  UserMinus,
+  ShieldCheck
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +55,8 @@ import { cn } from "@/lib/utils";
 type PendingAction =
   | { type: "cancel"; targetId: string; targetName: string }
   | { type: "disconnect"; targetId: string; targetName: string }
+  | { type: "block"; targetId: string; targetName: string }
+  | { type: "unblock"; targetId: string; targetName: string }
   | null;
 
 interface ConfirmDialogProps {
@@ -131,6 +148,118 @@ function getInitials(name?: string) {
     .toUpperCase();
 }
 
+// ── Follows Dialog ────────────────────────────────────────────────────────────
+
+function FollowButton({ targetId, isFollowingInitially }: { targetId: string; isFollowingInitially?: boolean }) {
+  const queryClient = useQueryClient();
+  const [isFollowing, setIsFollowing] = useState(isFollowingInitially ?? false);
+
+  const followMut = useMutation({
+    mutationFn: () => followUser(targetId),
+    onSuccess: () => {
+      setIsFollowing(true);
+      toast.success("Followed user");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", targetId] });
+    }
+  });
+
+  const unfollowMut = useMutation({
+    mutationFn: () => unfollowUser(targetId),
+    onSuccess: () => {
+      setIsFollowing(false);
+      toast.success("Unfollowed user");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", targetId] });
+    }
+  });
+
+  if (isFollowing) {
+    return (
+      <button 
+        onClick={() => unfollowMut.mutate()} 
+        disabled={unfollowMut.isPending} 
+        className="text-xs px-3 py-1.5 rounded-lg border border-border/60 font-medium hover:bg-muted text-muted-foreground transition-colors"
+      >
+        {unfollowMut.isPending ? "..." : "Unfollow"}
+      </button>
+    );
+  }
+  return (
+    <button 
+      onClick={() => followMut.mutate()} 
+      disabled={followMut.isPending} 
+      className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+    >
+      {followMut.isPending ? "..." : "Follow"}
+    </button>
+  );
+}
+
+function FollowsDialog({
+  open,
+  onOpenChange,
+  userId,
+  type,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userId: string;
+  type: "followers" | "following";
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: [type, userId],
+    queryFn: () => type === "followers" ? getFollowers(userId) : getFollowing(userId),
+    enabled: open,
+  });
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => onOpenChange(false)} />
+      <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+        <div className="flex items-center justify-between p-4 border-b border-border/60">
+          <h2 className="font-semibold text-foreground capitalize">{type}</h2>
+          <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-full transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto flex-1">
+          {isLoading ? (
+             <div className="space-y-4">
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-12 w-full rounded-xl" />
+             </div>
+          ) : data?.length ? (
+            <div className="space-y-4">
+              {data.map((user: any) => (
+                 <div key={user.id} className="flex items-center justify-between gap-3">
+                    <Link href={`/profile/${user.id}`} onClick={() => onOpenChange(false)} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
+                      <Avatar className="h-10 w-10 shrink-0">
+                         <AvatarImage src={user.profile_picture} />
+                         <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                         <p className="text-sm font-semibold truncate text-foreground leading-tight">{user.display_name}</p>
+                         <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                      </div>
+                    </Link>
+                    {/* Assuming list doesn't return is_following reliably, we can just render the FollowButton. If it's myself, we don't render it. */}
+                    <FollowButton targetId={user.id} isFollowingInitially={user.is_following} />
+                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 flex flex-col items-center justify-center text-center">
+              <Users className="h-8 w-8 text-muted-foreground/30 mb-2" />
+              <p className="text-sm text-muted-foreground">No {type} found.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function PublicProfileSkeleton() {
@@ -169,24 +298,59 @@ function PublicProfileSkeleton() {
   );
 }
 
-// ── Stat Item (same as MyProfilePage) ────────────────────────────────────────
+// ── Single-Folder Stats ───────────────────────────────────────────────────────
 
-function StatItem({
-  icon,
-  value,
-  label,
-  small = false,
-}: {
-  icon: React.ReactNode;
-  value: string | number;
+interface StatBox {
   label: string;
-  small?: boolean;
-}) {
+  value: string | number;
+  color: string;
+  onClick?: () => void;
+}
+
+function ProfileStatsFolder({ stats, small = false }: { stats: StatBox[]; small?: boolean }) {
+  const items = stats.map((stat, i) => (
+    <div key={i} className="flex flex-col items-center justify-center w-full h-full">
+      {stat.onClick ? (
+        <button
+          onClick={e => { e.stopPropagation(); stat.onClick!(); }}
+          className="flex flex-col items-center leading-tight hover:opacity-70 transition-opacity"
+        >
+          <span
+            className="font-extrabold leading-none"
+            style={{ color: stat.color, fontSize: small ? '12px' : '14px' }}
+          >
+            {stat.value}
+          </span>
+          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">
+            {stat.label}
+          </span>
+        </button>
+      ) : (
+        <div className="flex flex-col items-center leading-tight">
+          <span
+            className="font-extrabold leading-none"
+            style={{ color: stat.color, fontSize: small ? '12px' : '14px' }}
+          >
+            {stat.value}
+          </span>
+          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">
+            {stat.label}
+          </span>
+        </div>
+      )}
+    </div>
+  ));
+
   return (
-    <div className="flex flex-col items-center px-3 py-2">
-      <span className={`text-muted-foreground ${small ? "mb-0.5" : "mb-1"}`}>{icon}</span>
-      <span className={`font-bold text-foreground ${small ? "text-sm" : "text-base"}`}>{value}</span>
-      <span className={`text-muted-foreground ${small ? "text-[10px]" : "text-xs"}`}>{label}</span>
+    <div className="flex flex-col items-center">
+      <Folder
+        size={small ? 0.7 : 0.7}
+        color="#2563EB"
+        items={items}
+      />
+      <span className={`font-normal text-foreground mt-1.5 ${small ? 'text-[10px]' : 'text-xs'}`}>
+        View Stats
+      </span>
     </div>
   );
 }
@@ -257,12 +421,56 @@ export default function PublicProfilePage() {
     onError: () => toast.error("Failed to cancel request"),
   });
 
+  const followMut = useMutation({
+    mutationFn: () => followUser(userId),
+    onSuccess: () => {
+      toast.success("Followed user!");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["followers", userId] });
+    },
+    onError: () => toast.error("Failed to follow user"),
+  });
+
+  const unfollowMut = useMutation({
+    mutationFn: () => unfollowUser(userId),
+    onSuccess: () => {
+      toast.success("Unfollowed user");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["followers", userId] });
+    },
+    onError: () => toast.error("Failed to unfollow user"),
+  });
+
+  const blockMut = useMutation({
+    mutationFn: () => blockUser(userId),
+    onSuccess: () => {
+      toast.success("User blocked");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["connection-status", userId] });
+    },
+    onError: () => toast.error("Failed to block user"),
+  });
+
+  const unblockMut = useMutation({
+    mutationFn: () => unblockUser(userId),
+    onSuccess: () => {
+      toast.success("User unblocked");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["connection-status", userId] });
+    },
+    onError: () => toast.error("Failed to unblock user"),
+  });
+
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [followsDialogOpen, setFollowsDialogOpen] = useState(false);
+  const [followsDialogType, setFollowsDialogType] = useState<"followers" | "following">("followers");
 
   const handleConfirm = () => {
     if (!pendingAction) return;
     if (pendingAction.type === "cancel") cancelMutation.mutate();
     else if (pendingAction.type === "disconnect") removeMutation.mutate();
+    else if (pendingAction.type === "block") blockMut.mutate();
+    else if (pendingAction.type === "unblock") unblockMut.mutate();
     setPendingAction(null);
   };
 
@@ -314,50 +522,44 @@ export default function PublicProfilePage() {
   const isPartner = profile.role === "partner";
   const p = profile as any;
 
-  // ── Shared stat blocks (same structure as MyProfilePage) ─────────────────
+  // ── Stat definitions per role ─────────────────────────────────────────────
 
-  const alumniStats = (small = false) => (
-    <>
-      <StatItem
-        icon={<Network className={small ? "h-4 w-4" : "h-5 w-5"} />}
-        value={p?.connections_count ?? 0}
-        label="Connections"
-        small={small}
-      />
-      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
-      <StatItem
-        icon={<Briefcase className={small ? "h-4 w-4" : "h-5 w-5"} />}
-        value={p?.opportunities_posted?.length ?? 0}
-        label="Opportunities"
-        small={small}
-      />
-      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
-      <StatItem
-        icon={<Tag className={small ? "h-4 w-4" : "h-5 w-5"} />}
-        value={p?.detailed_skills?.length ?? p?.skills?.length ?? 0}
-        label="Skills"
-        small={small}
-      />
-    </>
-  );
+  const alumniStatBoxes: StatBox[] = [
+    {
+      label: "Followers",
+      value: p?.followers_count ?? 0,
+      color: "#3b82f6",
+      onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); },
+    },
+    {
+      label: "Following",
+      value: p?.following_count ?? 0,
+      color: "#8b5cf6",
+      onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); },
+    },
+    { label: "Connections",  value: p?.connections_count ?? 0,               color: "#10b981" },
+    { label: "Opportunities", value: p?.opportunities_posted?.length ?? 0,   color: "#f59e0b" },
+    { label: "Skills",        value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+  ];
 
-  const studentStats = (small = false) => (
-    <>
-      <StatItem
-        icon={<GraduationCap className={small ? "h-4 w-4" : "h-5 w-5"} />}
-        value={`Sem ${p?.semester ?? "—"}`}
-        label="Semester"
-        small={small}
-      />
-      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
-      <StatItem
-        icon={<Tag className={small ? "h-4 w-4" : "h-5 w-5"} />}
-        value={p?.detailed_skills?.length ?? p?.skills?.length ?? 0}
-        label="Skills"
-        small={small}
-      />
-    </>
-  );
+  const studentStatBoxes: StatBox[] = [
+    {
+      label: "Followers",
+      value: p?.followers_count ?? 0,
+      color: "#3b82f6",
+      onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); },
+    },
+    {
+      label: "Following",
+      value: p?.following_count ?? 0,
+      color: "#8b5cf6",
+      onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); },
+    },
+    { label: "Semester", value: `Sem ${p?.semester ?? "—"}`, color: "#f59e0b" },
+    { label: "Skills",   value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+  ];
+
+  const activeStats = isAlumni ? alumniStatBoxes : studentStatBoxes;
 
   const nameBlock = (mobile = false) => (
     <div className={`flex flex-col items-center mt-4 text-center`}>
@@ -445,87 +647,256 @@ export default function PublicProfilePage() {
         </div>
       </div>
 
-      {/* ── PROFILE BAR ─────────────────────────────────────────────────────── */}
-      <div className="bg-background border-b border-border/60">
+{/* ── PROFILE BAR ─────────────────────────────────────────────────────── */}
+<div className="bg-background border-b border-border/60">
 
-        {/* DESKTOP */}
-        <div className="hidden sm:grid grid-cols-3 items-center px-6 pt-14 pb-3">
-          {/* col-1: Stats */}
-          <div className="flex items-center gap-1 justify-start">
-            {isAlumni ? alumniStats() : studentStats()}
-          </div>
+  {/* DESKTOP — lg and above: 3-col grid */}
+  <div className="hidden lg:grid grid-cols-3 items-start px-6 pt-14 pb-3">
+    {/* col-1: Stats */}
+    <div className="flex items-center justify-start">
+      <ProfileStatsFolder stats={activeStats} />
+    </div>
 
-          {/* col-2: Name */}
-          {nameBlock()}
+    {/* col-2: Name */}
+    {nameBlock()}
 
-          {/* col-3: Actions */}
-          <div className="flex items-center gap-2 justify-end">
-            {isAlumni && p?.linkedin_url && (
-              <a
-                href={p.linkedin_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
-              >
-                <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </a>
-            )}
-            {isConnected && (
-              <Link
-                href={`/chat/${userId}`}
-                className="h-9 px-4 flex items-center gap-1.5 text-sm border border-1 border-blue-600 rounded-lg bg-white hover:scale-102 text-blue-600 transition-all shadow-sm shadow-gray-200"
-              >
-                <MessageCircle className="h-4 w-4 text-blue-600" />
-                Message
-              </Link>
-            )}
-            {connectionButton}
-          </div>
-        </div>
-
-        {/* MOBILE */}
-        <div className="sm:hidden flex flex-col items-center px-4 pt-14 pb-3 gap-3">
-          {nameBlock(true)}
-          <div className="flex items-center gap-1">
-            {isAlumni ? alumniStats(true) : studentStats(true)}
-          </div>
-          <div className="flex items-center gap-2">
-            {isAlumni && p?.linkedin_url && (
-              <a
-                href={p.linkedin_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
-              >
-                <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </a>
-            )}
-            {isConnected && (
-              <Link
-                href={`/chat/${userId}`}
-                className="h-9 px-4 flex items-center gap-1.5 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Message
-              </Link>
-            )}
-            {connectionButton}
-          </div>
-        </div>
-
-        {/* Tab nav */}
-        <div className="flex items-center gap-6 px-4 sm:px-6 mt-1">
-          <button className="py-3 text-md text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400">
-            Profile
+    {/* col-3: Actions */}
+    <div className="flex items-center gap-2 justify-end flex-wrap">
+      {isAlumni && p?.linkedin_url && (
+        
+          <a href={p.linkedin_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
+        >
+          <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </a>
+      )}
+      {isConnected && (
+        <Link
+          href={`/chat/${userId}`}
+          className="h-9 px-4 flex items-center gap-1.5 text-sm border border-1 border-blue-600 rounded-lg bg-white hover:scale-102 text-blue-600 transition-all shadow-sm shadow-gray-200"
+        >
+          <MessageCircle className="h-4 w-4 text-blue-600" />
+          Message
+        </Link>
+      )}
+      {p?.is_following ? (
+        <button
+          onClick={() => unfollowMut.mutate()}
+          disabled={unfollowMut.isPending}
+          className="h-9 px-4 flex items-center gap-1.5 text-sm font-semibold rounded-xl border border-border/60 text-muted-foreground hover:bg-muted transition-all cursor-pointer"
+        >
+          <UserMinus className="h-4 w-4" />
+          {unfollowMut.isPending ? "Unfollowing..." : "Unfollow"}
+        </button>
+      ) : (
+        <button
+          onClick={() => followMut.mutate()}
+          disabled={followMut.isPending}
+          className="h-9 px-4 flex items-center gap-1.5 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer"
+        >
+          <UserPlus className="h-4 w-4" />
+          {followMut.isPending ? "Following..." : "Follow"}
+        </button>
+      )}
+      {connectionButton}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="h-9 w-9 flex items-center justify-center rounded-xl border border-border/60 text-muted-foreground hover:bg-muted transition-colors">
+            <MoreHorizontal className="h-4 w-4" />
           </button>
-          <Link
-            href="/network"
-            className="py-3 text-md font-md text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent"
-          >
-            Network
-          </Link>
-        </div>
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {status === "blocked" ? (
+            <DropdownMenuItem
+              className="text-amber-600 focus:text-amber-600 cursor-pointer flex items-center gap-2"
+              onClick={() => setPendingAction({ type: "unblock", targetId: userId, targetName: p?.display_name })}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Unblock User
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              className="text-rose-600 focus:text-rose-600 cursor-pointer flex items-center gap-2"
+              onClick={() => setPendingAction({ type: "block", targetId: userId, targetName: p?.display_name })}
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Block User
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  </div>
+
+  {/* TABLET — sm to lg: name centered, stats below, actions row */}
+  <div className="hidden sm:flex lg:hidden flex-col items-center px-6 pt-14 pb-3 gap-3">
+    {nameBlock()}
+    {/* Stats row */}
+    <div className="flex items-center justify-center">
+      <ProfileStatsFolder stats={activeStats} />
+    </div>
+    {/* Actions row */}
+    <div className="flex items-center gap-2 flex-wrap justify-center">
+      {isAlumni && p?.linkedin_url && (
+        
+          <a href={p.linkedin_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors"
+        >
+          <Linkedin className="h-4 w-4 text-blue-600" />
+        </a>
+      )}
+      {isConnected && (
+        <Link
+          href={`/chat/${userId}`}
+          className="h-9 px-4 flex items-center gap-1.5 text-sm border border-blue-600 rounded-lg bg-white text-blue-600 transition-all"
+        >
+          <MessageCircle className="h-4 w-4 text-blue-600" />
+          Message
+        </Link>
+      )}
+      {p?.is_following ? (
+        <button
+          onClick={() => unfollowMut.mutate()}
+          disabled={unfollowMut.isPending}
+          className="h-9 px-4 flex items-center gap-1.5 text-sm font-semibold rounded-xl border border-border/60 text-muted-foreground hover:bg-muted transition-all cursor-pointer"
+        >
+          <UserMinus className="h-4 w-4" />
+          {unfollowMut.isPending ? "Unfollowing..." : "Unfollow"}
+        </button>
+      ) : (
+        <button
+          onClick={() => followMut.mutate()}
+          disabled={followMut.isPending}
+          className="h-9 px-4 flex items-center gap-1.5 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer"
+        >
+          <UserPlus className="h-4 w-4" />
+          {followMut.isPending ? "Following..." : "Follow"}
+        </button>
+      )}
+      {connectionButton}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="h-9 w-9 flex items-center justify-center rounded-xl border border-border/60 text-muted-foreground hover:bg-muted transition-colors">
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {status === "blocked" ? (
+            <DropdownMenuItem
+              className="text-amber-600 focus:text-amber-600 cursor-pointer flex items-center gap-2"
+              onClick={() => setPendingAction({ type: "unblock", targetId: userId, targetName: p?.display_name })}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Unblock User
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              className="text-rose-600 focus:text-rose-600 cursor-pointer flex items-center gap-2"
+              onClick={() => setPendingAction({ type: "block", targetId: userId, targetName: p?.display_name })}
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Block User
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  </div>
+
+  {/* MOBILE — below sm */}
+  <div className="sm:hidden flex flex-col items-center px-4 pt-14 pb-3 gap-3">
+    {nameBlock(true)}
+    {/* Stats */}
+    <div className="flex items-center justify-center">
+      <ProfileStatsFolder stats={activeStats} small />
+    </div>
+    {/* Actions */}
+    <div className="flex items-center gap-2 w-full justify-center flex-wrap">
+      {isAlumni && p?.linkedin_url && (
+        
+          <a href={p.linkedin_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors flex-shrink-0"
+        >
+          <Linkedin className="h-4 w-4 text-blue-600" />
+        </a>
+      )}
+      {isConnected && (
+        <Link
+          href={`/chat/${userId}`}
+          className="h-9 px-3 flex items-center gap-1.5 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex-shrink-0"
+        >
+          <MessageCircle className="h-4 w-4" />
+          Message
+        </Link>
+      )}
+      {p?.is_following ? (
+        <button
+          onClick={() => unfollowMut.mutate()}
+          disabled={unfollowMut.isPending}
+          className="h-9 px-3 flex items-center gap-1.5 text-sm font-semibold rounded-xl border border-border/60 text-muted-foreground hover:bg-muted transition-all cursor-pointer flex-shrink-0"
+        >
+          <UserMinus className="h-4 w-4" />
+          {unfollowMut.isPending ? "..." : "Unfollow"}
+        </button>
+      ) : (
+        <button
+          onClick={() => followMut.mutate()}
+          disabled={followMut.isPending}
+          className="h-9 px-3 flex items-center gap-1.5 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer flex-shrink-0"
+        >
+          <UserPlus className="h-4 w-4" />
+          {followMut.isPending ? "..." : "Follow"}
+        </button>
+      )}
+      {connectionButton}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="h-9 w-9 flex items-center justify-center rounded-xl border border-border/60 text-muted-foreground hover:bg-muted transition-colors flex-shrink-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {status === "blocked" ? (
+            <DropdownMenuItem
+              className="text-amber-600 focus:text-amber-600 cursor-pointer flex items-center gap-2"
+              onClick={() => setPendingAction({ type: "unblock", targetId: userId, targetName: p?.display_name })}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Unblock User
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              className="text-rose-600 focus:text-rose-600 cursor-pointer flex items-center gap-2"
+              onClick={() => setPendingAction({ type: "block", targetId: userId, targetName: p?.display_name })}
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Block User
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  </div>
+
+  {/* Tab nav */}
+  <div className="flex items-center gap-6 px-4 sm:px-6 mt-1">
+    <button className="py-3 text-md text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400">
+      Profile
+    </button>
+    <Link
+      href="/network"
+      className="py-3 text-md font-md text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent"
+    >
+      Network
+    </Link>
+  </div>
+</div>
 
       {/* ── BODY ────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 px-4 sm:px-6 py-5">
@@ -662,7 +1033,7 @@ export default function PublicProfilePage() {
                       No skills added yet
                     </p>
                     <p className="text-xs text-muted-foreground/60 mt-1">
-                      This user hasn’t listed any skills.
+                      This user hasn't listed any skills.
                     </p>
                   </div>
                 )}
@@ -809,19 +1180,38 @@ export default function PublicProfilePage() {
         title={
           pendingAction?.type === "disconnect"
             ? `Disconnect from ${pendingAction.targetName}?`
-            : `Cancel request to ${pendingAction?.targetName}?`
+            : pendingAction?.type === "cancel"
+            ? `Cancel request to ${pendingAction?.targetName}?`
+            : pendingAction?.type === "block"
+            ? `Block ${pendingAction?.targetName}?`
+            : `Unblock ${pendingAction?.targetName}?`
         }
         description={
           pendingAction?.type === "disconnect"
             ? `You will be removed from ${pendingAction.targetName}'s connections. You can always reconnect later.`
-            : `Your pending connection request to ${pendingAction?.targetName} will be withdrawn.`
+            : pendingAction?.type === "cancel"
+            ? `Your pending connection request to ${pendingAction?.targetName} will be withdrawn.`
+            : pendingAction?.type === "block"
+            ? `You will no longer be connected with ${pendingAction?.targetName} and they won't be able to contact you.`
+            : `You will unblock ${pendingAction?.targetName}. Note: this does not restore your previous connection status.`
         }
         confirmLabel={
-          pendingAction?.type === "disconnect" ? "Disconnect" : "Cancel Request"
+          pendingAction?.type === "disconnect" ? "Disconnect" : 
+          pendingAction?.type === "cancel" ? "Cancel Request" :
+          pendingAction?.type === "block" ? "Block" : "Unblock"
         }
-        confirmVariant={pendingAction?.type === "disconnect" ? "danger" : "warning"}
+        confirmVariant={
+          (pendingAction?.type === "disconnect" || pendingAction?.type === "block") ? "danger" : "warning"
+        }
         onConfirm={handleConfirm}
         onCancel={handleDialogCancel}
+      />
+
+      <FollowsDialog 
+        open={followsDialogOpen}
+        onOpenChange={setFollowsDialogOpen}
+        userId={userId}
+        type={followsDialogType}
       />
     </div>
   );

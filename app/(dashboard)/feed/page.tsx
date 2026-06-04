@@ -63,6 +63,7 @@ const TYPE_META: Record<string, { label: string; icon: React.ReactNode; pillClas
   },
 };
 
+
 function formatDeadline(iso: string) {
   const d = new Date(iso);
   const diff = Math.ceil((d.getTime() - Date.now()) / 86_400_000);
@@ -686,7 +687,6 @@ export default function FeedPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>("All");
 
   const typeFilter = TAB_TYPE_MAP[activeTab];
-
   const {
     data,
     isLoading,
@@ -736,6 +736,10 @@ export default function FeedPage() {
     queryFn: getProfileSuggestions,
     enabled: !!role,
   });
+
+  useEffect(()=>{
+    console.log(profile)
+  })
 
   return (
     <div className="min-h-screen bg-background">

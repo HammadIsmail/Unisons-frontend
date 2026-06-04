@@ -78,3 +78,33 @@ export const getMyNetwork = async (role: "alumni" | "student" | "partner"): Prom
   const { data } = await api.get(endpoint);
   return data;
 };
+
+export const followUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.post(`/api/connections/follow/${targetId}`);
+  return data;
+};
+
+export const unfollowUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/connections/unfollow/${targetId}`);
+  return data;
+};
+
+export const blockUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.post(`/api/connections/block/${targetId}`);
+  return data;
+};
+
+export const unblockUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/connections/unblock/${targetId}`);
+  return data;
+};
+
+export const getFollowers = async (targetId: string): Promise<any[]> => {
+  const { data } = await api.get(`/api/connections/${targetId}/followers`);
+  return data;
+};
+
+export const getFollowing = async (targetId: string): Promise<any[]> => {
+  const { data } = await api.get(`/api/connections/${targetId}/following`);
+  return data;
+};

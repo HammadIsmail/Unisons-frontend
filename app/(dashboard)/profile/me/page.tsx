@@ -9,6 +9,7 @@ import {
 import { getMyStudentProfile, updateStudentProfile, addStudentSkill, requestProfileUpgrade } from "@/lib/api/student.api";
 import { getMyPartnerProfile, updatePartnerProfile } from "@/lib/api/partner.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
+import { getFollowers, getFollowing, followUser, unfollowUser } from "@/lib/api/connections.api";
 import useAuthStore from "@/store/authStore";
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -30,13 +31,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import Folder from "@/components/Folder";
 
 import {
   Pencil, Plus, X, Trash2, Camera, Loader2,
   Linkedin, Phone, Network, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
   Activity, ArrowRight, ChevronRight,
-  Mail,
+  Mail, Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteSkill } from "@/lib/api/skill.api";
@@ -55,6 +57,117 @@ function FieldError({ message }: { message?: string }) {
       <AlertCircle className="h-3 w-3 flex-shrink-0" />
       {message}
     </p>
+  );
+}
+
+// ── Follows Dialog ────────────────────────────────────────────────────────────
+
+function FollowButton({ targetId, isFollowingInitially }: { targetId: string; isFollowingInitially?: boolean }) {
+  const queryClient = useQueryClient();
+  const [isFollowing, setIsFollowing] = useState(isFollowingInitially ?? false);
+
+  const followMut = useMutation({
+    mutationFn: () => followUser(targetId),
+    onSuccess: () => {
+      setIsFollowing(true);
+      toast.success("Followed user");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", targetId] });
+    }
+  });
+
+  const unfollowMut = useMutation({
+    mutationFn: () => unfollowUser(targetId),
+    onSuccess: () => {
+      setIsFollowing(false);
+      toast.success("Unfollowed user");
+      queryClient.invalidateQueries({ queryKey: ["public-profile", targetId] });
+    }
+  });
+
+  if (isFollowing) {
+    return (
+      <button
+        onClick={() => unfollowMut.mutate()}
+        disabled={unfollowMut.isPending}
+        className="text-xs px-3 py-1.5 rounded-lg border border-border/60 font-medium hover:bg-muted text-muted-foreground transition-colors"
+      >
+        {unfollowMut.isPending ? "..." : "Unfollow"}
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={() => followMut.mutate()}
+      disabled={followMut.isPending}
+      className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+    >
+      {followMut.isPending ? "..." : "Follow"}
+    </button>
+  );
+}
+
+function FollowsDialog({
+  open,
+  onOpenChange,
+  userId,
+  type,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userId: string;
+  type: "followers" | "following";
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: [type, userId],
+    queryFn: () => type === "followers" ? getFollowers(userId) : getFollowing(userId),
+    enabled: open && !!userId,
+  });
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => onOpenChange(false)} />
+      <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+        <div className="flex items-center justify-between p-4 border-b border-border/60">
+          <h2 className="font-semibold text-foreground capitalize">{type}</h2>
+          <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-full transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto flex-1">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ) : data?.length ? (
+            <div className="space-y-4">
+              {data.map((user: any) => (
+                <div key={user.id} className="flex items-center justify-between gap-3">
+                  <Link href={`/profile/${user.id}`} onClick={() => onOpenChange(false)} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarImage src={user.profile_picture} />
+                      <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate text-foreground leading-tight">{user.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                    </div>
+                  </Link>
+                  <FollowButton targetId={user.id} isFollowingInitially={user.is_following} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 flex flex-col items-center justify-center text-center">
+              <Users className="h-8 w-8 text-muted-foreground/30 mb-2" />
+              <p className="text-sm text-muted-foreground">No {type} found.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -99,24 +212,49 @@ function ProfileSkeleton() {
   );
 }
 
-// ── Stat Item ─────────────────────────────────────────────────────────────────
+// ── Single-Folder Stats Widget ────────────────────────────────────────────────
 
-function StatItem({
-  icon,
-  value,
-  label,
-  small = false,
-}: {
-  icon: React.ReactNode;
-  value: string | number;
+interface StatBox {
   label: string;
-  small?: boolean;
-}) {
+  value: string | number;
+  color: string;
+  onClick?: () => void;
+}
+
+function ProfileStatsFolder({ stats, small = false }: { stats: StatBox[]; small?: boolean }) {
+  const items = stats.map((stat, i) => (
+    <div key={i} className="flex flex-col items-center justify-center w-full h-full">
+      {stat.onClick ? (
+        <button
+          onClick={e => { e.stopPropagation(); stat.onClick!(); }}
+          className="flex flex-col items-center leading-tight hover:opacity-70 transition-opacity"
+        >
+          <span className="font-extrabold leading-none" style={{ color: stat.color, fontSize: small ? '12px' : '14px' }}>
+            {stat.value}
+          </span>
+          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">
+            {stat.label}
+          </span>
+        </button>
+      ) : (
+        <div className="flex flex-col items-center leading-tight">
+          <span className="font-extrabold leading-none" style={{ color: stat.color, fontSize: small ? '12px' : '14px' }}>
+            {stat.value}
+          </span>
+          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">
+            {stat.label}
+          </span>
+        </div>
+      )}
+    </div>
+  ));
+
   return (
-    <div className="flex flex-col items-center px-3 py-2">
-      <span className={`text-muted-foreground ${small ? "mb-0.5" : "mb-1"}`}>{icon}</span>
-      <span className={`font-bold text-foreground ${small ? "text-sm" : "text-base"}`}>{value}</span>
-      <span className={`text-muted-foreground ${small ? "text-[10px]" : "text-xs"}`}>{label}</span>
+    <div className="flex flex-col items-center">
+      <Folder size={0.7} color="#2563EB" items={items} />
+      <span className={`font-normal text-foreground mt-1.5 ${small ? 'text-[10px]' : 'text-xs'}`}>
+        View Stats
+      </span>
     </div>
   );
 }
@@ -138,6 +276,9 @@ export default function MyProfilePage() {
   const [imageHash, setImageHash] = useState(Date.now());
   const skillInputRef = useRef<HTMLInputElement>(null);
   const [upgradeYear, setUpgradeYear] = useState<string>("");
+
+  const [followsDialogOpen, setFollowsDialogOpen] = useState(false);
+  const [followsDialogType, setFollowsDialogType] = useState<"followers" | "following">("followers");
 
   const isAlumniRole = role === "alumni";
   const isPartnerRole = role === "partner";
@@ -369,25 +510,24 @@ export default function MyProfilePage() {
     intermediate: "bg-blue-100 text-blue-700 border border-blue-300",
     beginner: "bg-gray-100 text-gray-600 border border-gray-300",
   };
-  // ── Shared stat blocks (desktop & mobile sizes) ───────────────────────────
+  // ── Stat definitions per role ─────────────────────────────────────────────
 
-  const alumniStats = (small = false) => (
-    <>
-      <StatItem icon={<Network className={small ? "h-4 w-4" : "h-5 w-5"} />} value={p?.connections_count ?? 0} label="Connections" small={small} />
-      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
-      <StatItem icon={<Briefcase className={small ? "h-4 w-4" : "h-5 w-5"} />} value={myOpportunities?.length ?? 0} label="Opportunities" small={small} />
-      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
-      <StatItem icon={<Tag className={small ? "h-4 w-4" : "h-5 w-5"} />} value={p?.detailed_skills?.length ?? p?.skills?.length ?? 0} label="Skills" small={small} />
-    </>
-  );
+  const alumniStatBoxes: StatBox[] = [
+    { label: "Followers",    value: p?.followerCount ?? 0,   color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
+    { label: "Following",    value: p?.followingCount ?? 0,   color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
+    { label: "Connections",  value: p?.connections_count ?? 0, color: "#10b981" },
+    { label: "Opportunities",value: myOpportunities?.length ?? 0, color: "#f59e0b" },
+    { label: "Skills",       value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+  ];
 
-  const studentStats = (small = false) => (
-    <>
-      <StatItem icon={<GraduationCap className={small ? "h-4 w-4" : "h-5 w-5"} />} value={`Sem ${p?.semester ?? "—"}`} label="Semester" small={small} />
-      <div className={`bg-border/40 ${small ? "w-px h-10" : "w-px h-12"}`} />
-      <StatItem icon={<Tag className={small ? "h-4 w-4" : "h-5 w-5"} />} value={p?.detailed_skills?.length ?? p?.skills?.length ?? 0} label="Skills" small={small} />
-    </>
-  );
+  const studentStatBoxes: StatBox[] = [
+    { label: "Followers", value: p?.followerCount ?? 0,  color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
+    { label: "Following", value: p?.followingCount ?? 0,  color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
+    { label: "Semester",  value: `Sem ${p?.semester ?? "—"}`, color: "#f59e0b" },
+    { label: "Skills",    value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+  ];
+
+  const activeStats = isAlumni ? alumniStatBoxes : studentStatBoxes;
 
   const editButton = (
     <Button
@@ -471,8 +611,8 @@ export default function MyProfilePage() {
         <div className="hidden sm:grid grid-cols-3 items-center px-6 pt-14 pb-3">
 
           {/* col-1: Stats — LEFT aligned inside their column */}
-          <div className="flex items-center gap-1 justify-start">
-            {isAlumni ? alumniStats() : studentStats()}
+          <div className="flex items-center justify-start">
+            <ProfileStatsFolder stats={activeStats} />
           </div>
 
           {/* col-2: Name — CENTER of the screen */}
@@ -497,8 +637,8 @@ export default function MyProfilePage() {
         {/* ── MOBILE (<sm) — stack vertically, everything centered ── */}
         <div className="sm:hidden flex flex-col items-center px-4 pt-14 pb-3 gap-3">
           {nameBlock(true)}
-          <div className="flex items-center gap-1">
-            {isAlumni ? alumniStats(true) : studentStats(true)}
+          <div className="flex items-center justify-center">
+            <ProfileStatsFolder stats={activeStats} small />
           </div>
           <div className="flex items-center gap-2">
             {isAlumni && p?.linkedin_url && (
@@ -1173,6 +1313,13 @@ export default function MyProfilePage() {
 
         </div>
       </div>
+
+      <FollowsDialog
+        open={followsDialogOpen}
+        onOpenChange={setFollowsDialogOpen}
+        userId={p?.id}
+        type={followsDialogType}
+      />
     </div>
   );
 }
