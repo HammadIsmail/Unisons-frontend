@@ -444,6 +444,7 @@ export default function NotificationsPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          name="view-details"
                           onClick={() => handleClick(n.id, n.reference_link, n.is_read)}
                           className="h-6.5 sm:h-7 gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] border-border/60 px-2.5 sm:px-3 rounded-lg"
                         >

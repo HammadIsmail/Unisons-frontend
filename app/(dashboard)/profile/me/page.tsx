@@ -2,10 +2,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getMyAlumniProfile, updateAlumniProfile, addSkill,
+  getMyAlumniProfile, addSkill,
   addWorkExperience, deleteWorkExperience,
   addEducation, deleteEducation, updateEducation,
 } from "@/lib/api/alumni.api";
+import { updateUserProfile } from "@/lib/api/profiles.api";
 import { getMyStudentProfile, updateStudentProfile, addStudentSkill, requestProfileUpgrade } from "@/lib/api/student.api";
 import { getMyPartnerProfile, updatePartnerProfile } from "@/lib/api/partner.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
@@ -15,8 +16,7 @@ import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  updateAlumniProfileSchema, updateStudentProfileSchema, updatePartnerProfileSchema, addSkillSchema,
-  AddSkillInput,
+  updateAlumniProfileSchema, updateStudentProfileSchema, updatePartnerProfileSchema,
 } from "@/schemas/profile.schemas";
 import { addWorkExperienceSchema, AddWorkExperienceInput } from "@/schemas/workExperience.schemas";
 import { addEducationSchema, AddEducationInput } from "@/schemas/education.schemas";
@@ -32,20 +32,29 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import Folder from "@/components/Folder";
-
 import {
   Pencil, Plus, X, Trash2, Camera, Loader2,
-  Linkedin, Phone, Network, Tag, Briefcase, GraduationCap,
+  Linkedin, Phone, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
-  Activity, ArrowRight, ChevronRight,
-  Mail, Users
+  Activity, ArrowRight, ChevronRight, Mail, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteSkill } from "@/lib/api/skill.api";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function getInitials(name?: string) {
+type ProficiencyLevel = "beginner" | "intermediate" | "expert";
+
+interface StatBox {
+  label: string;
+  value: string | number;
+  color: string;
+  onClick?: () => void;
+}
+
+// ─── Shared Helpers ───────────────────────────────────────────────────────────
+
+export function getInitials(name?: string) {
   if (!name) return "U";
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
@@ -60,7 +69,7 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-// ── Follows Dialog ────────────────────────────────────────────────────────────
+// ─── FollowButton ─────────────────────────────────────────────────────────────
 
 function FollowButton({ targetId, isFollowingInitially }: { targetId: string; isFollowingInitially?: boolean }) {
   const queryClient = useQueryClient();
@@ -72,7 +81,7 @@ function FollowButton({ targetId, isFollowingInitially }: { targetId: string; is
       setIsFollowing(true);
       toast.success("Followed user");
       queryClient.invalidateQueries({ queryKey: ["public-profile", targetId] });
-    }
+    },
   });
 
   const unfollowMut = useMutation({
@@ -81,7 +90,7 @@ function FollowButton({ targetId, isFollowingInitially }: { targetId: string; is
       setIsFollowing(false);
       toast.success("Unfollowed user");
       queryClient.invalidateQueries({ queryKey: ["public-profile", targetId] });
-    }
+    },
   });
 
   if (isFollowing) {
@@ -106,11 +115,10 @@ function FollowButton({ targetId, isFollowingInitially }: { targetId: string; is
   );
 }
 
+// ─── FollowsDialog ────────────────────────────────────────────────────────────
+
 function FollowsDialog({
-  open,
-  onOpenChange,
-  userId,
-  type,
+  open, onOpenChange, userId, type,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -174,15 +182,9 @@ function FollowsDialog({
   );
 }
 
-function SectionHeader({
-  icon,
-  title,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  action?: React.ReactNode;
-}) {
+// ─── SectionHeader ────────────────────────────────────────────────────────────
+
+function SectionHeader({ icon, title, action }: { icon: React.ReactNode; title: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-5">
       <h2 className="font-bold text-foreground text-base tracking-tight flex items-center gap-2">
@@ -194,7 +196,7 @@ function SectionHeader({
   );
 }
 
-// ── Loading skeleton ──────────────────────────────────────────────────────────
+// ─── ProfileSkeleton ──────────────────────────────────────────────────────────
 
 function ProfileSkeleton() {
   return (
@@ -215,38 +217,27 @@ function ProfileSkeleton() {
   );
 }
 
-// ── Single-Folder Stats Widget ────────────────────────────────────────────────
-
-interface StatBox {
-  label: string;
-  value: string | number;
-  color: string;
-  onClick?: () => void;
-}
+// ─── ProfileStatsFolder ───────────────────────────────────────────────────────
 
 function ProfileStatsFolder({ stats, small = false }: { stats: StatBox[]; small?: boolean }) {
   const items = stats.map((stat, i) => (
     <div key={i} className="flex flex-col items-center justify-center w-full h-full">
       {stat.onClick ? (
         <button
-          onClick={e => { e.stopPropagation(); stat.onClick!(); }}
+          onClick={(e) => { e.stopPropagation(); stat.onClick!(); }}
           className="flex flex-col items-center leading-tight hover:opacity-70 transition-opacity"
         >
-          <span className="font-extrabold leading-none" style={{ color: stat.color, fontSize: small ? '12px' : '14px' }}>
+          <span className="font-extrabold leading-none" style={{ color: stat.color, fontSize: small ? "12px" : "14px" }}>
             {stat.value}
           </span>
-          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">
-            {stat.label}
-          </span>
+          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">{stat.label}</span>
         </button>
       ) : (
         <div className="flex flex-col items-center leading-tight">
-          <span className="font-extrabold leading-none" style={{ color: stat.color, fontSize: small ? '12px' : '14px' }}>
+          <span className="font-extrabold leading-none" style={{ color: stat.color, fontSize: small ? "12px" : "14px" }}>
             {stat.value}
           </span>
-          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">
-            {stat.label}
-          </span>
+          <span className="text-[7px] text-gray-500 font-semibold mt-0.5 tracking-wide uppercase">{stat.label}</span>
         </div>
       )}
     </div>
@@ -255,18 +246,26 @@ function ProfileStatsFolder({ stats, small = false }: { stats: StatBox[]; small?
   return (
     <div className="flex flex-col items-center">
       <Folder size={0.7} color="#2563EB" items={items} />
-      <span className={`font-normal text-foreground mt-1.5 ${small ? 'text-[10px]' : 'text-xs'}`}>
-        View Stats
-      </span>
+      <span className={`font-normal text-foreground mt-1.5 ${small ? "text-[10px]" : "text-xs"}`}>View Stats</span>
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ─── Proficiency Colors ───────────────────────────────────────────────────────
+
+const PROFICIENCY_COLORS: Record<ProficiencyLevel, string> = {
+  expert: "bg-blue-600 text-white",
+  intermediate: "bg-blue-100 text-blue-700 border border-blue-300",
+  beginner: "bg-gray-100 text-gray-600 border border-gray-300",
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MyProfilePage() {
   const { role, updateProfile, profile: authProfile } = useAuthStore();
   const queryClient = useQueryClient();
+
+  // ── Local State ────────────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [showAddWork, setShowAddWork] = useState(false);
@@ -274,21 +273,25 @@ export default function MyProfilePage() {
   const [editingEducation, setEditingEducation] = useState<any>(null);
   const [skillInput, setSkillInput] = useState("");
   const [skillCategory, setSkillCategory] = useState("");
-  const [skillProficiency, setSkillProficiency] = useState<"beginner" | "intermediate" | "expert">("intermediate");
+  const [skillProficiency, setSkillProficiency] = useState<ProficiencyLevel>("intermediate");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageHash, setImageHash] = useState(Date.now());
-  const skillInputRef = useRef<HTMLInputElement>(null);
-  const [upgradeYear, setUpgradeYear] = useState<string>("");
-
+  const [upgradeYear, setUpgradeYear] = useState("");
   const [followsDialogOpen, setFollowsDialogOpen] = useState(false);
   const [followsDialogType, setFollowsDialogType] = useState<"followers" | "following">("followers");
+  const skillInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Role Flags ─────────────────────────────────────────────────────────────
   const isAlumniRole = role === "alumni";
   const isPartnerRole = role === "partner";
   const isStudentRole = role === "student";
   const isAlumni = isAlumniRole || isPartnerRole;
   const isReady = role !== undefined && role !== null;
 
+  // ── Profile query key helper (avoids repeating the ternary everywhere) ─────
+  const myProfileKey = isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"];
+
+  // ── Queries ────────────────────────────────────────────────────────────────
   const { data: alumniProfile, isLoading: alumniLoading } = useQuery({
     queryKey: ["alumni", "me"],
     queryFn: getMyAlumniProfile,
@@ -310,10 +313,9 @@ export default function MyProfilePage() {
   const profile = isPartnerRole ? partnerProfile : isAlumniRole ? alumniProfile : studentProfile;
   const isLoading = isPartnerRole ? partnerLoading : isAlumniRole ? alumniLoading : studentLoading;
   const p = profile as any;
+
   useEffect(() => {
-    if (profile) {
-      updateProfile(profile as any);
-    }
+    if (profile) updateProfile(profile as any);
   }, [profile, updateProfile]);
 
   const { data: myOpportunities } = useQuery({
@@ -322,8 +324,13 @@ export default function MyProfilePage() {
     enabled: isAlumni,
   });
 
+  // ── Forms ──────────────────────────────────────────────────────────────────
   const profileForm = useForm<any>({
-    resolver: zodResolver(isPartnerRole ? updatePartnerProfileSchema : isAlumniRole ? updateAlumniProfileSchema : updateStudentProfileSchema),
+    resolver: zodResolver(
+      isPartnerRole ? updatePartnerProfileSchema
+        : isAlumniRole ? updateAlumniProfileSchema
+        : updateStudentProfileSchema
+    ),
     values: {
       ...(!isPartnerRole && { display_name: p?.display_name ?? "" }),
       bio: profile?.bio ?? "",
@@ -346,9 +353,14 @@ export default function MyProfilePage() {
   });
   const isCurrentEducation = educationForm.watch("is_current");
 
-  const flash = (msg: string) => {
-    toast.success(msg, { action: { label: "OK", onClick: () => { } } });
-  };
+  // ── Mutations ──────────────────────────────────────────────────────────────
+  const flash = (msg: string) => toast.success(msg, { action: { label: "OK", onClick: () => {} } });
+
+  // Shared profile update fn — picks the right API based on role
+  const callUpdateProfile = (formData: FormData) =>
+    isPartnerRole ? updatePartnerProfile(formData)
+      : isAlumniRole ? updateUserProfile(formData)
+      : updateStudentProfile(formData);
 
   const profileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -360,12 +372,12 @@ export default function MyProfilePage() {
       if (isPartnerRole && data.affiliation?.trim()) formData.append("affiliation", data.affiliation.trim());
       if (isPartnerRole && data.job_title?.trim()) formData.append("job_title", data.job_title.trim());
       if ((isAlumniRole || isPartnerRole) && data.linkedin_url?.trim()) formData.append("linkedin_url", data.linkedin_url.trim());
-      return isPartnerRole ? updatePartnerProfile(formData) : isAlumniRole ? updateAlumniProfile(formData) : updateStudentProfile(formData);
+      return callUpdateProfile(formData);
     },
     onSuccess: () => {
       setEditMode(false);
       flash("Profile updated successfully.");
-      queryClient.invalidateQueries({ queryKey: isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"] });
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
     },
   });
 
@@ -385,10 +397,7 @@ export default function MyProfilePage() {
     mutationFn: deleteSkill,
     onSuccess: () => {
       flash("Skill deleted successfully.");
-
-      queryClient.invalidateQueries({
-        queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"],
-      });
+      queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
     },
   });
 
@@ -406,8 +415,8 @@ export default function MyProfilePage() {
     mutationFn: deleteWorkExperience,
     onSuccess: () => {
       flash("Work experience deleted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] })
-    }
+      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+    },
   });
 
   const educationMutation = useMutation({
@@ -421,8 +430,7 @@ export default function MyProfilePage() {
   });
 
   const updateEducationMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      updateEducation(id, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateEducation(id, data),
     onSuccess: () => {
       setShowAddEducation(false);
       setEditingEducation(null);
@@ -436,8 +444,8 @@ export default function MyProfilePage() {
     mutationFn: deleteEducation,
     onSuccess: () => {
       flash("Education deleted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] })
-    }
+      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+    },
   });
 
   const upgradeRequestMutation = useMutation({
@@ -445,7 +453,7 @@ export default function MyProfilePage() {
     onSuccess: (res) => {
       setUpgradeYear("");
       toast.success(res.message ?? "Profile upgrade request submitted successfully.", {
-        action: { label: "OK", onClick: () => { } },
+        action: { label: "OK", onClick: () => {} },
       });
     },
     onError: (err: any) => {
@@ -453,36 +461,21 @@ export default function MyProfilePage() {
     },
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Image Upload (shared helper for both avatar and backdrop) ──────────────
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "profile_picture" | "backDropImage",
+    label: string
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingImage(true);
     try {
       const formData = new FormData();
-      formData.append("profile_picture", file);
-      if (isPartnerRole) await updatePartnerProfile(formData);
-      else if (isAlumniRole) await updateAlumniProfile(formData);
-      else await updateStudentProfile(formData);
-      flash("Profile picture updated.");
-      queryClient.invalidateQueries({ queryKey: isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"] });
-      setImageHash(Date.now());
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleBackDropUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.append("backDropImage", file);
-      if (isPartnerRole) await updatePartnerProfile(formData);
-      else if (isAlumniRole) await updateAlumniProfile(formData);
-      else await updateStudentProfile(formData);
-      flash("Backdrop picture updated.");
-      queryClient.invalidateQueries({ queryKey: isPartnerRole ? ["partner", "me"] : isAlumniRole ? ["alumni", "me"] : ["student", "me"] });
+      formData.append(field, file);
+      await callUpdateProfile(formData);
+      flash(`${label} updated.`);
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
       setImageHash(Date.now());
     } finally {
       setUploadingImage(false);
@@ -506,31 +499,48 @@ export default function MyProfilePage() {
     return `${url}${sep}t=${imageHash}`;
   };
 
-  type ProficiencyLevel = "beginner" | "intermediate" | "expert";
-  const PROFICIENCY_COLORS: Record<ProficiencyLevel, string> = {
-    expert: "bg-blue-600 text-white",
-    intermediate: "bg-blue-100 text-blue-700 border border-blue-300",
-    beginner: "bg-gray-100 text-gray-600 border border-gray-300",
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const openFollowsDialog = (type: "followers" | "following") => {
+    setFollowsDialogType(type);
+    setFollowsDialogOpen(true);
   };
-  // ── Stat definitions per role ─────────────────────────────────────────────
 
   const alumniStatBoxes: StatBox[] = [
-    { label: "Followers", value: p?.followerCount ?? 0, color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
-    { label: "Following", value: p?.followingCount ?? 0, color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
-    { label: "Connections", value: p?.connections_count ?? 0, color: "#10b981" },
-    { label: "Opportunities", value: myOpportunities?.length ?? 0, color: "#f59e0b" },
-    { label: "Skills", value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+    { label: "Followers",    value: p?.followerCount ?? 0,                                       color: "#3b82f6", onClick: () => openFollowsDialog("followers") },
+    { label: "Following",    value: p?.followingCount ?? 0,                                      color: "#8b5cf6", onClick: () => openFollowsDialog("following") },
+    { label: "Connections",  value: p?.connections_count ?? 0,                                   color: "#10b981" },
+    { label: "Opportunities", value: myOpportunities?.length ?? 0,                              color: "#f59e0b" },
+    { label: "Skills",       value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0,       color: "#ec4899" },
   ];
 
   const studentStatBoxes: StatBox[] = [
-    { label: "Followers", value: p?.followerCount ?? 0, color: "#3b82f6", onClick: () => { setFollowsDialogType("followers"); setFollowsDialogOpen(true); } },
-    { label: "Following", value: p?.followingCount ?? 0, color: "#8b5cf6", onClick: () => { setFollowsDialogType("following"); setFollowsDialogOpen(true); } },
-    { label: "Semester", value: `Sem ${p?.semester ?? "—"}`, color: "#f59e0b" },
-    { label: "Skills", value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0, color: "#ec4899" },
+    { label: "Followers",  value: p?.followerCount ?? 0,                                        color: "#3b82f6", onClick: () => openFollowsDialog("followers") },
+    { label: "Following",  value: p?.followingCount ?? 0,                                       color: "#8b5cf6", onClick: () => openFollowsDialog("following") },
+    { label: "Semester",   value: `Sem ${p?.semester ?? "—"}`,                                  color: "#f59e0b" },
+    { label: "Skills",     value: p?.detailed_skills?.length ?? p?.skills?.length ?? 0,         color: "#ec4899" },
   ];
 
   const activeStats = isAlumni ? alumniStatBoxes : studentStatBoxes;
 
+  // ── Name Block ─────────────────────────────────────────────────────────────
+  const nameBlock = (mobile = false) => (
+    <div className="flex flex-col items-center mt-4 text-center">
+      <h1 className={`font-bold text-foreground tracking-tight ${mobile ? "text-xl" : "text-2xl"}`}>{p?.display_name}</h1>
+      <p className="text-sm text-gray-400 mt-0.5">@{p?.username}</p>
+      {isAlumni && (p?.current_role || p?.current_company) && (
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {[p.current_role, p.current_company].filter(Boolean).join(" · ")}
+        </p>
+      )}
+      <p className="text-sm text-muted-foreground mt-0.5">
+        {role === "partner"
+          ? [p?.job_title, p?.affiliation].filter(Boolean).join(" · ")
+          : [profile?.degree, profile?.batch, isAlumni ? `Class of ${p?.graduation_year}` : `Semester ${p?.semester}`].filter(Boolean).join(" · ")}
+      </p>
+    </div>
+  );
+
+  // ── Edit button (same in both breakpoints) ─────────────────────────────────
   const editButton = (
     <Button
       variant={editMode ? "outline" : "default"}
@@ -542,52 +552,43 @@ export default function MyProfilePage() {
     </Button>
   );
 
-  const nameBlock = (mobile = false) => (
-    <div className={`flex flex-col items-center mt-4 text-center ${mobile ? "" : ""}`}>
-      <h1 className={`font-bold text-foreground tracking-tight ${mobile ? "text-xl" : "text-2xl"}`}>{p?.display_name}</h1>
-      <p className="text-sm text-gray-400 mt-0.5">@{p?.username}</p>
-      {isAlumni && (p?.current_role || p?.current_company) && (
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {[p.current_role, p.current_company].filter(Boolean).join(" · ")}
-        </p>
+  // ── Actions row (LinkedIn + edit button) used in both breakpoints ──────────
+  const actionsRow = (
+    <div className="flex items-center gap-2">
+      {isAlumni && p?.linkedin_url && (
+        <a
+          href={p.linkedin_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
+        >
+          <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </a>
       )}
-      <p className="text-sm text-muted-foreground mt-0.5">
-        {role === "partner"
-          ? [p?.job_title, p?.affiliation].filter(Boolean).join(" · ")
-          : [profile?.degree, profile?.batch, isAlumni
-            ? `Class of ${p?.graduation_year}`
-            : `Semester ${p?.semester}`
-          ].filter(Boolean).join(" · ")
-        }
-      </p>
+      {editButton}
     </div>
   );
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="w-full mx-auto animate-in fade-in duration-500">
-      <div className="relative h-52 sm:h-64 overflow-visible bg-gradient-to-br from-indigo-500/30 via-violet-400/20 to-purple-300/10">
 
-        {/* Clipped background — image stays inside cover bounds */}
+      {/* ── COVER ─────────────────────────────────────────────────────────── */}
+      <div className="relative h-52 sm:h-64 overflow-visible bg-gradient-to-br from-indigo-500/30 via-violet-400/20 to-purple-300/10">
         <div className="absolute inset-0 overflow-hidden">
           {p?.backDropImage && (
-            <img
-              src={getImageUrl(p.backDropImage)}
-              alt="Cover"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            <img src={getImageUrl(p.backDropImage)} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         </div>
 
-        {/* Cover upload */}
+        {/* Backdrop upload */}
         <label className={`absolute top-4 right-4 z-10 h-9 w-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
-          {uploadingImage
-            ? <Loader2 className="h-4 w-4 animate-spin text-white" />
-            : <Camera className="h-4 w-4 text-white" />}
-          <input type="file" accept="image/*" className="hidden" onChange={handleBackDropUpload} disabled={uploadingImage} />
+          {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Camera className="h-4 w-4 text-white" />}
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "backDropImage", "Backdrop picture")} disabled={uploadingImage} />
         </label>
 
-        {/* Avatar — centered, overlaps into profile bar below */}
+        {/* Avatar */}
         <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-20">
           <div className="relative">
             <Avatar className="h-24 w-24 ring-4 ring-background shadow-lg">
@@ -597,64 +598,34 @@ export default function MyProfilePage() {
               </AvatarFallback>
             </Avatar>
             <label className={`absolute -bottom-1 -right-1 z-30 h-7 w-7 rounded-full bg-background border-2 border-background shadow-md flex items-center justify-center cursor-pointer hover:bg-muted transition-colors ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
-              {uploadingImage
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                : <Camera className="h-3.5 w-3.5 text-muted-foreground" />}
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+              {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Camera className="h-3.5 w-3.5 text-muted-foreground" />}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "profile_picture", "Profile picture")} disabled={uploadingImage} />
             </label>
           </div>
         </div>
       </div>
 
-      {/* ── Profile bar ─────────────────────────────────────────────────────── */}
+      {/* ── PROFILE BAR ───────────────────────────────────────────────────── */}
       <div className="bg-background border-b border-border/60">
 
-        {/* ── DESKTOP (sm+) ── */}
+        {/* DESKTOP */}
         <div className="hidden sm:grid grid-cols-3 items-center px-6 pt-14 pb-3">
-
-          {/* col-1: Stats — LEFT aligned inside their column */}
           <div className="flex items-center justify-start">
             <ProfileStatsFolder stats={activeStats} />
           </div>
-
-          {/* col-2: Name — CENTER of the screen */}
           {nameBlock()}
-
-          {/* col-3: Actions — RIGHT aligned inside their column */}
           <div className="flex items-center gap-2 justify-end">
-            {isAlumni && p?.linkedin_url && (
-              <a
-                href={p.linkedin_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
-              >
-                <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </a>
-            )}
-            {editButton}
+            {actionsRow}
           </div>
         </div>
 
-        {/* ── MOBILE (<sm) — stack vertically, everything centered ── */}
+        {/* MOBILE */}
         <div className="sm:hidden flex flex-col items-center px-4 pt-14 pb-3 gap-3">
           {nameBlock(true)}
           <div className="flex items-center justify-center">
             <ProfileStatsFolder stats={activeStats} small />
           </div>
-          <div className="flex items-center gap-2">
-            {isAlumni && p?.linkedin_url && (
-              <a
-                href={p.linkedin_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 flex items-center justify-center hover:bg-blue-100 transition-colors"
-              >
-                <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </a>
-            )}
-            {editButton}
-          </div>
+          {actionsRow}
         </div>
 
         {/* Tab nav */}
@@ -673,74 +644,75 @@ export default function MyProfilePage() {
         </div>
       </div>
 
-      {/* ── Body: two-column on md+ ──────────────────────────────────────────── */}
+      {/* ── BODY ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 px-4 sm:px-6 py-5">
 
-        {/* ── LEFT SIDEBAR ────────────────────────────────────────────────────── */}
+        {/* ── LEFT SIDEBAR ──────────────────────────────────────────────── */}
         <div className="space-y-4">
 
+          {/* Introduction card */}
           <Card className="border-border/60 shadow-sm">
             <CardContent className="p-5">
               <h2 className="font-bold text-foreground text-base mb-3">Introduction</h2>
 
-              {!editMode && profile?.bio ? (
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{profile.bio}</p>
-              ) : !editMode ? (
-                <p className="text-sm text-muted-foreground mb-4 italic">No bio yet.</p>
-              ) : null}
-
               {!editMode && (
-                <div className="space-y-2.5">
-                  {isAlumni && p?.current_company && (
+                <>
+                  {profile?.bio
+                    ? <p className="text-sm text-muted-foreground leading-relaxed mb-4">{profile.bio}</p>
+                    : <p className="text-sm text-muted-foreground mb-4 italic">No bio yet.</p>
+                  }
+                  <div className="space-y-2.5">
+                    {isAlumni && p?.current_company && (
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <Building2 className="h-4 w-4 flex-shrink-0" />
+                        <span>{p.current_company}</span>
+                      </div>
+                    )}
+                    {p?.phone && (
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <Phone className="h-4 w-4 flex-shrink-0" />
+                        <span>{p.phone}</span>
+                      </div>
+                    )}
+                    {isAlumni && p?.linkedin_url && (
+                      <div className="flex items-center gap-2.5 text-sm">
+                        <Linkedin className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline truncate">
+                          LinkedIn Profile
+                        </a>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Building2 className="h-4 w-4 flex-shrink-0" />
-                      <span>{p.current_company}</span>
+                      <GraduationCap className="h-4 w-4 flex-shrink-0" />
+                      <span>{[profile?.degree, profile?.batch].filter(Boolean).join(", ")}</span>
                     </div>
-                  )}
-                  {p?.phone && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4 flex-shrink-0" />
-                      <span>{p.phone}</span>
-                    </div>
-                  )}
-                  {isAlumni && p?.linkedin_url && (
-                    <div className="flex items-center gap-2.5 text-sm">
-                      <Linkedin className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 hover:underline truncate">
-                        LinkedIn Profile
-                      </a>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                    <GraduationCap className="h-4 w-4 flex-shrink-0" />
-                    <span>{[profile?.degree, profile?.batch].filter(Boolean).join(", ")}</span>
+                    {role === "partner" && p?.affiliation && (
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <Building2 className="h-4 w-4 flex-shrink-0" />
+                        <span>{p.affiliation}</span>
+                      </div>
+                    )}
+                    {role === "partner" && p?.job_title && (
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <Briefcase className="h-4 w-4 flex-shrink-0" />
+                        <span>{p.job_title}</span>
+                      </div>
+                    )}
+                    {!isAlumni && p?.semester && (
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <CalendarDays className="h-4 w-4 flex-shrink-0" />
+                        <span>Semester {p.semester}</span>
+                      </div>
+                    )}
+                    {p?.email && (
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <Mail className="h-4 w-4 flex-shrink-0" />
+                        <span>{p.email}</span>
+                      </div>
+                    )}
                   </div>
-                  {role === "partner" && p?.affiliation && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Building2 className="h-4 w-4 flex-shrink-0" />
-                      <span>{p.affiliation}</span>
-                    </div>
-                  )}
-                  {role === "partner" && p?.job_title && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Briefcase className="h-4 w-4 flex-shrink-0" />
-                      <span>{p.job_title}</span>
-                    </div>
-                  )}
-                  {!isAlumni && p?.semester && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <CalendarDays className="h-4 w-4 flex-shrink-0" />
-                      <span>Semester {p.semester}</span>
-                    </div>
-                  )}
-                  {p?.email && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Mail className="h-4 w-4 flex-shrink-0" />
-                      <span>{p.email}</span>
-                    </div>
-                  )}
-                </div>
+                </>
               )}
 
               {editMode && (
@@ -765,18 +737,18 @@ export default function MyProfilePage() {
                     />
                   </div>
                   {isPartnerRole && (
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Affiliation</Label>
-                      <Input {...profileForm.register("affiliation")} placeholder="Company name" className="h-9 text-sm border-border/60" />
-                      <FieldError message={profileForm.formState.errors.affiliation?.message as string} />
-                    </div>
-                  )}
-                  {isPartnerRole && (
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Title</Label>
-                      <Input {...profileForm.register("job_title")} placeholder="Your role" className="h-9 text-sm border-border/60" />
-                      <FieldError message={profileForm.formState.errors.job_title?.message as string} />
-                    </div>
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Affiliation</Label>
+                        <Input {...profileForm.register("affiliation")} placeholder="Company name" className="h-9 text-sm border-border/60" />
+                        <FieldError message={profileForm.formState.errors.affiliation?.message as string} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Title</Label>
+                        <Input {...profileForm.register("job_title")} placeholder="Your role" className="h-9 text-sm border-border/60" />
+                        <FieldError message={profileForm.formState.errors.job_title?.message as string} />
+                      </div>
+                    </>
                   )}
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</Label>
@@ -807,14 +779,8 @@ export default function MyProfilePage() {
                     </div>
                   )}
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Email
-                    </Label>
-                    <Input
-                      value={p?.email || ""}
-                      disabled
-                      className="h-9 text-sm border-border/60 bg-muted/40 text-black cursor-not-allowed"
-                    />
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
+                    <Input value={p?.email || ""} disabled className="h-9 text-sm border-border/60 bg-muted/40 text-black cursor-not-allowed" />
                   </div>
                   <Button
                     type="submit"
@@ -828,7 +794,7 @@ export default function MyProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Education — alumni and partner */}
+          {/* Education — alumni/partner only */}
           {isAlumni && (
             <Card className="border-border/60 shadow-sm">
               <CardContent className="p-5">
@@ -858,11 +824,8 @@ export default function MyProfilePage() {
                 {showAddEducation && (
                   <form
                     onSubmit={educationForm.handleSubmit((data) => {
-                      if (editingEducation) {
-                        updateEducationMutation.mutate({ id: editingEducation.id, data });
-                      } else {
-                        educationMutation.mutate(data);
-                      }
+                      if (editingEducation) updateEducationMutation.mutate({ id: editingEducation.id, data });
+                      else educationMutation.mutate(data);
                     })}
                     className="mb-4 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 border border-border/40 rounded-xl"
                   >
@@ -930,7 +893,7 @@ export default function MyProfilePage() {
                         <div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5 ring-4 ring-background" />
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-bold text-foreground text-sm">{edu.degree} {edu.field_of_study && `in ${edu.field_of_study}`}</h3>
+                            <h3 className="font-bold text-foreground text-sm">{edu.degree}{edu.field_of_study && ` in ${edu.field_of_study}`}</h3>
                             <p className="text-sm text-muted-foreground font-medium">{edu.university}</p>
                             <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                               <CalendarDays className="h-3.5 w-3.5" />
@@ -976,13 +939,12 @@ export default function MyProfilePage() {
               </CardContent>
             </Card>
           )}
-
         </div>
 
-        {/* ── RIGHT MAIN CONTENT ───────────────────────────────────────────────── */}
+        {/* ── RIGHT MAIN CONTENT ────────────────────────────────────────── */}
         <div className="space-y-4">
 
-          {/* Skills card */}
+          {/* Skills */}
           <Card className="border-border/60 shadow-sm">
             <CardContent className="p-5">
               <SectionHeader
@@ -1024,7 +986,7 @@ export default function MyProfilePage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proficiency</Label>
-                      <Select value={skillProficiency} onValueChange={(v) => setSkillProficiency(v as any)}>
+                      <Select value={skillProficiency} onValueChange={(v) => setSkillProficiency(v as ProficiencyLevel)}>
                         <SelectTrigger className="h-9 text-sm border-border/60">
                           <SelectValue />
                         </SelectTrigger>
@@ -1049,13 +1011,7 @@ export default function MyProfilePage() {
 
               {p?.detailed_skills?.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {p.detailed_skills.map((s: {
-                    id: string;
-                    skill_name?: string;
-                    name?: string;
-                    skill?: string;
-                    proficiency_level: ProficiencyLevel;
-                  }) => (
+                  {p.detailed_skills.map((s: { id: string; skill_name?: string; name?: string; skill?: string; proficiency_level: ProficiencyLevel }) => (
                     <div
                       key={s.id}
                       className={`inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-t-full rounded-tr-full rounded-br-full rounded-bl-none border text-xs font-semibold transition-all ${PROFICIENCY_COLORS[s.proficiency_level] ?? PROFICIENCY_COLORS.beginner}`}
@@ -1067,11 +1023,7 @@ export default function MyProfilePage() {
                         className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 disabled:opacity-100"
                         aria-label="Remove skill"
                       >
-                        {deleteSkillMutation.isPending ? (
-                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                        ) : (
-                          <X className="h-2.5 w-2.5" />
-                        )}
+                        {deleteSkillMutation.isPending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-2.5 w-2.5" />}
                       </button>
                     </div>
                   ))}
@@ -1100,7 +1052,8 @@ export default function MyProfilePage() {
                   action={
                     <button
                       onClick={() => setShowAddWork(!showAddWork)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"                    >
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
                       {showAddWork ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add</>}
                     </button>
                   }
@@ -1156,9 +1109,7 @@ export default function MyProfilePage() {
                       <div className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${isCurrentJob ? "bg-indigo-600 border-indigo-600" : "border-border/60 group-hover:border-border"}`}>
                         {isCurrentJob && <Check className="h-3 w-3 text-white" />}
                       </div>
-                      <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                        I currently work here
-                      </span>
+                      <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">I currently work here</span>
                     </button>
                     <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600">
                       {workMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Experience"}
@@ -1179,9 +1130,7 @@ export default function MyProfilePage() {
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-bold text-foreground">{w.role}</p>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-muted text-muted-foreground border-border/60 capitalize">
-                                  {w.employment_type}
-                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-muted text-muted-foreground border-border/60 capitalize">{w.employment_type}</span>
                                 {w.is_current && (
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
                                     Current
@@ -1200,11 +1149,7 @@ export default function MyProfilePage() {
                             disabled={deleteWorkMutation.isPending}
                             className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all flex-shrink-0 mt-0.5 disabled:opacity-100"
                           >
-                            {deleteWorkMutation.isPending ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
-                            )}
+                            {deleteWorkMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                           </button>
                         </div>
                       </div>
@@ -1238,8 +1183,7 @@ export default function MyProfilePage() {
                           <h3 className="text-sm font-semibold text-foreground group-hover:text-indigo-600 transition-colors truncate">{opp.title}</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">{opp.company}</p>
                           <div className="flex items-center gap-3 mt-1.5">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"
-                              }`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${opp.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border/40"}`}>
                               {opp.status}
                             </span>
                             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -1267,16 +1211,13 @@ export default function MyProfilePage() {
                 />
                 <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                   Already graduated? Submit a request to upgrade your profile from
-                  <span className="font-semibold text-blue-600"> Student </span>
-                  to
+                  <span className="font-semibold text-blue-600"> Student </span>to
                   <span className="font-semibold text-blue-600"> Alumni</span>.
                   An admin will review and approve your request.
                 </p>
                 <div className="flex items-end gap-3">
                   <div className="flex-1 space-y-1">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Graduation Year
-                    </Label>
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Graduation Year</Label>
                     <Input
                       id="upgrade-graduation-year"
                       type="number"
@@ -1293,26 +1234,20 @@ export default function MyProfilePage() {
                     id="submit-upgrade-request"
                     onClick={() => {
                       const year = parseInt(upgradeYear, 10);
-                      if (!upgradeYear || isNaN(year)) {
-                        toast.error("Please enter a valid graduation year.");
-                        return;
-                      }
+                      if (!upgradeYear || isNaN(year)) { toast.error("Please enter a valid graduation year."); return; }
                       upgradeRequestMutation.mutate({ graduation_year: year });
                     }}
                     disabled={upgradeRequestMutation.isPending || !upgradeYear.trim()}
                     className="h-9 gap-1.5 cursor-pointer bg-white hover:scale-103 !text-blue-600 !border !border-blue-600 font-normal flex-shrink-0"
                   >
-                    {upgradeRequestMutation.isPending ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
-                    ) : (
-                      <><GraduationCap className="h-4 w-4" /> Request Upgrade</>
-                    )}
+                    {upgradeRequestMutation.isPending
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
+                      : <><GraduationCap className="h-4 w-4" /> Request Upgrade</>}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
-
         </div>
       </div>
 

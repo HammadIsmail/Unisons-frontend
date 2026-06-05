@@ -186,6 +186,7 @@ export default function CreateEventPage() {
                     return (
                       <button
                         key={value}
+                        id={label}
                         type="button"
                         onClick={() => setValue("type", value, { shouldValidate: true })}
                         className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 w-full ${active

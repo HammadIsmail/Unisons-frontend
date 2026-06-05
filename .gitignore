@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 # next-agents-md
 .next-docs/
+
+#extras
+generate_selenium_tests.py
+docs.md
+apply_scroll_patch.py
+test_cases

@@ -31,3 +31,12 @@ export const getProfileSuggestions = async (): Promise<UserSuggestion[]> => {
   const { data } = await api.get("/api/profiles/suggestions");
   return data as UserSuggestion[];
 };
+
+export const updateUserProfile = async (
+  payload: FormData
+): Promise<{ message: string }> => {
+  const { data } = await api.put("/api/profile/me", payload, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};

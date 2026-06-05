@@ -529,13 +529,14 @@ export default function SearchPage() {
               </div>
               <Input
                 value={query}
+                id="search-input"
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setShowSuggestions(true);
                 }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 placeholder={`Try "Stripe", "@username", or "Product Designer"…`}
-                className="h-11 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0 px-0"
+                className="h-11 flex-1 border-none bg-transparent text-base shadow-none focus-visible:ring-0 px-0"
               />
               {query && (
                 <button
