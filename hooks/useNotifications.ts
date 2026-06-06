@@ -27,7 +27,7 @@ export function useNotifications() {
   // ── Fetch history on load ──
   const { data: fetchedNotifications, isLoading } = useQuery({
     queryKey: ["notifications"],
-    queryFn: getNotifications,
+    queryFn: () => getNotifications(),
     enabled: isAuthenticated,
   });
 
