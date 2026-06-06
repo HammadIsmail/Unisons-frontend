@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMessages, sendMessage, getConversations } from "@/lib/api/chat.api";
+import { getMessages, sendMessage, getConversations, markConversationRead } from "@/lib/api/chat.api";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
@@ -78,7 +78,7 @@ export default function ChatRoomPage() {
   useEffect(() => {
     if (!participantId || !profile) return;
     // Call the bulk-read endpoint
-    fetch(`/api/chat/conversations/${participantId}/read`, { method: "PATCH" })
+    markConversationRead(participantId)
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
         queryClient.invalidateQueries({ queryKey: ["messages", participantId] });
@@ -117,7 +117,7 @@ export default function ChatRoomPage() {
       );
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       // Mark new message read immediately
-      fetch(`/api/chat/conversations/${participantId}/read`, { method: "PATCH" }).catch(() => {});
+      markConversationRead(participantId).catch(() => {});
     };
 
     socket.on("typing_status", handleTypingStatus);
@@ -322,7 +322,7 @@ export default function ChatRoomPage() {
                   )}
                   <div
                     className="h-10 rounded-2xl animate-pulse bg-muted/70"
-                    style={{ width: `${120 + Math.random() * 140}px` }}
+                    style={{ width: `${[180, 240, 150, 210, 190][i]}px` }}
                   />
                 </div>
               ))}
