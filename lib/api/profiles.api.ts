@@ -7,6 +7,23 @@ export type PublicProfile = Omit<AlumniProfile, "role"> &
     connection_status: "pending" | "connected" | "blocked" | "none";
     is_connection_sender: boolean;
     opportunities_posted: any[];
+    // Social counts
+    followers_count: number;
+    following_count: number;
+    is_following: boolean;
+    // Presence
+    is_online: boolean;
+    last_seen: string | null;
+    // Education section
+    education: {
+      id: string;
+      university: string;
+      degree: string;
+      field_of_study?: string;
+      start_date: string;
+      end_date?: string | null;
+      is_current: boolean;
+    }[];
   };
 
 export const getUserPublicProfile = async (

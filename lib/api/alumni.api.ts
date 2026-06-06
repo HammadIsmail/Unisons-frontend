@@ -11,14 +11,7 @@ export const getMyAlumniProfile = async (): Promise<AlumniProfile> => {
   return data;
 };
 
-export const updateAlumniProfile = async (
-  payload: FormData
-): Promise<{ message: string }> => {
-  const { data } = await api.put("/api/alumni/me", payload, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
-};
+// NOTE: Profile updates are unified. Use updateUserProfile from profiles.api.ts → PUT /api/profile/me
 
 export const getMyNetwork = async (): Promise<Connection[]> => {
   const { data } = await api.get("/api/alumni/connections");
@@ -99,6 +92,24 @@ export const addSkill = async (payload: {
   years_experience?: number;
 }): Promise<{ message: string }> => {
   const { data } = await api.post("/api/profile/skills", payload);
+  return data;
+};
+
+export const updateSkill = async (
+  id: string,
+  payload: {
+    proficiency_level?: string;
+    years_experience?: number;
+  }
+): Promise<{ message: string }> => {
+  const { data } = await api.put(`/api/profile/skills/${id}`, payload);
+  return data;
+};
+
+export const deleteSkillById = async (
+  id: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/profile/skills/${id}`);
   return data;
 };
 

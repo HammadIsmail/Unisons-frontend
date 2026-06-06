@@ -5,12 +5,7 @@ export const getMyPartnerProfile = async () => {
   return data;
 };
 
-export const updatePartnerProfile = async (formData: FormData) => {
-  const { data } = await api.put("/api/partner/me", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
-};
+// NOTE: Profile updates are unified. Use updateUserProfile from profiles.api.ts → PUT /api/profile/me
 
 export const getPartnerConnections = async () => {
   const { data } = await api.get("/api/partner/connections");

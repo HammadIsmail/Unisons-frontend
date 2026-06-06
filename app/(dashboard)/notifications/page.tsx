@@ -25,6 +25,11 @@ import {
   MessageSquare,
   Filter,
   Clock,
+  Megaphone,
+  CalendarDays,
+  CalendarX2,
+  Ticket,
+  Star,
 } from "lucide-react";
 
 // ── Type config ───────────────────────────────────────────────────────────────
@@ -71,9 +76,45 @@ const TYPE_CONFIG: Record<string, {
     label: "Message",
     pill: "bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/20",
   },
+  announcement: {
+    icon: <Megaphone className="h-4 w-4" />,
+    gradient: "from-yellow-500 to-orange-500",
+    label: "Announcement",
+    pill: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 ring-yellow-500/20",
+  },
+  event_update: {
+    icon: <CalendarDays className="h-4 w-4" />,
+    gradient: "from-teal-500 to-cyan-600",
+    label: "Event",
+    pill: "bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-teal-500/20",
+  },
+  event_cancelled: {
+    icon: <CalendarX2 className="h-4 w-4" />,
+    gradient: "from-red-500 to-rose-700",
+    label: "Event",
+    pill: "bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/20",
+  },
+  new_rsvp: {
+    icon: <Ticket className="h-4 w-4" />,
+    gradient: "from-lime-500 to-green-600",
+    label: "Event",
+    pill: "bg-lime-500/10 text-lime-600 dark:text-lime-400 ring-lime-500/20",
+  },
+  profile_upgraded: {
+    icon: <Star className="h-4 w-4" />,
+    gradient: "from-indigo-500 to-blue-700",
+    label: "Account",
+    pill: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 ring-indigo-500/20",
+  },
+  upgrade_rejected: {
+    icon: <XCircle className="h-4 w-4" />,
+    gradient: "from-rose-600 to-red-800",
+    label: "Account",
+    pill: "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/20",
+  },
 };
 
-const FILTERS = ["All", "Unread", "Messages", "Network", "Opportunity", "Account"];
+const FILTERS = ["All", "Unread", "Messages", "Network", "Opportunity", "Account", "Event", "Announcement"];
 
 function getTypeConfig(type: string) {
   return TYPE_CONFIG[type] ?? {

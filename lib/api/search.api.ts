@@ -6,6 +6,14 @@ import {
   Opportunity,
 } from "@/types/api.types";
 
+export interface SearchSuggestion {
+  id: string;
+  username: string;
+  display_name: string;
+  profile_picture: string | null;
+  role: string;
+}
+
 export const searchAlumni = async (params: {
   display_name?: string;
   company?: string;
@@ -33,3 +41,11 @@ export const searchUserByUsername = async (
   const { data } = await api.get(`/api/search/user/${username}`);
   return data;
 };
+
+// ── Real-time search-as-you-type (min 2 chars) ──────────────────────────────
+export const getSearchSuggestions = async (
+  q: string
+): Promise<SearchSuggestion[]> => {
+  const { data } = await api.get("/api/search/suggestions", { params: { q } });
+  return data;
+};

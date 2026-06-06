@@ -430,8 +430,7 @@ function NetworkPageContent() {
             </span>
           </TabsTrigger>
 
-          {role === "alumni" && (
-            <TabsTrigger
+          <TabsTrigger
               value="invitations"
               className={cn(
                 "group h-auto py-2.5 px-4 rounded-xl text-[13px] font-medium border transition-all duration-150",
@@ -461,7 +460,6 @@ function NetworkPageContent() {
                 )}
               </span>
             </TabsTrigger>
-          )}
 
           <TabsTrigger
             value="sent"
@@ -564,8 +562,7 @@ function NetworkPageContent() {
           </div>
         </TabsContent>
 
-        {/* ── Invitations (Alumni only) ── */}
-        {role === "alumni" && (
+        {/* ── Invitations ── */}
           <TabsContent value="invitations" className="m-0 focus-visible:outline-none focus-visible:ring-0 pt-8">
             <div className="mb-4">
               <h2 className="text-[15px] font-semibold text-foreground">Invitations</h2>
@@ -625,7 +622,6 @@ function NetworkPageContent() {
               )}
             </div>
           </TabsContent>
-        )}
 
         {/* ── Sent Requests ── */}
         <TabsContent value="sent" className="m-0 focus-visible:outline-none focus-visible:ring-0 pt-8">

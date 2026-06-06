@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { searchAlumni } from "@/lib/api/search.api";
+import { searchAlumni, getSearchSuggestions } from "@/lib/api/search.api";
 import { getAllSkills } from "@/lib/api/skill.api";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNetwork } from "@/hooks/useNetwork";
@@ -445,8 +445,8 @@ export default function SearchPage() {
 
   const { data: suggestions } = useQuery({
     queryKey: ["search", "suggestions", usernameQuery],
-    queryFn: () => searchAlumni({ display_name: usernameQuery }),
-    enabled: isAtMode && usernameQuery.length > 0,
+    queryFn: () => getSearchSuggestions(usernameQuery),
+    enabled: isAtMode && usernameQuery.length >= 2,
   });
 
   const { data: skills } = useQuery({

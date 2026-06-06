@@ -4,11 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMyAlumniProfile, addSkill,
   addWorkExperience, deleteWorkExperience,
-  addEducation, deleteEducation, updateEducation,
+  addEducation, deleteEducation, updateEducation, updateSkill, deleteSkillById
 } from "@/lib/api/alumni.api";
 import { updateUserProfile } from "@/lib/api/profiles.api";
-import { getMyStudentProfile, updateStudentProfile, addStudentSkill, requestProfileUpgrade } from "@/lib/api/student.api";
-import { getMyPartnerProfile, updatePartnerProfile } from "@/lib/api/partner.api";
+import { getMyStudentProfile, addStudentSkill, requestProfileUpgrade, deleteStudentSkill } from "@/lib/api/student.api";
+import { getMyPartnerProfile } from "@/lib/api/partner.api";
 import { getMyOpportunities } from "@/lib/api/opportunities.api";
 import { getFollowers, getFollowing, followUser, unfollowUser } from "@/lib/api/connections.api";
 import useAuthStore from "@/store/authStore";
@@ -39,7 +39,7 @@ import {
   Activity, ArrowRight, ChevronRight, Mail, Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { deleteSkill } from "@/lib/api/skill.api";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -280,6 +280,7 @@ export default function MyProfilePage() {
   const [followsDialogOpen, setFollowsDialogOpen] = useState(false);
   const [followsDialogType, setFollowsDialogType] = useState<"followers" | "following">("followers");
   const skillInputRef = useRef<HTMLInputElement>(null);
+  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
 
   // ── Role Flags ─────────────────────────────────────────────────────────────
   const isAlumniRole = role === "alumni";
@@ -331,15 +332,29 @@ export default function MyProfilePage() {
         : isAlumniRole ? updateAlumniProfileSchema
         : updateStudentProfileSchema
     ),
-    values: {
-      ...(!isPartnerRole && { display_name: p?.display_name ?? "" }),
-      bio: profile?.bio ?? "",
-      phone: (profile as any)?.phone ?? "",
-      ...(isStudentRole && { semester: p?.semester ?? undefined }),
-      ...(isPartnerRole && { affiliation: p?.affiliation ?? "", job_title: p?.job_title ?? "" }),
-      ...((isAlumniRole || isPartnerRole) && { linkedin_url: (profile as any)?.linkedin_url ?? "" }),
+    defaultValues: {
+      display_name: "",
+      bio: "",
+      phone: "",
+      semester: undefined,
+      affiliation: "",
+      job_title: "",
+      linkedin_url: "",
     },
   });
+
+  useEffect(() => {
+    if (profile && !editMode) {
+      profileForm.reset({
+        ...(!isPartnerRole && { display_name: p?.display_name ?? "" }),
+        bio: profile?.bio ?? "",
+        phone: (profile as any)?.phone ?? "",
+        ...(isStudentRole && { semester: p?.semester ?? undefined }),
+        ...(isPartnerRole && { affiliation: p?.affiliation ?? "", job_title: p?.job_title ?? "" }),
+        ...((isAlumniRole || isPartnerRole) && { linkedin_url: (profile as any)?.linkedin_url ?? "" }),
+      });
+    }
+  }, [profile, isPartnerRole, isStudentRole, isAlumniRole, p, editMode, profileForm]);
 
   const workForm = useForm<AddWorkExperienceInput>({
     resolver: zodResolver(addWorkExperienceSchema),
@@ -356,11 +371,8 @@ export default function MyProfilePage() {
   // ── Mutations ──────────────────────────────────────────────────────────────
   const flash = (msg: string) => toast.success(msg, { action: { label: "OK", onClick: () => {} } });
 
-  // Shared profile update fn — picks the right API based on role
-  const callUpdateProfile = (formData: FormData) =>
-    isPartnerRole ? updatePartnerProfile(formData)
-      : isAlumniRole ? updateUserProfile(formData)
-      : updateStudentProfile(formData);
+  // All roles use the unified PUT /api/profile/me endpoint
+  const callUpdateProfile = (formData: FormData) => updateUserProfile(formData);
 
   const profileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -393,12 +405,27 @@ export default function MyProfilePage() {
     },
   });
 
-  const deleteSkillMutation = useMutation({
-    mutationFn: deleteSkill,
+  const updateSkillMutation = useMutation({
+    mutationFn: (data: { id: string; payload: { proficiency_level: string } }) => updateSkill(data.id, data.payload),
     onSuccess: () => {
-      flash("Skill deleted successfully.");
       queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      setShowAddSkill(false);
+      setEditingSkillId(null);
+      setSkillInput("");
+      setSkillCategory("");
+      setSkillProficiency("intermediate");
+      flash("Skill updated successfully.");
     },
+    onError: () => toast.error("Failed to update skill"),
+  });
+
+  const deleteSkillMutation = useMutation({
+    mutationFn: (id: string) => isAlumni ? deleteSkillById(id) : deleteStudentSkill(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: isAlumni ? ["alumni", "me"] : ["student", "me"] });
+      flash("Skill deleted successfully.");
+    },
+    onError: () => toast.error("Failed to delete skill"),
   });
 
   const workMutation = useMutation({
@@ -483,12 +510,28 @@ export default function MyProfilePage() {
   };
 
   const handleAddSkill = () => {
-    if (!skillInput.trim()) return;
-    skillMutation.mutate({
-      skill_name: skillInput.trim(),
-      category: skillCategory.trim() || undefined,
-      proficiency_level: skillProficiency,
-    });
+    if (!skillInput.trim() && !editingSkillId) return;
+
+    if (editingSkillId) {
+      updateSkillMutation.mutate({
+        id: editingSkillId,
+        payload: { proficiency_level: skillProficiency }
+      });
+    } else {
+      skillMutation.mutate({
+        skill_name: skillInput.trim(),
+        category: skillCategory.trim() || undefined,
+        proficiency_level: skillProficiency,
+      });
+    }
+  };
+
+  const handleEditSkill = (s: any) => {
+    setEditingSkillId(s.id);
+    setSkillInput(s.skill_name || s.name || s.skill || "");
+    setSkillCategory(s.category || "");
+    setSkillProficiency(s.proficiency_level || "intermediate");
+    setShowAddSkill(true);
   };
 
   if (isLoading) return <ProfileSkeleton />;
@@ -924,7 +967,7 @@ export default function MyProfilePage() {
                             <button
                               onClick={() => deleteEducationMutation.mutate(edu.id)}
                               disabled={deleteEducationMutation.isPending}
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md transition-all disabled:opacity-50"
+                              className="p-1.5 !text-white hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md transition-all disabled:opacity-50"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -952,7 +995,16 @@ export default function MyProfilePage() {
                 title="Skills"
                 action={
                   <button
-                    onClick={() => setShowAddSkill(!showAddSkill)}
+                    onClick={() => {
+                      if (showAddSkill) {
+                        setShowAddSkill(false);
+                        setEditingSkillId(null);
+                        setSkillInput("");
+                        setSkillCategory("");
+                      } else {
+                        setShowAddSkill(true);
+                      }
+                    }}
                     className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
                   >
                     {showAddSkill ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> Add Skill</>}
@@ -972,6 +1024,7 @@ export default function MyProfilePage() {
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSkill(); } }}
                         placeholder="e.g. React, Python…"
                         className="h-9 text-sm border-border/60"
+                        disabled={!!editingSkillId}
                         autoFocus
                       />
                     </div>
@@ -982,6 +1035,7 @@ export default function MyProfilePage() {
                         onChange={(e) => setSkillCategory(e.target.value)}
                         placeholder="e.g. Programming"
                         className="h-9 text-sm border-border/60"
+                        disabled={!!editingSkillId}
                       />
                     </div>
                     <div className="space-y-1">
@@ -1000,11 +1054,11 @@ export default function MyProfilePage() {
                   </div>
                   <Button
                     onClick={handleAddSkill}
-                    disabled={skillMutation.isPending || !skillInput.trim()}
+                    disabled={(skillMutation.isPending || updateSkillMutation.isPending) || (!skillInput.trim() && !editingSkillId)}
                     size="sm"
                     className="h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600"
                   >
-                    {skillMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Skill"}
+                    {skillMutation.isPending || updateSkillMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</> : (editingSkillId ? "Update Skill" : "Add Skill")}
                   </Button>
                 </div>
               )}
@@ -1018,12 +1072,19 @@ export default function MyProfilePage() {
                     >
                       <span>{s.skill_name || s.name || s.skill}</span>
                       <button
+                        onClick={() => handleEditSkill(s)}
+                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+                        aria-label="Edit skill"
+                      >
+                        <Pencil className="h-2.5 w-2.5" />
+                      </button>
+                      <button
                         onClick={() => deleteSkillMutation.mutate(s.id)}
                         disabled={deleteSkillMutation.isPending}
-                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 disabled:opacity-100"
-                        aria-label="Remove skill"
+                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-500/20 text-white hover:text-rose-600 transition-colors flex-shrink-0"
+                        aria-label="Delete skill"
                       >
-                        {deleteSkillMutation.isPending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-2.5 w-2.5" />}
+                        <X className="h-3 w-3" />
                       </button>
                     </div>
                   ))}

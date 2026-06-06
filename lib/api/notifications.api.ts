@@ -1,8 +1,9 @@
 import api from "@/lib/api";
 import { Notification } from "@/types/api.types";
 
-export const getNotifications = async (): Promise<Notification[]> => {
-  const { data } = await api.get("/api/notifications");
+export const getNotifications = async (read?: boolean): Promise<Notification[]> => {
+  const params = read !== undefined ? { read: String(read) } : {};
+  const { data } = await api.get("/api/notifications", { params });
   return data;
 };
 

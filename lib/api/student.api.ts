@@ -1,5 +1,5 @@
 import api from "@/lib/api";
-import { StudentProfile, Mentor } from "@/types/api.types";
+import { StudentProfile } from "@/types/api.types";
 
 export const getMyStudentProfile = async (): Promise<StudentProfile> => {
   const { data } = await api.get("/api/student/me");
@@ -7,18 +7,8 @@ export const getMyStudentProfile = async (): Promise<StudentProfile> => {
 };
 
 
-export const updateStudentProfile = async (
-  payload: FormData
-): Promise<{ message: string }> => {
-  const { data } = await api.put("/api/student/me", payload, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
-};
-export const getMyMentors = async (): Promise<Mentor[]> => {
-  const { data } = await api.get("/api/student/mentors");
-  return data;
-};
+// NOTE: Profile updates are unified. Use updateUserProfile from profiles.api.ts → PUT /api/profile/me
+// getMyMentors removed — GET /api/student/mentors does not exist in the API.
 
 export const getMyNetwork = async (): Promise<any[]> => {
   const { data } = await api.get("/api/student/connections");
