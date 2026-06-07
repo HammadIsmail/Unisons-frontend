@@ -390,7 +390,7 @@ function ProfileActions({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
-          {status === "blocked" ? (
+          {p?.is_blocked ? (
             <DropdownMenuItem
               className="text-amber-600 focus:text-amber-600 cursor-pointer flex items-center gap-2"
               onClick={() => setPendingAction({ type: "unblock", targetId: userId, targetName: p?.display_name })}
@@ -792,6 +792,42 @@ export default function PublicProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* Education */}
+          {p?.education?.length > 0 && (
+            <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+                <h2 className="font-bold text-foreground text-base tracking-tight flex items-center gap-2">
+                  <span className="text-muted-foreground"><GraduationCap className="h-4 w-4" /></span>
+                  Education
+                </h2>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {p.education.length} {p.education.length === 1 ? "school" : "schools"}
+                </span>
+              </div>
+              <div className="p-5">
+                <div className="space-y-4">
+                  {p.education.map((edu: any, idx: number) => (
+                    <div key={edu.id || idx} className="group relative pl-4 border-l-2 border-border/60 pb-4 last:pb-0">
+                      <div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5 ring-4 ring-background" />
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-foreground text-sm">{edu.degree}{edu.field_of_study && ` in ${edu.field_of_study}`}</h3>
+                          <p className="text-sm text-muted-foreground font-medium">{edu.university}</p>
+                          <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            <span>
+                              {edu.start_date ? new Date(edu.start_date).getFullYear() : "—"} – {edu.is_current ? "Present" : edu.end_date ? new Date(edu.end_date).getFullYear() : ""}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── RIGHT MAIN CONTENT ────────────────────────────────────────── */}
@@ -894,51 +930,7 @@ export default function PublicProfilePage() {
             </div>
           )}
 
-          {/* Education */}
-          {p?.education?.length > 0 && (
-            <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
-                <h2 className="font-bold text-foreground text-base tracking-tight flex items-center gap-2">
-                  <span className="text-muted-foreground"><GraduationCap className="h-4 w-4" /></span>
-                  Education
-                </h2>
-                <span className="text-xs text-muted-foreground font-medium">
-                  {p.education.length} {p.education.length === 1 ? "school" : "schools"}
-                </span>
-              </div>
-              <div className="p-3">
-                <div className="space-y-4">
-                  {p.education.map((edu: any, idx: number) => (
-                    <div key={edu.id}>
-                      {idx > 0 && <Separator className="opacity-40 mb-4" />}
-                      <div className="flex gap-3 items-start">
-                        <div className="h-10 w-10 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center flex-shrink-0 mt-0.5 border border-violet-100 dark:border-violet-900">
-                          <GraduationCap className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-foreground">{edu.university}</p>
-                            {edu.is_current && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                                Current
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-foreground mt-0.5 font-medium">
-                            {edu.degree}{edu.field_of_study ? `, ${edu.field_of_study}` : ""}
-                          </p>
-                          <p className="text-xs text-muted-foreground/60 mt-1 flex items-center gap-1">
-                            <CalendarDays className="h-3 w-3" />
-                            {edu.start_date ? new Date(edu.start_date).toLocaleDateString("en-US", { year: 'numeric', month: 'short' }) : "—"} — {edu.is_current ? "Present" : (edu.end_date ? new Date(edu.end_date).toLocaleDateString("en-US", { year: 'numeric', month: 'short' }) : "—")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* Opportunities Posted */}
           {isAlumni && p?.opportunities_posted?.length > 0 && (
@@ -985,6 +977,7 @@ export default function PublicProfilePage() {
           {/* Empty state */}
           {!p?.detailed_skills?.length &&
             !profile?.skills?.length &&
+            !p?.education?.length &&
             !(isAlumni && p?.work_experience?.length) &&
             !(isAlumni && p?.opportunities_posted?.length) && (
               <div className="rounded-2xl border border-border/60 bg-card shadow-sm p-12 flex flex-col items-center text-center">
