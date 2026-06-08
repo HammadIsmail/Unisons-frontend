@@ -8,8 +8,9 @@ import { Toaster } from "sonner";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "UNISON — Alumni Network",
-  description: "Connecting UET alumni and students through a professional network.",
+  title: "UNISON — Where Students Meet Alumni",
+  description:
+    "The professional network built exclusively to connect students with alumni. Discover jobs, internships, scholarships, and mentors.",
 };
 
 export default function RootLayout({
