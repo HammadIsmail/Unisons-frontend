@@ -61,10 +61,25 @@ export function useNotifications() {
   // ── Mark as read ──
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
-    onMutate: (id: string) => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      const previous = queryClient.getQueryData<Notification[]>(["notifications"]);
+
+      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
+        old?.map((n) => (n.id === id ? { ...n, is_read: true } : n)) ?? []
+      );
+
       markReadLocally(id);
+
+      return { previous };
     },
-    onError: () => {
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["notifications"], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });

@@ -110,7 +110,7 @@ export default function Navbar() {
                 <button className="flex flex-col items-center justify-center px-3 py-1 text-muted-foreground hover:text-foreground transition-colors md:min-w-[80px]">
                   <Avatar className="h-6 w-6 border border-border">
                     <AvatarImage src={profile?.profile_picture} />
-                    <AvatarFallback className="bg-[#0a66c2] text-white text-[10px]">
+                    <AvatarFallback className=" border border-blue-600 bg-white font-semibold !text-blue-600 text-[10px]">
                       {profile?.display_name?.slice(0, 2).toUpperCase() || "UN"}
                     </AvatarFallback>
                   </Avatar>

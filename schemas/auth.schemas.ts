@@ -26,7 +26,9 @@ export const registerSchema = z
       .regex(/[A-Z]/, "Must contain at least one uppercase letter")
       .regex(/[0-9]/, "Must contain at least one number")
       .regex(/[^A-Za-z0-9]/, "Must contain at least one special character"),
-    role: z.enum(["alumni", "student", "partner"]),
+    role: z.enum(["alumni", "student", "partner"], {
+      message: "Please select a role",
+    }),
     // Academic fields (student / alumni)
     roll_number: z.string().optional(),
     batch: z.string().optional(),

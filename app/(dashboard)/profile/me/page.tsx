@@ -281,6 +281,8 @@ export default function MyProfilePage() {
   const [followsDialogType, setFollowsDialogType] = useState<"followers" | "following">("followers");
   const skillInputRef = useRef<HTMLInputElement>(null);
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
+  const [workVisibleCount, setWorkVisibleCount] = useState(3);
+  const [oppVisibleCount, setOppVisibleCount] = useState(3);
 
   // ── Role Flags ─────────────────────────────────────────────────────────────
   const isAlumniRole = role === "alumni";
@@ -452,7 +454,7 @@ export default function MyProfilePage() {
       setShowAddEducation(false);
       educationForm.reset();
       flash("Education added.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
     },
   });
 
@@ -463,7 +465,7 @@ export default function MyProfilePage() {
       setEditingEducation(null);
       educationForm.reset();
       flash("Education updated.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
     },
   });
 
@@ -471,7 +473,7 @@ export default function MyProfilePage() {
     mutationFn: deleteEducation,
     onSuccess: () => {
       flash("Education deleted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
     },
   });
 
@@ -818,7 +820,7 @@ export default function MyProfilePage() {
                   {isAlumni && (
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">LinkedIn URL</Label>
-                      <Input {...(profileForm.register as any)("linkedin_url")} placeholder="https://linkedin.com/in/..." className="h-9 text-sm border-border/60" />
+                      <Input {...(profileForm.register)("linkedin_url")} placeholder="https://linkedin.com/in/..." className="h-9 text-sm border-border/60" />
                     </div>
                   )}
                   <div className="space-y-1">
@@ -837,9 +839,8 @@ export default function MyProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Education — alumni/partner only */}
-          {isAlumni && (
-            <Card className="border-border/60 shadow-sm">
+          {/* Education */}
+          <Card className="border-border/60 shadow-sm">
               <CardContent className="p-5">
                 <SectionHeader
                   icon={<GraduationCap className="h-4 w-4" />}
@@ -981,7 +982,6 @@ export default function MyProfilePage() {
                 )}
               </CardContent>
             </Card>
-          )}
         </div>
 
         {/* ── RIGHT MAIN CONTENT ────────────────────────────────────────── */}
@@ -1072,19 +1072,16 @@ export default function MyProfilePage() {
                     >
                       <span>{s.skill_name || s.name || s.skill}</span>
                       <button
-                        onClick={() => handleEditSkill(s)}
-                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0"
-                        aria-label="Edit skill"
-                      >
-                        <Pencil className="h-2.5 w-2.5" />
-                      </button>
-                      <button
                         onClick={() => deleteSkillMutation.mutate(s.id)}
                         disabled={deleteSkillMutation.isPending}
-                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-500/20 text-white hover:text-rose-600 transition-colors flex-shrink-0"
+                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 disabled:opacity-50"
                         aria-label="Delete skill"
                       >
-                        <X className="h-3 w-3" />
+                        {deleteSkillMutation.isPending && deleteSkillMutation.variables === s.id ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
                       </button>
                     </div>
                   ))}
@@ -1180,7 +1177,7 @@ export default function MyProfilePage() {
 
                 {p?.work_experiences?.length > 0 ? (
                   <div className="space-y-4">
-                    {p.work_experiences.map((w: any, idx: number) => (
+                    {p.work_experiences.slice(0, workVisibleCount).map((w: any, idx: number) => (
                       <div key={w.id}>
                         {idx > 0 && <Separator className="opacity-40 mb-4" />}
                         <div className="flex items-start justify-between gap-3 group">
@@ -1215,6 +1212,18 @@ export default function MyProfilePage() {
                         </div>
                       </div>
                     ))}
+                    {workVisibleCount < p.work_experiences.length && (
+                      <div className="flex justify-center mt-4">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setWorkVisibleCount(prev => prev + 3)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          See More
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No work experience added yet.</p>
@@ -1237,7 +1246,7 @@ export default function MyProfilePage() {
                   }
                 />
                 <div className="space-y-3">
-                  {myOpportunities.slice(0, 3).map((opp: any) => (
+                  {myOpportunities.slice(0, oppVisibleCount).map((opp: any) => (
                     <Link key={opp.id} href={`/opportunities/${opp.id}`}>
                       <div className="flex items-start justify-between p-3 rounded-xl border border-border/40 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all group">
                         <div className="min-w-0 flex-1">
@@ -1257,6 +1266,18 @@ export default function MyProfilePage() {
                       </div>
                     </Link>
                   ))}
+                  {oppVisibleCount < myOpportunities.length && (
+                    <div className="flex justify-center mt-4">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setOppVisibleCount(prev => prev + 3)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        See More
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

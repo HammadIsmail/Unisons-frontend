@@ -27,7 +27,7 @@ const PENDING_DONE = [true, true, false, false];
 
 export default function PendingPage() {
   const router = useRouter();
-  const { account_status, profile, clearAuth } = useAuthStore();
+  const { account_status, clearAuth } = useAuthStore();
 
   const handleLogout = () => {
     clearAuth();
@@ -140,7 +140,7 @@ export default function PendingPage() {
                 {isRejected
                   ? "Unfortunately, we couldn't verify your affiliation. Please contact the administration."
                   : <>
-                      Hi <span className="font-bold text-foreground">{profile?.display_name ?? "User"}</span>, your account is being reviewed. You'll receive an email as soon as you're approved.
+                      Hi, your account is being reviewed. You'll receive an email as soon as you're approved.
                     </>
                 }
               </p>
@@ -207,12 +207,9 @@ export default function PendingPage() {
               className="w-full h-12 rounded-full border-border/60 text-sm font-bold gap-2 hover:bg-muted/50"
             >
               <ArrowLeft className="h-4 w-4" />
-              Sign out and go back
+              Go back
             </Button>
 
-            <p className="text-[11px] text-center text-muted-foreground">
-              Questions? Contact help@unison.edu.pk
-            </p>
           </div>
         </motion.div>
       </div>

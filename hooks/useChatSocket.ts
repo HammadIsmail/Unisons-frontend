@@ -27,7 +27,7 @@ export function useChatSocket() {
         c.lastMessage.senderId !== profile.id
       ).length;
       setUnreadChatCount(count);
-    }).catch(console.error);
+    }).catch();
   }, [isAuthenticated, profile, setUnreadChatCount]);
 
   // 2. Real-time updates
@@ -42,13 +42,11 @@ export function useChatSocket() {
     const socket = connectSocket(token);
 
     const handleNewMessage = (newMessage: Message) => {
-      console.log("Real-time message received:", newMessage);
       // Check if we are currently in this chat room (Case-insensitive)
       const currentPath = (pathnameRef.current || "").toLowerCase();
       const expectedPath = `/chat/${newMessage.senderId}`.toLowerCase();
       const isChatRoomActive = currentPath === expectedPath;
       
-      console.log(`Matching: ${currentPath} === ${expectedPath} ? ${isChatRoomActive}`);
 
       if (isChatRoomActive) {
         // We are in the chat room, invalidate messages to fetch it

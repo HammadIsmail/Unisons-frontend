@@ -311,17 +311,19 @@ function AlumniCard({
           {a.role.toUpperCase()}
         </div>
         <div className="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-            aria-label="Message"
-            asChild
-          >
-            <Link href={`/chat/${a.id}`}>
-              <MessageCircle className="h-4 w-4" />
-            </Link>
-          </Button>
+          {status === "connected" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+              aria-label="Message"
+              asChild
+            >
+              <Link href={`/chat/${a.id}`}>
+                <MessageCircle className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
 
           {status === "connected" ? (
             <Button
@@ -490,7 +492,7 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* ── Hero Header ────────────────────────────────────────────────────── */}
-      <header className="relative overflow-hidden border-b border-border/60">
+      <header className="relative border-b border-border/60 z-10">
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/5 via-background to-background" />
         <div
           className="absolute inset-0 -z-10 opacity-[0.04]"
@@ -535,7 +537,7 @@ export default function SearchPage() {
                   setShowSuggestions(true);
                 }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                placeholder={`Try "Stripe", "@username", or "Product Designer"…`}
+                placeholder={`Try @username, Display Name or Product Designer…`}
                 className="h-11 flex-1 border-none bg-transparent text-base shadow-none focus-visible:ring-0 px-0"
               />
               {query && (
@@ -559,7 +561,7 @@ export default function SearchPage() {
                     <button
                       key={s.id}
                       onMouseDown={() => router.push(`/profile/${s.id}`)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
+                      className="cursor-pointer w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={s.profile_picture} />

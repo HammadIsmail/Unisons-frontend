@@ -59,7 +59,7 @@ export function AuthShell({ heading, subheading, children, footer }: AuthShellPr
               ))}
             </div>
             <p className="text-sm text-blue-100">
-              Join thousands of alumni already on the network
+              Join the UNISON alumni community already on the network
             </p>
           </div>
         </div>

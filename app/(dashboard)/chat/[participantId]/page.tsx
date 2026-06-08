@@ -10,6 +10,8 @@ import { getInitials } from "@/lib/utils";
 import { ArrowLeft, Send, Smile, Paperclip, MoreVertical, Phone, Video, CheckCheck } from "lucide-react";
 import { Message } from "@/types/api.types";
 import { useChatSocket, formatLastSeen } from "../layout";
+import { getUserPublicProfile } from "@/lib/api/profiles.api";
+import { getConnectionStatus } from "@/lib/api/connections.api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatMessageTime(dateStr: string) {
@@ -83,7 +85,7 @@ export default function ChatRoomPage() {
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
         queryClient.invalidateQueries({ queryKey: ["messages", participantId] });
       })
-      .catch(() => {/* silently ignore */});
+      .catch(() => {/* silently ignore */ });
   }, [participantId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Socket: typing_status + message_read / messages_read ────────────────
@@ -117,7 +119,7 @@ export default function ChatRoomPage() {
       );
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       // Mark new message read immediately
-      markConversationRead(participantId).catch(() => {});
+      markConversationRead(participantId).catch(() => { });
     };
 
     socket.on("typing_status", handleTypingStatus);
@@ -240,6 +242,27 @@ export default function ChatRoomPage() {
       handleSend();
     }
   };
+
+  const { data: publicProfile } = useQuery({
+    queryKey: ["publicProfile", participantId],
+    queryFn: () => getUserPublicProfile(participantId),
+    enabled: !!participantId,
+  });
+
+  const { data: connectionStatus } = useQuery({
+    queryKey: ["connectionStatus", participantId],
+    queryFn: () => getConnectionStatus(participantId),
+    enabled: !!participantId,
+  });
+
+  const isBlocked = publicProfile?.is_blocked ?? false;
+  const isNotConnected = connectionStatus?.status !== "connected";
+  const isInputDisabled = isBlocked || isNotConnected;
+
+  const disabledMessage = isBlocked
+    ? `🚫 Unblock ${participant?.display_name?.split(" ")[0] ?? "this user"} to send messages`
+    : `🔗 Connect with ${participant?.display_name?.split(" ")[0] ?? "this user"} first to send messages`;
+
 
   return (
     <div className="flex flex-col h-full bg-background relative">
@@ -388,9 +411,8 @@ export default function ChatRoomPage() {
                   )}
 
                   <div
-                    className={`flex items-end gap-2.5 ${
-                      isMe ? "justify-end" : "justify-start"
-                    } ${isLastInGroup ? "mb-3" : "mb-0.5"}`}
+                    className={`flex items-end gap-2.5 ${isMe ? "justify-end" : "justify-start"
+                      } ${isLastInGroup ? "mb-3" : "mb-0.5"}`}
                   >
                     {/* Received: Avatar space */}
                     {!isMe && (
@@ -408,9 +430,8 @@ export default function ChatRoomPage() {
 
                     {/* Bubble */}
                     <div
-                      className={`max-w-[70%] sm:max-w-[60%] group ${
-                        isMe ? "items-end" : "items-start"
-                      } flex flex-col`}
+                      className={`max-w-[70%] sm:max-w-[60%] group ${isMe ? "items-end" : "items-start"
+                        } flex flex-col`}
                     >
                       {!isMe && isFirstInGroup && participant && (
                         <span className="text-[11px] font-medium text-muted-foreground ml-1 mb-1">
@@ -419,27 +440,24 @@ export default function ChatRoomPage() {
                       )}
 
                       <div
-                        className={`relative px-4 py-2.5 shadow-sm transition-all ${
-                          isMe
-                            ? `bg-blue-600 text-white ${
-                                isFirstInGroup && isLastInGroup
-                                  ? "rounded-2xl"
-                                  : isFirstInGroup
-                                  ? "rounded-2xl rounded-br-md"
-                                  : isLastInGroup
-                                  ? "rounded-2xl rounded-tr-md"
-                                  : "rounded-lg rounded-r-md"
-                              } shadow-blue-600/20`
-                            : `bg-white dark:bg-muted/60 text-foreground border border-border/30 ${
-                                isFirstInGroup && isLastInGroup
-                                  ? "rounded-2xl"
-                                  : isFirstInGroup
-                                  ? "rounded-2xl rounded-bl-md"
-                                  : isLastInGroup
-                                  ? "rounded-2xl rounded-tl-md"
-                                  : "rounded-lg rounded-l-md"
-                              }`
-                        }`}
+                        className={`relative px-4 py-2.5 shadow-sm transition-all ${isMe
+                          ? `bg-blue-600 text-white ${isFirstInGroup && isLastInGroup
+                            ? "rounded-2xl"
+                            : isFirstInGroup
+                              ? "rounded-2xl rounded-br-md"
+                              : isLastInGroup
+                                ? "rounded-2xl rounded-tr-md"
+                                : "rounded-lg rounded-r-md"
+                          } shadow-blue-600/20`
+                          : `bg-white dark:bg-muted/60 text-foreground border border-border/30 ${isFirstInGroup && isLastInGroup
+                            ? "rounded-2xl"
+                            : isFirstInGroup
+                              ? "rounded-2xl rounded-bl-md"
+                              : isLastInGroup
+                                ? "rounded-2xl rounded-tl-md"
+                                : "rounded-lg rounded-l-md"
+                          }`
+                          }`}
                       >
                         <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
                           {msg.content}
@@ -447,26 +465,23 @@ export default function ChatRoomPage() {
 
                         {/* Timestamp + read receipt (only on last sent bubble in group) */}
                         <div
-                          className={`flex items-center gap-1 mt-1 ${
-                            isMe ? "justify-end" : "justify-start"
-                          }`}
+                          className={`flex items-center gap-1 mt-1 ${isMe ? "justify-end" : "justify-start"
+                            }`}
                         >
                           <span
-                            className={`text-[10px] ${
-                              isMe ? "text-blue-200" : "text-muted-foreground/50"
-                            }`}
+                            className={`text-[10px] ${isMe ? "text-blue-200" : "text-muted-foreground/50"
+                              }`}
                           >
                             {formatMessageTime(msg.createdAt)}
                           </span>
                           {isMe && (
                             <CheckCheck
-                              className={`w-3 h-3 transition-colors duration-300 ${
-                                msg._id.startsWith("temp-")
-                                  ? "text-blue-300/40" // pending
-                                  : msg.isRead
+                              className={`w-3 h-3 transition-colors duration-300 ${msg._id.startsWith("temp-")
+                                ? "text-blue-300/40" // pending
+                                : msg.isRead
                                   ? "text-blue-200"    // read — bright
                                   : "text-blue-300/60" // delivered, unread
-                              }`}
+                                }`}
                             />
                           )}
                         </div>
@@ -508,58 +523,82 @@ export default function ChatRoomPage() {
       {/* ── Message Input Bar ── */}
       <div className="flex-shrink-0 border-t border-border/40 bg-background/98 backdrop-blur-md px-4 py-3">
         <div className="max-w-3xl mx-auto">
-          <form
-            onSubmit={handleSend}
-            className="flex items-end gap-2.5 bg-muted/30 dark:bg-muted/20 rounded-2xl border border-border/50 px-3 py-2.5 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all duration-200 shadow-sm"
-          >
-            <button
-              type="button"
-              className="p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted/60 transition-all flex-shrink-0 self-end mb-0.5"
-              tabIndex={-1}
+          {isBlocked ? (
+            <div className="relative group">
+              {/* Disabled overlay with tooltip */}
+              <div className="flex items-end gap-2.5 bg-muted/20 dark:bg-muted/10 rounded-2xl border border-border/30 px-3 py-2.5 opacity-50 pointer-events-none select-none">
+                <button type="button" className="p-1.5 text-muted-foreground/60 rounded-lg flex-shrink-0 self-end mb-0.5">
+                  <Paperclip className="w-4.5 h-4.5" />
+                </button>
+                <div className="flex-1 min-h-[36px] py-1.5" />
+                <button type="button" className="p-1.5 text-muted-foreground/60 rounded-lg flex-shrink-0 self-end mb-0.5">
+                  <Smile className="w-4.5 h-4.5" />
+                </button>
+                <div className="h-9 w-9 flex-shrink-0 self-end rounded-xl bg-muted/60" />
+              </div>
+
+              {/* Tooltip */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-popover text-popover-foreground text-[12.5px] font-medium px-3.5 py-2 rounded-xl shadow-lg border border-border/50 pointer-events-none whitespace-nowrap">
+                  {disabledMessage}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSend}
+              className="flex items-end gap-2.5 bg-muted/30 dark:bg-muted/20 rounded-2xl border border-border/50 px-3 py-2.5 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all duration-200 shadow-sm"
             >
-              <Paperclip className="w-4.5 h-4.5" />
-            </button>
+              <button
+                type="button"
+                className="p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted/60 transition-all flex-shrink-0 self-end mb-0.5"
+                tabIndex={-1}
+              >
+                <Paperclip className="w-4.5 h-4.5" />
+              </button>
 
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleContentChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              rows={1}
-              disabled={sendMutation.isPending}
-              className="flex-1 bg-transparent resize-none min-h-[36px] max-h-32 py-1.5 text-[14px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none overflow-y-auto scrollbar-hide leading-relaxed disabled:opacity-70"
-            />
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={handleContentChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message..."
+                rows={1}
+                disabled={sendMutation.isPending}
+                className="flex-1 bg-transparent resize-none min-h-[36px] max-h-32 py-1.5 text-[14px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none overflow-y-auto scrollbar-hide leading-relaxed disabled:opacity-70"
+              />
 
-            <button
-              type="button"
-              className="p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted/60 transition-all flex-shrink-0 self-end mb-0.5"
-              tabIndex={-1}
-            >
-              <Smile className="w-4.5 h-4.5" />
-            </button>
+              <button
+                type="button"
+                className="p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted/60 transition-all flex-shrink-0 self-end mb-0.5"
+                tabIndex={-1}
+              >
+                <Smile className="w-4.5 h-4.5" />
+              </button>
 
-            <button
-              type="submit"
-              disabled={!content.trim() || sendMutation.isPending}
-              className={`h-9 w-9 flex-shrink-0 self-end rounded-xl flex items-center justify-center transition-all duration-200 ${
-                content.trim() && !sendMutation.isPending
+              <button
+                type="submit"
+                disabled={!content.trim() || sendMutation.isPending}
+                className={`h-9 w-9 flex-shrink-0 self-end rounded-xl flex items-center justify-center transition-all duration-200 ${content.trim() && !sendMutation.isPending
                   ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/30 scale-100 hover:scale-105"
                   : "bg-muted/60 text-muted-foreground/40 cursor-not-allowed"
-              }`}
-            >
-              {sendMutation.isPending ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 ml-0.5" />
-              )}
-            </button>
-          </form>
+                  }`}
+              >
+                {sendMutation.isPending ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4 ml-0.5" />
+                )}
+              </button>
+            </form>
+          )}
 
-          <p className="text-[10.5px] text-muted-foreground/40 text-center mt-2 select-none">
-            Press <kbd className="font-mono">Enter</kbd> to send ·{" "}
-            <kbd className="font-mono">Shift+Enter</kbd> for new line
-          </p>
+          {!isBlocked && (
+            <p className="text-[10.5px] text-muted-foreground/40 text-center mt-2 select-none">
+              Press <kbd className="font-mono">Enter</kbd> to send ·{" "}
+              <kbd className="font-mono">Shift+Enter</kbd> for new line
+            </p>
+          )}
         </div>
       </div>
     </div>

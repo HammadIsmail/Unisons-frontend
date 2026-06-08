@@ -321,17 +321,19 @@ export default function EventsPage() {
           {/* Right-side toggles */}
           <div className="flex flex-row items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0" style={{ scrollbarWidth: "none" }}>
             {/* My Events */}
-            <button
-              onClick={() => setShowMyEvents((p) => !p)}
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors shrink-0 ${
-                showMyEvents
-                  ? "border-transparent bg-blue-600 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              My Events
-            </button>
+            {role !== "student" && (
+              <button
+                onClick={() => setShowMyEvents((p) => !p)}
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors shrink-0 ${
+                  showMyEvents
+                    ? "border-transparent bg-blue-600 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                My Events
+              </button>
+            )}
 
             {/* Online/Offline */}
             <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium shrink-0">

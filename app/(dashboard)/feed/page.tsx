@@ -475,7 +475,7 @@ function ConnectionsStrip({ connections, isLoading }: { connections: Connection[
 
 // ─── Profile Card (left sidebar) ─────────────────────────────────────────────
 
-function ProfileCard({ profile }: { profile: any }) {
+function ProfileCard({ profile, role }: { profile: any; role?: string | null }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-soft">
       {profile?.backDropImage ? (
@@ -497,21 +497,23 @@ function ProfileCard({ profile }: { profile: any }) {
         <h3 className="text-sm text-gray-500 mb-3">@{profile?.username ?? "Your Username"}</h3>
         <p className="text-sm text-muted-foreground">{profile?.degree ?? ""} · {profile?.batch ?? ""}</p>
 
-        <div className="mt-4 grid grid-cols-2 divide-x divide-border rounded-2xl bg-secondary/40 py-3 text-center">
+        <div className={`mt-4 grid ${role === "student" ? "grid-cols-1" : "grid-cols-2"} divide-x divide-border rounded-2xl bg-secondary/40 py-3 text-center`}>
           <div>
             <div className="text-sm font-semibold">{profile?.connections_count ?? "0"}</div>
             <div className="text-[11px] text-muted-foreground">Connections</div>
           </div>
-          <div>
-            <div className="text-sm font-semibold">{profile?.posts_count ?? "0"}</div>
-            <div className="text-[11px] text-muted-foreground">Posts</div>
-          </div>
+          {role !== "student" && (
+            <div>
+              <div className="text-sm font-semibold">{profile?.posts_count ?? "0"}</div>
+              <div className="text-[11px] text-muted-foreground">Posts</div>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 space-y-1">
           {[
             { icon: TrendingUp, label: "Profile insights", href: "/profile/me" },
-            { icon: Users, label: "Invite peers", href: "/search" },
+            { icon: Users, label: "Connect with others", href: "/search" },
           ].map((item) => (
             <Link
               key={item.label}
@@ -753,7 +755,7 @@ export default function FeedPage() {
 
           {/* ── LEFT sidebar ── */}
           <aside className="hidden space-y-4 lg:block">
-            <ProfileCard profile={profile} />
+            <ProfileCard profile={profile} role={role} />
             <TrendingSkillsCard />
           </aside>
 

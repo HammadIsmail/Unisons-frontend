@@ -11,6 +11,7 @@ export type PublicProfile = Omit<AlumniProfile, "role"> &
     followers_count: number;
     following_count: number;
     is_following: boolean;
+    is_blocked: boolean;
     // Presence
     is_online: boolean;
     last_seen: string | null;

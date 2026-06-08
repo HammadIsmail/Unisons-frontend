@@ -5,22 +5,27 @@ let socket: Socket | null = null;
 export const getSocket = (): Socket | null => socket;
 
 export const connectSocket = (token: string): Socket => {
-  if (socket) {
-    if (socket.connected && (socket as any).auth?.token === token) return socket;
-    socket.disconnect();
+  if (socket && (socket.connected || socket.active)) {
+    return socket;
   }
+
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+
   socket = io(
     process.env.NEXT_PUBLIC_SOCKET_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
     "http://localhost:5000",
     {
-      auth: {
-        token: token,
-      },
+      auth: { token },
       transports: ["websocket"],
       extraHeaders: {
         Authorization: `Bearer ${token}`,
       },
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     }
   );
 
