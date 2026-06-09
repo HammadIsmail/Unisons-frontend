@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/pending"];
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/pending", "/devspage"];
 
 const ALUMNI_ONLY = ["/batch-mates"];
 const ALUMNI_AND_PARTNER = ["/post-opportunity", "/my-opportunities"];
@@ -93,4 +93,4 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-};
+};
