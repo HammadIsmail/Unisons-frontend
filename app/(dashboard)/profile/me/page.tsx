@@ -679,7 +679,7 @@ export default function MyProfilePage() {
             Profile
           </button>
           {isAlumni && (
-            <Link href="/my-opportunities" className="py-3 text-md font-md text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
+            <Link href="/opportunities" className="py-3 text-md font-md text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent">
               Opportunities
             </Link>
           )}
@@ -1236,15 +1236,7 @@ export default function MyProfilePage() {
           {isAlumni && myOpportunities && myOpportunities.length > 0 && (
             <Card className="border-border/60 shadow-sm">
               <CardContent className="p-5">
-                <SectionHeader
-                  icon={<Activity className="h-4 w-4" />}
-                  title="Recent Activity"
-                  action={
-                    <Link href="/my-opportunities" className="text-xs font-semibold text-indigo-600 flex items-center gap-1 hover:underline">
-                      See all <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  }
-                />
+                
                 <div className="space-y-3">
                   {myOpportunities.slice(0, oppVisibleCount).map((opp: any) => (
                     <Link key={opp.id} href={`/opportunities/${opp.id}`}>
