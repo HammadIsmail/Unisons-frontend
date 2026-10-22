@@ -1,0 +1,614 @@
+import { ReactNode } from "react";
+
+// ── Auth ──────────────────────────────────────────
+export interface OTPResponse {
+  message: string;
+  otp_expires_in: string;
+}
+
+export interface VerifyOTPResponse {
+  message: string;
+  verified_token: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+// ── Profiles ──────────────────────────────────────
+export interface AlumniProfile {
+  id: string;
+  role: "alumni";
+  username: string;
+  display_name: string;
+  email: string;
+  phone: string;
+  bio: string;
+  profile_picture: string;
+  backDropImage?: string;
+  degree: string;
+  graduation_year: number;
+  roll_number: string;
+  linkedin_url: string;
+  batch: string;
+  current_company: string;
+  current_role: string;
+  skills: string[];
+  connections_count: number;
+  account_status: "approved" | "pending" | "rejected";
+  tenant_id?: string;
+  work_experiences: WorkExperience[];
+  detailed_skills: DetailedSkill[];
+}
+
+export interface WorkExperience {
+  id: string;
+  company_name: string;
+  role: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  employment_type: "full-time" | "part-time" | "freelance";
+}
+
+export interface DetailedSkill {
+  id: string;
+  skill_name: string;
+  category: string;
+  proficiency_level: "beginner" | "intermediate" | "expert";
+  years_experience?: number;
+}
+
+export interface StudentProfile {
+  id: string;
+  role: "student";
+  username: string;
+  display_name: string;
+  email: string;
+  phone: string;
+  bio: string;
+  profile_picture: string;
+  backDropImage?: string;
+  degree: string;
+  semester: number;
+  roll_number: string;
+  batch: string;
+  skills: string[];
+  tenant_id?: string;
+  account_status: "approved" | "pending" | "rejected";
+}
+
+export interface PublicTenant {
+  id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+}
+
+export type UserProfile = (AlumniProfile | StudentProfile) & {
+  tenant_id?: string;
+};
+
+export interface LoginResponse {
+  token: string;
+  role: "alumni" | "student" | "admin" | "partner" | "super_admin";
+  account_status: "approved" | "pending" | "rejected";
+  tenant: PublicTenant | null;
+  profile: UserProfile;
+}
+
+// ── Opportunities ─────────────────────────────────
+export interface OpportunityPoster {
+  id: string;
+  display_name: string;
+  role: string;
+  username: string;
+  profile_picture: string | null;
+}
+
+export interface Opportunity {
+  id: string;
+  title: string;
+  type: "job" | "internship" | "freelance";
+  company: string;
+  location: string;
+  is_remote: boolean;
+  apply_link: string;
+  posted_by: OpportunityPoster;
+  posted_at: string;
+  deadline: string;
+  media: string[];
+  salary?: string;
+  required_skills?: string[];
+  description?: string;
+}
+export interface OpportunityDetail {
+  posted_at: any;
+  id: string;
+  title: string;
+  type: "job" | "internship" | "freelance";
+  description: string;
+  requirements: string;
+  location: string;
+  is_remote: boolean;
+  apply_link: string;
+  deadline: string;
+  status: "open" | "closed";
+  salary?: string;
+  media: string[];
+  company: {
+    name: string;
+    industry: string;
+    website: string;
+  };
+  required_skills: string[];
+  posted_by: {
+    username: string;
+    display_name: string;
+    profile_picture: string;
+    id: string;
+    role: string;
+  };
+}
+export interface MyOpportunity {
+  type: string;
+  id: string;
+  title: string;
+  company: string;
+  status: "open" | "closed";
+  posted_at: string;
+  deadline: string;
+}
+
+export interface PaginatedOpportunities {
+  total: number;
+  page: number;
+  data: Opportunity[];
+}
+
+// ── Network ───────────────────────────────────────
+export interface Connection {
+  id: string;
+  display_name: string;
+  username: string;
+  profile_picture?: string;
+  backDropImage?: string;
+  bio?: string;
+  company?: string;
+  role?: string;
+  connection_type: "batchmate" | "colleague" | "mentor";
+}
+
+export interface BatchMate {
+  id: string;
+  display_name: string;
+  username: string;
+  profile_picture?: string;
+  company?: string | null;
+  role?: string | null;
+  connection_type?: string | null;
+}
+
+export interface Mentor {
+  alumni_id: string;
+  display_name: string;
+  username: string;
+  profile_picture?: string;
+  domain: string;
+  company: string;
+  common_skills?: number;
+}
+
+export interface CentralityScore {
+  alumni_id: string;
+  display_name: string;
+  connections_count: number;
+  centrality_score: number;
+}
+
+export interface ConnectionRequest {
+  sender_id: string;
+  sender_display_name: string;
+  display_name?: string;
+  sender_username?: string;
+  profile_picture?: string;
+  connection_type: string;
+  requested_at: string;
+}
+
+export interface ShortestPath {
+  path: string[];
+  hops: number;
+}
+
+export interface TopCompany {
+  company: string;
+  alumni_count: number;
+}
+
+export interface SkillTrendItem {
+  skill: string;
+  [key: string]: any;
+}
+
+export interface SkillTrends {
+  most_required_in_opportunities: (string | SkillTrendItem)[];
+  most_common_among_alumni: (string | SkillTrendItem)[];
+  gap: (string | SkillTrendItem)[];
+}
+
+export interface BatchAnalysis {
+  batch: string;
+  total_alumni: number;
+  top_companies: string[];
+  top_roles: string[];
+  avg_connections: number;
+}
+
+// ── Admin ─────────────────────────────────────────
+export interface PendingAccount {
+  id: string;
+  display_name: string;
+  email: string;
+  role: "alumni" | "student" | "partner";
+  registered_at: string;
+  student_card_url?: string;
+}
+
+export interface AdminStats {
+  total_alumni: number;
+  total_students: number;
+  pending_accounts: number;
+  total_opportunities: number;
+  total_companies: number;
+  most_common_skills: string[];
+}
+
+export interface AdminAlumni {
+  id: string;
+  display_name: string;
+  company: string;
+  role: string;
+}
+
+export interface AdminStudent {
+  id: string;
+  display_name: string;
+  roll_number: string;
+  semester: number;
+}
+
+export interface PaginatedAdminAlumni {
+  total: number;
+  page: number;
+  data: AdminAlumni[];
+}
+
+export interface PaginatedAdminStudents {
+  total: number;
+  page: number;
+  data: AdminStudent[];
+}
+
+// ── Notifications ─────────────────────────────────
+export type NotificationType =
+  | "connection_request"
+  | "connection_accepted"
+  | "account_approved"
+  | "account_rejected"
+  | "new_opportunity";
+
+export interface Notification {
+  id: string;
+  message: string;
+  type: NotificationType;
+  created_at: string;
+  is_read: boolean;
+  sender_username?: string | null;
+  sender_display_name?: string | null;
+  sender_profile_picture?: string | null;
+  reference_link?: string | null;
+}
+
+// ── Search ────────────────────────────────────────
+export interface AlumniSearchResult {
+  profile_picture: string | Blob | undefined;
+  backDropImage?: string;
+  bio?: string;
+  id: string;
+  display_name: string;
+  username: string;
+  email: string;
+  current_company: string;
+  role: string;
+  skills: string[];
+  batch: string;
+}
+
+export interface OpportunitySearchResult {
+  id: string;
+  title: string;
+  type: "job" | "internship" | "freelance";
+  company: string;
+  location: string;
+  is_remote: boolean;
+  posted_by: string;
+  posted_at: string;
+}
+
+export interface UserByUsername {
+  id: string;
+  username: string;
+  display_name: string;
+  profile_picture?: string;
+  backDropImage?: string;
+  bio?: string;
+  role: string;
+  degree: string;
+  graduation_year?: number;
+  linkedin_url?: string;
+  company?: string;
+  job_role?: string;
+  skills: string[];
+}
+
+// ── Events ────────────────────────────────────────
+export type EventType = "reunion" | "webinar" | "workshop" | "networking" | "other";
+export type RSVPStatus = "attending" | "maybe" | "none";
+
+export interface EventHost {
+  id: string;
+  name: string;
+  username: string;
+  profile_picture: string | null;
+  role: string;
+}
+
+export interface EventListItem {
+  id: string;
+  title: string;
+  type: EventType;
+  date: string;
+  is_online: boolean;
+  location: string | null;
+  banner_url: string | null;
+  attendee_count: number;
+  max_attendees: number | null;
+  host: EventHost;
+}
+
+export interface EventDetail extends EventListItem {
+  description: string;
+  meeting_link: string | null;
+  my_rsvp_status: RSVPStatus | null;
+}
+
+export interface EventAttendee {
+  id: string;
+  display_name: string;
+  username: string;
+  profile_picture: string | null;
+  role: string;
+  bio: string | null;
+}
+
+// ── Chat ──────────────────────────────────────────
+export interface Message {
+  _id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type ParticipantProfile = {
+  id: string;
+  display_name: string;
+  username: string;
+  profile_picture?: string | null;
+  is_online?: boolean;
+  last_seen?: string | null;
+};
+
+export interface Conversation {
+  _id: string;
+  participants: string[];
+  updatedAt: string;
+  lastMessage: {
+    content: string;
+    createdAt: string;
+    isRead?: boolean;
+    senderId?: string;
+  };
+  participantProfile: ParticipantProfile;
+}
+
+// ── Feed ──────────────────────────────────────────
+export interface FeedAuthor {
+  id: string;
+  display_name: string;
+  username?: string;
+  profile_picture?: string;
+  role: string;
+}
+
+export interface FeedAnnouncement {
+  type: "announcement";
+  id: string;
+  title: string;
+  description: string;
+  created_at: string;
+  media_url?: string;
+  media_type?: string;
+  author: FeedAuthor;
+}
+
+export interface FeedOpportunity {
+  type: "opportunity";
+  id: string;
+  title: string;
+  company_name: string;
+  location: string;
+  is_remote: boolean;
+  opportunity_type: "job" | "internship" | "freelance";
+  apply_link: string;
+  deadline: string;
+  media_url?: string;
+  created_at: string;
+  author: FeedAuthor;
+}
+
+export interface FeedEvent {
+  type: "event";
+  id: string;
+  title: string;
+  event_date: string;
+  event_type: string;
+  location: string;
+  is_online: boolean;
+  meeting_link?: string | null;
+  max_attendees?: number | null;
+  attendee_count: number;
+  media_url?: string;
+  created_at: string;
+  author: FeedAuthor;
+}
+
+export type FeedItem = FeedAnnouncement | FeedOpportunity | FeedEvent;
+
+export interface PaginatedFeed {
+  total: number;
+  page: number;
+  data: FeedItem[];
+}
+
+// ── Multi-Tenancy & Admin ─────────────────────────
+export interface TenantSettings {
+  id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+  contact_email?: string;
+  allowed_email_domains: string[];
+  status: "active" | "suspended";
+}
+
+export interface UpdateTenantSettingsInput {
+  name?: string;
+  logo_url?: string;
+  contact_email?: string;
+  allowed_email_domains?: string[];
+}
+
+export interface PendingAccount {
+  id: string;
+  username: string;
+  display_name: string;
+  email: string;
+  role: "alumni" | "student" | "partner";
+  roll_number?: string;
+  batch?: string;
+  degree?: string;
+  graduation_year?: number;
+  semester?: number;
+  affiliation?: string;
+  job_title?: string;
+  student_card_url?: string;
+  created_at: string;
+}
+
+export interface AdminAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  author_id?: string;
+}
+
+export interface AdminDashboardStats {
+  total_alumni: number;
+  total_students: number;
+  pending_accounts: number;
+  total_opportunities: number;
+  total_companies?: number;
+  most_common_skills?: { skill: string; count: number }[];
+}
+
+export interface StaffMember {
+  id: string;
+  username: string;
+  display_name: string;
+  email: string;
+  role: "admin" | "moderator";
+  created_at: string;
+}
+
+// ── Super Admin ───────────────────────────────────
+export interface TenantCounts {
+  users: number;
+  alumni: number;
+  students: number;
+  partners: number;
+  pending: number;
+}
+
+export interface SuperAdminTenantItem {
+  id: string;
+  slug: string;
+  name: string;
+  status: "active" | "suspended";
+  created_at: string;
+  counts: TenantCounts;
+  logo_url?: string | null;
+  contact_email?: string;
+  allowed_email_domains?: string[];
+  suspended_reason?: string;
+}
+
+export interface SuperAdminTenantsResponse {
+  total: number;
+  page: number;
+  data: SuperAdminTenantItem[];
+}
+
+export interface SuperAdminStats {
+  total_tenants: number;
+  active_tenants: number;
+  suspended_tenants: number;
+  total_users: number;
+  users_by_role: {
+    alumni: number;
+    students: number;
+    partners: number;
+    admins: number;
+  };
+  total_opportunities: number;
+  total_events: number;
+}
+
+export interface CreateTenantInput {
+  name: string;
+  slug: string;
+  contact_email?: string;
+  logo_url?: string;
+  allowed_email_domains?: string[];
+  admin: {
+    email: string;
+    password: string;
+    display_name: string;
+    username: string;
+  };
+}
+
+export interface UpdateTenantInput {
+  name?: string;
+  logo_url?: string;
+  contact_email?: string;
+  allowed_email_domains?: string[];
+}

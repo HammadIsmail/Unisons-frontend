@@ -1,0 +1,89 @@
+import api from "@/lib/api";
+import {
+  OTPResponse,
+  VerifyOTPResponse,
+  RegisterResponse,
+  LoginResponse,
+  ResetPasswordResponse,
+} from "@/types/api.types";
+import { OTPType } from "@/types/auth.types";
+
+export const sendOTP = async (email: string, type: OTPType): Promise<OTPResponse> => {
+  const { data } = await api.post("/api/auth/send-otp", { email, type });
+  return data;
+};
+
+export const verifyOTP = async (
+  email: string,
+  otp: string,
+  type: OTPType
+): Promise<VerifyOTPResponse> => {
+  const { data } = await api.post("/api/auth/verify-otp", { email, otp, type });
+  return data;
+};
+
+export const registerUser = async (payload: {
+  tenant_id: string;
+  verified_token: string;
+  username: string;
+  display_name: string;
+  email: string;
+  password: string;
+  role: "alumni" | "student" | "partner";
+  // Academic fields (student / alumni)
+  roll_number?: string;
+  batch?: string;
+  degree?: string;
+  graduation_year?: number;
+  semester?: number;
+  // Partner fields
+  affiliation?: string;
+  job_title?: string;
+  student_card?: File | null;
+}): Promise<RegisterResponse> => {
+  const formData = new FormData();
+  formData.append("tenant_id", payload.tenant_id);
+  formData.append("verified_token", payload.verified_token);
+  formData.append("username", payload.username);
+  formData.append("display_name", payload.display_name);
+  formData.append("email", payload.email);
+  formData.append("password", payload.password);
+  formData.append("role", payload.role);
+  if (payload.roll_number) formData.append("roll_number", payload.roll_number);
+  if (payload.batch) formData.append("batch", payload.batch);
+  if (payload.degree) formData.append("degree", payload.degree);
+  if (payload.graduation_year) {
+    formData.append("graduation_year", String(payload.graduation_year));
+  }
+  if (payload.semester) {
+    formData.append("semester", String(payload.semester));
+  }
+  if (payload.affiliation) formData.append("affiliation", payload.affiliation);
+  if (payload.job_title) formData.append("job_title", payload.job_title);
+  if (payload.student_card) {
+    formData.append("student_card", payload.student_card);
+  }
+
+  const { data } = await api.post("/api/auth/register", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+export const loginUser = async (
+  email: string,
+  password: string
+): Promise<LoginResponse> => {
+  const { data } = await api.post("/api/auth/login", { email, password });
+  return data;
+};
+
+export const resetPassword = async (
+  verified_token: string,
+  new_password: string
+): Promise<ResetPasswordResponse> => {
+  const { data } = await api.post("/api/auth/reset-password", {
+    verified_token,
+    new_password,
+  });
+  return data;
+};

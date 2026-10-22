@@ -1,0 +1,51 @@
+import api from "@/lib/api";
+import {
+  AlumniSearchResult,
+  OpportunitySearchResult,
+  UserByUsername,
+  Opportunity,
+} from "@/types/api.types";
+
+export interface SearchSuggestion {
+  id: string;
+  username: string;
+  display_name: string;
+  profile_picture: string | null;
+  role: string;
+}
+
+export const searchAlumni = async (params: {
+  display_name?: string;
+  company?: string;
+  skill?: string;
+  batch_year?: string;
+  degree?: string;
+}): Promise<AlumniSearchResult[]> => {
+  const { data } = await api.get("/api/search/users", { params });
+  return data;
+};
+export const searchOpportunities = async (params: {
+  title?: string;
+  type?: string;
+  skill?: string;
+  location?: string;
+  is_remote?: boolean;
+}): Promise<Opportunity[]> => {
+  const { data } = await api.get("/api/search/opportunities", { params });
+  return data;
+};
+
+export const searchUserByUsername = async (
+  username: string
+): Promise<UserByUsername> => {
+  const { data } = await api.get(`/api/search/user/${username}`);
+  return data;
+};
+
+// ── Real-time search-as-you-type (min 2 chars) ──────────────────────────────
+export const getSearchSuggestions = async (
+  q: string
+): Promise<SearchSuggestion[]> => {
+  const { data } = await api.get("/api/search/suggestions", { params: { q } });
+  return data;
+};

@@ -1,0 +1,131 @@
+import api from "@/lib/api";
+import {
+  AlumniProfile,
+  Connection,
+  BatchMate,
+} from "@/types/api.types";
+import { UserByUsername } from "@/types/api.types";
+
+export const getMyAlumniProfile = async (): Promise<AlumniProfile> => {
+  const { data } = await api.get("/api/alumni/me");
+  return data;
+};
+
+// NOTE: Profile updates are unified. Use updateUserProfile from profiles.api.ts → PUT /api/profile/me
+
+export const getMyNetwork = async (): Promise<Connection[]> => {
+  const { data } = await api.get("/api/alumni/connections");
+  return data;
+};
+
+export const getBatchMates = async (): Promise<BatchMate[]> => {
+  const { data } = await api.get("/api/alumni/batch-mates");
+  return data;
+};
+
+export const addWorkExperience = async (payload: {
+  company_name: string;
+  role: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  employment_type: string;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/profile/work-experience", payload);
+  return data;
+};
+
+export const updateWorkExperience = async (
+  id: string,
+  payload: {
+    role?: string;
+    end_date?: string;
+    is_current?: boolean;
+  }
+): Promise<{ message: string }> => {
+  const { data } = await api.put(`/api/profile/work-experience/${id}`, payload);
+  return data;
+};
+
+export const deleteWorkExperience = async (
+  id: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/profile/work-experience/${id}`);
+  return data;
+};
+
+export const addEducation = async (payload: {
+  university: string;
+  degree: string;
+  field_of_study?: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/profile/education", payload);
+  return data;
+};
+
+export const updateEducation = async (
+  id: string,
+  payload: {
+    degree?: string;
+    end_date?: string;
+    is_current?: boolean;
+  }
+): Promise<{ message: string }> => {
+  const { data } = await api.put(`/api/profile/education/${id}`, payload);
+  return data;
+};
+
+export const deleteEducation = async (
+  id: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/profile/education/${id}`);
+  return data;
+};
+
+export const addSkill = async (payload: {
+  skill_name: string;
+  category: string;
+  proficiency_level: string;
+  years_experience?: number;
+}): Promise<{ message: string }> => {
+  const { data } = await api.post("/api/profile/skills", payload);
+  return data;
+};
+
+export const updateSkill = async (
+  id: string,
+  payload: {
+    proficiency_level?: string;
+    years_experience?: number;
+  }
+): Promise<{ message: string }> => {
+  const { data } = await api.put(`/api/profile/skills/${id}`, payload);
+  return data;
+};
+
+export const deleteSkillById = async (
+  id: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/profile/skills/${id}`);
+  return data;
+};
+
+export const getAllSkills = async (): Promise<string[]> => {
+  const { data } = await api.get("/api/skills/all");
+  return data;
+};
+
+export const getAlumniByUsername = async (
+  username: string
+): Promise<UserByUsername> => {
+  const { data } = await api.get(`/api/search/user/${username}`);
+  return data;
+};
+
+export const searchAlumni = async (params?: Record<string, string>): Promise<any[]> => {
+  const { data } = await api.get("/api/search/users", { params });
+  return data;
+};

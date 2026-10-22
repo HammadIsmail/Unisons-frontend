@@ -1,0 +1,110 @@
+import api from "@/lib/api";
+import { ConnectionRequest } from "@/types/api.types";
+
+export interface SentConnectionRequest {
+  target_id: string;
+  target_display_name: string;
+  target_username: string;
+  target_profile_picture: string | null;
+  connection_type: "batchmate" | "colleague" | "mentor";
+  requested_at: string;
+}
+
+export interface ConnectionStatus {
+  status: "pending" | "connected" | "none";
+  is_sender: boolean;
+}
+
+export interface ConnectionRequestResponse {
+  _id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const sendConnectionRequest = async (
+  targetId: string
+): Promise<ConnectionRequestResponse> => {
+  const { data } = await api.post(`/api/connections/request/${targetId}`);
+  return data;
+};
+
+export const getPendingRequests = async (): Promise<ConnectionRequest[]> => {
+  const { data } = await api.get("/api/connections/requests");
+  return data;
+};
+
+export const getSentRequests = async (): Promise<SentConnectionRequest[]> => {
+  const { data } = await api.get("/api/connections/requests/sent");
+  return data;
+};
+
+export const respondToConnectionRequest = async (
+  senderId: string,
+  action: "accept" | "reject"
+): Promise<{ message: string }> => {
+  const { data } = await api.patch(`/api/connections/requests/${senderId}/respond`, {
+    action,
+  });
+  return data;
+};
+
+export const getConnectionStatus = async (
+  targetId: string
+): Promise<ConnectionStatus> => {
+  const { data } = await api.get(`/api/connections/status/${targetId}`);
+  return data;
+};
+
+export const removeConnection = async (
+  targetId: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/connections/${targetId}`);
+  return data;
+};
+
+export const cancelSentRequest = async (
+  targetId: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/connections/request/${targetId}`);
+  return data;
+};
+
+export const getMyNetwork = async (role: "alumni" | "student" | "partner"): Promise<any[]> => {
+  const endpoint = role === "partner" ? "/api/partner/connections" : role === "alumni" ? "/api/alumni/connections" : "/api/student/connections";
+  const { data } = await api.get(endpoint);
+  return data;
+};
+
+export const followUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.post(`/api/connections/follow/${targetId}`);
+  return data;
+};
+
+export const unfollowUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/connections/unfollow/${targetId}`);
+  return data;
+};
+
+export const blockUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.post(`/api/connections/block/${targetId}`);
+  return data;
+};
+
+export const unblockUser = async (targetId: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/connections/unblock/${targetId}`);
+  return data;
+};
+
+export const getFollowers = async (targetId: string): Promise<any[]> => {
+  const { data } = await api.get(`/api/connections/${targetId}/followers`);
+  return data;
+};
+
+export const getFollowing = async (targetId: string): Promise<any[]> => {
+  const { data } = await api.get(`/api/connections/${targetId}/following`);
+  return data;
+};

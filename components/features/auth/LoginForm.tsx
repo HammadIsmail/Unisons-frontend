@@ -1,0 +1,232 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { loginSchema, LoginInput } from "@/schemas/auth.schemas";
+import { loginUser } from "@/lib/api/auth.api";
+import useAuthStore from "@/store/authStore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, Loader2, Eye, EyeOff, Lock, User, Clock } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+};
+
+export default function LoginForm() {
+  const router = useRouter();
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const [serverError, setServerError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const errorParam = params.get("error");
+      if (errorParam === "session_outdated") {
+        setServerError("Your session has expired or is outdated. Please sign in again.");
+      } else if (errorParam === "suspended") {
+        setServerError("This university's access has been suspended. Please contact your institution administrator.");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const interval = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [retryAfter]);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (formData: LoginInput) => {
+    setServerError("");
+    try {
+      const response = await loginUser(formData.email, formData.password);
+      setAuth(
+        response.token,
+        response.role,
+        response.account_status,
+        response.profile,
+        response.tenant
+      );
+
+      if (response.account_status === "pending") {
+        router.push("/pending");
+      } else if (response.role === "super_admin") {
+        router.push("/super-admin");
+      } else if (response.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/feed");
+      }
+    } catch (error: any) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message;
+
+      if (status === 403) {
+        setServerError("This university's access has been suspended.");
+      } else if (status === 401 && message?.includes("Session outdated")) {
+        setServerError("Session outdated. Please log in again.");
+      } else {
+        setServerError(
+          message || "Invalid credentials. Please try again."
+        );
+      }
+
+      if (status === 429 && error.response?.data?.retry_after_seconds) {
+        setRetryAfter(error.response.data.retry_after_seconds);
+      }
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-6"
+    >
+      <AnimatePresence mode="wait">
+        {serverError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30"
+          >
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700 dark:text-red-300 leading-tight">
+              {serverError}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-semibold text-foreground ml-1">
+            Email or Username
+          </Label>
+          <div className="relative group">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-[#0a66c2] transition-colors">
+              <User className="h-4 w-4" />
+            </div>
+            <Input
+              {...register("email")}
+              id="email"
+              placeholder="Enter your email or username"
+              autoComplete="username"
+              className={`h-11 pl-10 bg-muted/30 border-border/60 focus-visible:border-blue-600 focus-visible:border-blue-600 rounded-xl transition-all ${errors.email ? "border-red-400 focus-visible:ring-red-500/10" : ""
+                }`}
+            />
+          </div>
+          {errors.email && (
+            <motion.p
+              initial={{ opacity: 0, x: -5 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-[11px] font-medium text-red-600 flex items-center gap-1.5 ml-1"
+            >
+              <AlertCircle className="h-3 w-3" />
+              {errors.email.message}
+            </motion.p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <Label htmlFor="password" className="text-sm font-semibold text-foreground">
+              Password
+            </Label>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-bold text-[#0a66c2] hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative group">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-[#0a66c2] transition-colors">
+              <Lock className="h-4 w-4" />
+            </div>
+            <Input
+              {...register("password")}
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              className={`h-11 pl-10 pr-10 bg-muted/30 border-border/60 focus-visible:ring-[#0a66c2]/20 focus-visible:border-[#0a66c2] rounded-xl transition-all ${errors.password ? "border-red-400 focus-visible:ring-red-500/10" : ""
+                }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors outline-none"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.password && (
+            <motion.p
+              initial={{ opacity: 0, x: -5 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-[11px] font-medium text-red-600 flex items-center gap-1.5 ml-1"
+            >
+              <AlertCircle className="h-3 w-3" />
+              {errors.password.message}
+            </motion.p>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {retryAfter > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="flex items-center justify-center gap-2 text-xs font-normal text-gray-500 dark:text-gray-400"
+            >
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>Try again in {formatCountdown(retryAfter)}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <Button
+          type="submit"
+          disabled={isSubmitting || retryAfter > 0}
+          className="w-full h-11 bg-[#0a66c2] hover:bg-[#004182] text-white font-bold rounded-full transition-all active:scale-[0.98] shadow-md shadow-blue-500/10"
+        >
+          {isSubmitting ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Signing in...</span>
+            </div>
+          ) : (
+            "Sign in"
+          )}
+        </Button>
+      </form>
+    </motion.div>
+  );
+}
