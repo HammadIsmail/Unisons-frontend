@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postOpportunitySchema, PostOpportunityInput } from "@/schemas/opportunity.schemas";
 import { postOpportunity } from "@/lib/api/opportunities.api";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,8 @@ const inputCls =
 
 export default function PostOpportunityPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
   const queryClient = useQueryClient();
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -123,7 +125,15 @@ export default function PostOpportunityPage() {
     mutationFn: postOpportunity,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-      router.push("/my-opportunities");
+      queryClient.invalidateQueries({ queryKey: ["opportunities-list"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
+
+      if (from) {
+        router.push(from);
+      } else {
+        router.back();
+      }
     },
     onError: (error: any) => {
       setServerError(error.response?.data?.message || "Failed to post. Try again.");
@@ -143,7 +153,13 @@ export default function PostOpportunityPage() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header */}
         <button
-          onClick={() => router.back()}
+          onClick={() => {
+            if (from) {
+              router.push(from);
+            } else {
+              router.back();
+            }
+          }}
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-6 group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />

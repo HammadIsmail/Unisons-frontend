@@ -27,6 +27,19 @@ api.interceptors.response.use(
       const isAuthRoute = window.location.pathname === "/login";
       const status = error.response?.status;
       const message = error.response?.data?.message || "";
+      const url = error.config?.url || "";
+
+      // If user was upgraded to alumni while on a student view
+      if (status === 403 && url.includes("/api/student/")) {
+        try {
+          const { useAuthStore } = require("@/store/authStore");
+          if (useAuthStore.getState().role === "student") {
+            useAuthStore.getState().setRole("alumni");
+            window.location.reload();
+            return Promise.reject(error);
+          }
+        } catch {}
+      }
 
       if (status === 401 && !isAuthRoute) {
         localStorage.removeItem("unison_token");

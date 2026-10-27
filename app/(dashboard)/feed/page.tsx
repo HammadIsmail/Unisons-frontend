@@ -1,13 +1,31 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFeed } from "@/lib/api/feed.api";
+import { deleteOpportunity } from "@/lib/api/opportunities.api";
+import { deleteEvent } from "@/lib/api/events.api";
 import { getMyNetwork } from "@/lib/api/connections.api";
 import { getProfileSuggestions, UserSuggestion } from "@/lib/api/profiles.api";
 import { getSkillTrends } from "@/lib/api/network.api";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   MapPin,
   CalendarClock,
@@ -36,6 +54,10 @@ import {
   Compass,
   Megaphone,
   CalendarDays,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -191,6 +213,36 @@ function Caption({ text }: { text: string }) {
 // ─── Feed Card ────────────────────────────────────────────────────────────────
 
 function FeedCard({ item, index }: { item: FeedItem; index: number }) {
+  const { profile } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const myId = profile?.id || (profile as any)?.userId;
+  const authorId = item.author?.id || (item as any)?.author_id;
+  const isOwner = Boolean(myId && authorId && String(myId) === String(authorId));
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (item.type === "opportunity") {
+        return await deleteOpportunity(item.id);
+      } else if (item.type === "event") {
+        return await deleteEvent(item.id);
+      }
+      throw new Error("Unsupported post type for deletion");
+    },
+    onSuccess: () => {
+      toast.success(`${item.type === "opportunity" ? "Opportunity" : "Post"} deleted successfully`);
+      setDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to delete post. Try again.");
+    },
+  });
+
   let badgeLabel = "";
   let badgeIcon: React.ReactNode = <Briefcase className="h-3 w-3" />;
   let badgeClass = "bg-primary/10 text-primary ring-1 ring-primary/20";
@@ -247,21 +299,59 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
           </p>
         </div>
 
-        {/* badge */}
-        <span
-          className={`
-            flex items-center gap-1 flex-shrink-0
-            rounded-full
-            px-2 py-0.5 sm:px-2.5 sm:py-1
-            text-[9px] sm:text-[10px]
-            font-semibold
-            whitespace-nowrap
-            ${badgeClass}
-          `}
-        >
-          {badgeIcon}
-          <span className="">{badgeLabel}</span>
-        </span>
+        {/* badge & actions */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span
+            className={`
+              flex items-center gap-1 flex-shrink-0
+              rounded-full
+              px-2 py-0.5 sm:px-2.5 sm:py-1
+              text-[9px] sm:text-[10px]
+              font-semibold
+              whitespace-nowrap
+              ${badgeClass}
+            `}
+          >
+            {badgeIcon}
+            <span className="">{badgeLabel}</span>
+          </span>
+
+          {isOwner && (item.type === "opportunity" || item.type === "event") && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors focus:outline-none"
+                  title="Post actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="sr-only">Post actions</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36 rounded-xl p-1 bg-card border border-border shadow-md">
+                <DropdownMenuItem asChild className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
+                  <Link
+                    href={
+                      item.type === "opportunity"
+                        ? `/opportunities/${item.id}/edit?from=/feed`
+                        : `/events/${item.id}/edit?from=/feed`
+                    }
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    Edit post
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium text-destructive focus:text-destructive focus:bg-destructive/10 py-2"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Caption */}
@@ -349,9 +439,73 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
       )}
 
       {/* Footer */}
-      <div className="mt-3 flex items-center justify-end border-t border-border/60 px-3 py-2">
+      <div className="mt-3 flex items-center justify-between border-t border-border/60 px-4 py-2">
+        {isOwner && (item.type === "opportunity" || item.type === "event") ? (
+          <div className="flex items-center gap-3">
+            <Link
+              href={
+                item.type === "opportunity"
+                  ? `/opportunities/${item.id}/edit?from=/feed`
+                  : `/events/${item.id}/edit?from=/feed`
+              }
+              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Pencil className="h-3 w-3 text-blue-600" />
+              Edit
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="h-3 w-3 text-destructive" />
+              Delete
+            </button>
+          </div>
+        ) : (
+          <div />
+        )}
         <CopyLinkButton id={item.id} />
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this {item.type}? This action cannot be undone and will permanently remove it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="gap-1.5"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.article>
   );
 }
@@ -369,7 +523,7 @@ function Composer({ profilePicture, displayName }: { profilePicture?: string; di
           </AvatarFallback>
         </Avatar>
         <Link
-          href="/post-opportunity"
+          href="/post-opportunity?from=/feed"
           className="h-11 flex-1 rounded-full bg-secondary/60 px-5 text-left sm:text-sm text-[11px] text-muted-foreground transition-colors hover:bg-secondary flex items-center"
         >
           Share an opportunity or update…
@@ -378,8 +532,8 @@ function Composer({ profilePicture, displayName }: { profilePicture?: string; di
       <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
         <div className="flex gap-1">
           {[
-            { icon: Briefcase, label: "Opportunity", color: "text-primary", href: "/post-opportunity" },
-            { icon: Smile, label: "Update", color: "text-amber-600", href: "/post-opportunity" },
+            { icon: Briefcase, label: "Opportunity", color: "text-primary", href: "/post-opportunity?from=/feed" },
+            { icon: Smile, label: "Update", color: "text-amber-600", href: "/post-opportunity?from=/feed" },
           ].map((b) => (
             <Link
               key={b.label}
@@ -392,7 +546,7 @@ function Composer({ profilePicture, displayName }: { profilePicture?: string; di
           ))}
         </div>
         <Link
-          href="/post-opportunity"
+          href="/post-opportunity?from=/feed"
           className="rounded-full bg-white px-4 py-1.5 text-xs text-blue-600 border border-blue-600 shadow-sm transition-transform hover:scale-105"
         >
           Post
@@ -826,7 +980,7 @@ export default function FeedPage() {
                 </p>
                 {role === "alumni" && (
                   <Link
-                    href="/post-opportunity"
+                    href="/post-opportunity?from=/feed"
                     className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary-foreground bg-primary hover:opacity-90 px-5 py-2.5 rounded-full transition-opacity"
                   >
                     Post Opportunity

@@ -134,14 +134,12 @@ export default function PendingPage() {
             {/* Heading */}
             <div className="text-center space-y-2">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {isRejected ? "Registration Not Approved" : "Verification in Progress"}
+                {isRejected ? "Registration Not Approved" : "Account Pending Approval"}
               </h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isRejected
                   ? "Unfortunately, we couldn't verify your affiliation. Please contact the administration."
-                  : <>
-                      Hi, your account is being reviewed. You'll receive an email as soon as you're approved.
-                    </>
+                  : "Your account has been registered successfully and is currently pending approval by your university administrator. You will receive an email once your account has been reviewed."
                 }
               </p>
             </div>

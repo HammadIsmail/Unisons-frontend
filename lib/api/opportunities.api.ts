@@ -121,3 +121,67 @@ export const deleteOpportunity = async (id: string): Promise<{ message: string }
   const { data } = await api.delete(`/api/opportunities/${id}`);
   return data;
 };
+
+export interface OpportunityReply {
+  id: string;
+  userId: string;
+  display_name: string;
+  username: string;
+  profile_picture?: string | null;
+  role?: string | null;
+  content: string;
+  created_at: string;
+}
+
+export interface OpportunityComment {
+  id: string;
+  userId: string;
+  display_name: string;
+  username: string;
+  profile_picture?: string | null;
+  role?: string | null;
+  content: string;
+  created_at: string;
+  replies?: OpportunityReply[];
+}
+
+export const getOpportunityComments = async (
+  opportunityId: string
+): Promise<OpportunityComment[]> => {
+  const { data } = await api.get(`/api/opportunities/${opportunityId}/comments`);
+  return data;
+};
+
+export const addOpportunityComment = async (
+  opportunityId: string,
+  content: string
+): Promise<OpportunityComment> => {
+  const { data } = await api.post(`/api/opportunities/${opportunityId}/comments`, { content });
+  return data;
+};
+
+export const deleteOpportunityComment = async (
+  opportunityId: string,
+  commentId: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/opportunities/${opportunityId}/comments/${commentId}`);
+  return data;
+};
+
+export const replyOpportunityComment = async (
+  opportunityId: string,
+  commentId: string,
+  content: string
+): Promise<OpportunityReply> => {
+  const { data } = await api.post(`/api/opportunities/${opportunityId}/comments/${commentId}/reply`, { content });
+  return data;
+};
+
+export const deleteOpportunityReply = async (
+  opportunityId: string,
+  commentId: string,
+  replyId: string
+): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/opportunities/${opportunityId}/comments/${commentId}/reply/${replyId}`);
+  return data;
+};

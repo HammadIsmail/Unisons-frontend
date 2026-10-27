@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { getOpportunities, getMyOpportunities } from "@/lib/api/opportunities.api";
+import { getOpportunities, getMyOpportunities, deleteOpportunity } from "@/lib/api/opportunities.api";
 import { searchOpportunities } from "@/lib/api/search.api";
 import { getAllSkills } from "@/lib/api/skill.api";
 import { Opportunity } from "@/types/api.types";
@@ -15,6 +16,21 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -44,6 +60,10 @@ import {
   Sparkles,
   Clock,
   Users,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -177,13 +197,21 @@ function FeaturedCardSkeleton() {
 
 export default function OpportunitiesPage() {
   const { role, profile } = useAuthStore();
+  const searchParams = useSearchParams();
   const [type, setType] = useState<"" | OppType>("");
   const [skill, setSkill] = useState("");
   const [isRemote, setIsRemote] = useState<boolean | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [showSaved, setShowSaved] = useState(false);
-  const [showMyOpportunities, setShowMyOpportunities] = useState(false);
+  const [showMyOpportunities, setShowMyOpportunities] = useState(() => searchParams.get("my") === "true");
   const [saved, setSaved] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (searchParams.get("my") === "true") {
+      setShowMyOpportunities(true);
+      setShowSaved(false);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     try {
@@ -408,7 +436,7 @@ export default function OpportunitiesPage() {
     hover:scale-[1.02]
   "
               >
-                <Link href="/post-opportunity">
+                <Link href="/post-opportunity?from=/opportunities">
                   <Plus className="h-4 w-4" />
                   Post opportunity
                 </Link>
@@ -673,12 +701,45 @@ function FeaturedCard({
   saved: boolean;
   onSave: () => void;
 }) {
+  const { profile } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const myId = profile?.id || (profile as any)?.userId;
+  const posterId = opp.posted_by?.id || (opp.posted_by as any)?._id || (opp.posted_by as any)?.userId;
+  const isOwner = Boolean(myId && posterId && String(myId) === String(posterId));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteOpportunity(opp.id),
+    onSuccess: () => {
+      toast.success("Opportunity deleted successfully");
+      setDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete opportunity");
+    },
+  });
+
+  const router = useRouter();
   const meta = getTypeMeta(opp.type);
   const deadline = formatDeadline(opp.deadline);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, [role="button"], [role="menuitem"], [role="dialog"], input, textarea')) {
+      return;
+    }
+    router.push(`/opportunities/${opp.id}`);
+  };
+
   return (
-    <Link href={`/opportunities/${opp.id}`} className="group block">
-      <article className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-xl">
+    <article
+      onClick={handleCardClick}
+      className="group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-xl cursor-pointer"
+    >
         <div
           aria-hidden
           className="absolute inset-0 -z-10 opacity-50"
@@ -725,7 +786,9 @@ function FeaturedCard({
 
               <div className="min-w-0">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl group-hover:text-[oklch(0.55_0.22_255)] transition-colors">
-                  {opp.title}
+                  <Link href={`/opportunities/${opp.id}`} onClick={(e) => e.stopPropagation()}>
+                    {opp.title}
+                  </Link>
                 </h2>
 
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -829,11 +892,79 @@ function FeaturedCard({
                 <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
                 {saved ? "Saved" : "Save"}
               </Button>
+
+              {isOwner && (
+                <div className="flex gap-2 w-full sm:w-auto lg:w-full mt-1">
+                  <Button
+                    variant="outline"
+                    size="default"
+                    asChild
+                    className="flex-1 gap-1.5 text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Link href={`/opportunities/${opp.id}/edit?from=/opportunities`}>
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeleteDialogOpen(true);
+                    }}
+                    className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Delete confirmation dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Delete Opportunity</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this listing? This action cannot be undone and will permanently remove it.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="gap-1.5"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </article>
-    </Link>
   );
 }
 
@@ -848,6 +979,29 @@ function OppCard({
   saved: boolean;
   onSave: () => void;
 }) {
+  const { profile } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const myId = profile?.id || (profile as any)?.userId;
+  const posterId = opp.posted_by?.id || (opp.posted_by as any)?._id || (opp.posted_by as any)?.userId;
+  const isOwner = Boolean(myId && posterId && String(myId) === String(posterId));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteOpportunity(opp.id),
+    onSuccess: () => {
+      toast.success("Opportunity deleted successfully");
+      setDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete opportunity");
+    },
+  });
+
+  const router = useRouter();
   const meta = getTypeMeta(opp.type);
   const deadline = formatDeadline(opp.deadline);
   const locationStr =
@@ -855,9 +1009,19 @@ function OppCard({
       ? null
       : opp.location;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, [role="button"], [role="menuitem"], [role="dialog"], input, textarea')) {
+      return;
+    }
+    router.push(`/opportunities/${opp.id}`);
+  };
+
   return (
-    <Link href={`/opportunities/${opp.id}`} className="group block">
-      <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-lg">
+    <article
+      onClick={handleCardClick}
+      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-lg cursor-pointer"
+    >
         <div
           aria-hidden
           className="absolute inset-0 -z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-50"
@@ -866,22 +1030,61 @@ function OppCard({
               "radial-gradient(ellipse 60% 80% at 90% 0%, oklch(0.7 0.2 255 / 0.18), transparent 60%)",
           }}
         />
-        {/* Save button — stop propagation so Link doesn't fire */}
-        <button
+
+        {/* Top-right action controls */}
+        <div
+          className="absolute right-4 top-4 flex items-center gap-1.5 z-10"
           onClick={(e) => {
             e.preventDefault();
-            onSave();
+            e.stopPropagation();
           }}
-          aria-label={saved ? "Unsave" : "Save"}
-          className={cn(
-            "absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            saved && "bg-foreground text-background hover:bg-foreground"
-          )}
         >
-          <Bookmark className={cn("h-3.5 w-3.5", saved && "fill-current")} />
-        </button>
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none"
+                  title="Post actions"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                  <span className="sr-only">Post actions</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36 rounded-xl p-1 bg-card border border-border shadow-md">
+                <DropdownMenuItem asChild className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
+                  <Link href={`/opportunities/${opp.id}/edit?from=/opportunities`}>
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    Edit post
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium text-destructive focus:text-destructive focus:bg-destructive/10 py-2"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-        <div className="mb-4 pr-10">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              onSave();
+            }}
+            aria-label={saved ? "Unsave" : "Save"}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+              saved && "bg-foreground text-background hover:bg-foreground"
+            )}
+          >
+            <Bookmark className={cn("h-3.5 w-3.5", saved && "fill-current")} />
+          </button>
+        </div>
+
+        <div className="mb-4 pr-16">
           <CompanyLogo opp={opp} size={44} />
         </div>
 
@@ -904,7 +1107,9 @@ function OppCard({
         </div>
 
         <h3 className="mt-3 line-clamp-2 text-lg font-semibold leading-snug tracking-tight text-foreground group-hover:text-[oklch(0.55_0.22_255)] transition-colors">
-          {opp.title}
+          <Link href={`/opportunities/${opp.id}`} onClick={(e) => e.stopPropagation()}>
+            {opp.title}
+          </Link>
         </h3>
 
         <div className="mt-1.5 flex flex-col gap-1 text-xs text-muted-foreground">
@@ -959,23 +1164,67 @@ function OppCard({
             {deadline.label}
           </span>
         </div>
+
+        {/* Delete confirmation dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Delete Opportunity</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this listing? This action cannot be undone and will permanently remove it.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="gap-1.5"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </article>
-    </Link>
   );
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function CompanyLogo({ opp, size }: { opp: Opportunity; size: number }) {
+  const logoSrc = Array.isArray(opp.media)
+    ? opp.media[0]
+    : typeof opp.media === "string"
+    ? opp.media
+    : null;
+
   return (
     <div
       className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background"
       style={{ width: size, height: size }}
     >
-      {opp.media && opp.media[0] ? (
+      {logoSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={opp.media[0]}
+          src={logoSrc}
           alt={`${opp.company} logo`}
           className="h-full w-full object-contain p-1.5"
           onError={(e) => {

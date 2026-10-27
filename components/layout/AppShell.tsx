@@ -2,7 +2,7 @@
 
 import Navbar from "./Navbar";
 import { useChatSocket } from "@/hooks/useChatSocket";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyAlumniProfile } from "@/lib/api/alumni.api";
 import { getMyStudentProfile } from "@/lib/api/student.api";
 import { getMyPartnerProfile } from "@/lib/api/partner.api";
@@ -14,6 +14,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useChatSocket();
 
   const { role, updateProfile } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const { data: alumniProfile } = useQuery({
     queryKey: ["alumni", "me"],
@@ -37,9 +38,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (profile) {
-      updateProfile(profile as any);
+      const profileRole = (profile as any)?.role;
+      if (profileRole && profileRole !== role) {
+        updateProfile(profile as any);
+        queryClient.invalidateQueries();
+      } else {
+        updateProfile(profile as any);
+      }
     }
-  }, [profile, updateProfile]);
+  }, [profile, role, updateProfile, queryClient]);
   return (
     <div className="min-h-screen bg-white has-bottom-nav">
       <Navbar />

@@ -145,6 +145,7 @@ interface SuggestionCardProps {
     headline?: string;
     image?: string;
     backDropImage?: string;
+    role?: string;
   };
   index: number;
   status: "none" | "pending" | "connected";
@@ -213,6 +214,17 @@ function SuggestionCard({
         {person.username && (
           <span className="text-[11px] text-muted-foreground/70 text-center">
             @{person.username}
+          </span>
+        )}
+
+        {person.role && (
+          <span className={cn(
+            "text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize",
+            person.role === "student"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-blue-50 text-blue-700 border border-blue-200"
+          )}>
+            {person.role}
           </span>
         )}
 
@@ -694,9 +706,9 @@ function NetworkPageContent() {
           <div className="mb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
               <div>
-                <h2 className="text-2xl font-bold text-foreground ">Discover alumni</h2>
+                <h2 className="text-2xl font-bold text-foreground ">Discover alumni & students</h2>
                 <p className="text-[12px] text-muted-foreground mt-0.5">
-                  People you might know from your batch and beyond
+                  Connect with alumni, batchmates, and fellow students
                 </p>
               </div>
             </div>
@@ -727,6 +739,7 @@ function NetworkPageContent() {
                       headline: person.headline,
                       image: person.image,
                       backDropImage: person.backDropImage,
+                      role: person.role,
                     }}
                     index={index}
                     status={getStatus(person.id)}

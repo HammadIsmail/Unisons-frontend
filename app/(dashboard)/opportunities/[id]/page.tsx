@@ -1,15 +1,25 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getOpportunityById, deleteOpportunity } from "@/lib/api/opportunities.api";
+import {
+  getOpportunityById,
+  deleteOpportunity,
+  getOpportunityComments,
+  addOpportunityComment,
+  deleteOpportunityComment,
+  replyOpportunityComment,
+  deleteOpportunityReply,
+} from "@/lib/api/opportunities.api";
 import useAuthStore from "@/store/authStore";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { getInitials } from "@/lib/utils";
 
@@ -32,6 +42,12 @@ import {
   Bookmark,
   Zap,
   AlertTriangle,
+  MessageSquare,
+  Send,
+  Maximize2,
+  Loader2,
+  Image as ImageIcon,
+  CornerDownRight,
 } from "lucide-react";
 
 // ── Type helpers ──────────────────────────────────────────────────────────────
@@ -156,15 +172,86 @@ export default function OpportunityDetailPage() {
     mutationFn: () => deleteOpportunity(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      toast.success("Opportunity deleted successfully");
       router.push("/opportunities");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete opportunity");
     },
   });
 
-  const posterId = opp?.posted_by?.id || (opp?.posted_by as any)?._id;
-  const profileId = profile?.id || (profile as any)?._id;
+  const posterId = opp?.posted_by?.id || (opp?.posted_by as any)?._id || (opp?.posted_by as any)?.userId;
+  const profileId = profile?.id || (profile as any)?._id || (profile as any)?.userId;
   const isOwner = isMounted && Boolean(posterId && profileId && String(posterId) === String(profileId));
 
   const isExpired = opp?.deadline ? new Date(opp.deadline) < new Date() : false;
+
+  const [commentText, setCommentText] = useState("");
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+
+  const { data: comments, isLoading: commentsLoading } = useQuery({
+    queryKey: ["opportunity-comments", id],
+    queryFn: () => getOpportunityComments(id),
+    enabled: Boolean(id),
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: (content: string) => addOpportunityComment(id, content),
+    onSuccess: () => {
+      setCommentText("");
+      queryClient.invalidateQueries({ queryKey: ["opportunity-comments", id] });
+      toast.success("Question / comment posted!");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to post comment");
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => deleteOpportunityComment(id, commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["opportunity-comments", id] });
+      toast.success("Comment removed");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete comment");
+    },
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: ({ commentId, content }: { commentId: string; content: string }) =>
+      replyOpportunityComment(id, commentId, content),
+    onSuccess: () => {
+      setReplyingToCommentId(null);
+      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["opportunity-comments", id] });
+      toast.success("Reply posted!");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to post reply");
+    },
+  });
+
+  const deleteReplyMutation = useMutation({
+    mutationFn: ({ commentId, replyId }: { commentId: string; replyId: string }) =>
+      deleteOpportunityReply(id, commentId, replyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["opportunity-comments", id] });
+      toast.success("Reply removed");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete reply");
+    },
+  });
+
+  const handlePostComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    addCommentMutation.mutate(commentText.trim());
+  };
 
   if (isLoading) return <DetailSkeleton />;
 
@@ -205,6 +292,33 @@ export default function OpportunityDetailPage() {
     typeof opp.company === "string" ? opp.company : opp.company?.name;
   const companyWebsite =
     typeof opp.company === "object" ? opp.company?.website : undefined;
+
+  const mediaList: string[] = (() => {
+    if (!opp?.media) return [];
+    if (Array.isArray(opp.media)) {
+      return opp.media.filter((m) => typeof m === "string" && m.trim().length > 0);
+    }
+    if (typeof opp.media === "string") {
+      try {
+        const parsed = JSON.parse(opp.media);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((m) => typeof m === "string" && m.trim().length > 0);
+        }
+      } catch {}
+      return [opp.media];
+    }
+    return [];
+  })();
+
+  const handleApply = () => {
+    if (!opp?.apply_link) {
+      toast.error("No application link provided for this listing.");
+      return;
+    }
+    const raw = opp.apply_link.trim();
+    const url = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="min-h-screen bg-background text-ink">
@@ -269,15 +383,19 @@ export default function OpportunityDetailPage() {
               </div>
 
               {/* Title */}
-              <h1
-                className="text-5xl leading-[1.05] tracking-tight text-ink md:text-7xl"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                {opp.title}
+              <div className="space-y-2">
+                <h1
+                  className="text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl md:text-4xl"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {opp.title}
+                </h1>
                 {companyName && (
-                  <span className="block text-brand">at {companyName}.</span>
+                  <p className="text-base font-semibold text-brand sm:text-lg">
+                    at {companyName}
+                  </p>
                 )}
-              </h1>
+              </div>
 
               {/* Meta row */}
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-ink-soft">
@@ -297,14 +415,21 @@ export default function OpportunityDetailPage() {
             </div>
 
             {/* Hero image */}
-            {opp.media && opp.media.length > 0 && (
+            {mediaList.length > 0 && (
               <div className="relative">
-                <div className="overflow-hidden rounded-3xl border border-hairline shadow-[var(--shadow-lift)]">
+                <div 
+                  onClick={() => window.open(mediaList[0], "_blank", "noopener,noreferrer")}
+                  className="overflow-hidden rounded-3xl border border-hairline shadow-[var(--shadow-lift)] bg-surface cursor-pointer group"
+                >
                   <img
-                    src={opp.media[0]}
-                    alt={`${opp.title} media`}
-                    className="h-64 w-full object-cover md:h-80"
+                    src={mediaList[0]}
+                    alt={`${opp.title} poster`}
+                    className="h-64 w-full object-contain md:h-80 group-hover:scale-[1.02] transition-transform duration-200"
                   />
+                  <div className="p-2 text-center bg-surface/90 border-t border-hairline text-xs font-medium text-ink-soft flex items-center justify-center gap-1.5 group-hover:text-brand transition-colors">
+                    <Maximize2 className="h-3 w-3" />
+                    Click to view full poster
+                  </div>
                 </div>
               </div>
             )}
@@ -332,13 +457,10 @@ export default function OpportunityDetailPage() {
             </div>
             {!isExpired && (
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="border-hairline bg-background text-ink hover:bg-secondary"
+                <Button 
+                  onClick={handleApply}
+                  className="gap-1.5 bg-white !text-blue-600 border cursor-pointer !border-blue-600 hover:scale-102 shadow-md transition-all"
                 >
-                  Ask a question
-                </Button>
-                <Button className="gap-1.5 bg-white !text-blue-600 border cursor-pointer !border-blue-600 hover:scale-102 shadow-md transition-all">
                   Apply now
                   <ArrowUpRight className="h-4 w-4" />
                 </Button>
@@ -419,34 +541,297 @@ export default function OpportunityDetailPage() {
               </div>
             )}
 
-            {/* Additional media */}
-            {opp.media && opp.media.length > 1 && (
-              <>
-                <Separator className="bg-hairline" />
+            {/* Poster section in main body */}
+            {mediaList.length > 0 && (
+              <div className="rounded-3xl border border-hairline bg-surface p-6 shadow-[var(--shadow-soft)]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl bg-accent flex items-center justify-center">
+                      <ImageIcon className="h-4 w-4 text-brand" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-ink">Official Opportunity Poster</h3>
+                      <p className="text-xs text-ink-soft">Uploaded job flyer & advertisement document</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(mediaList[0], "_blank", "noopener,noreferrer")}
+                    className="gap-1.5 text-xs border-hairline hover:bg-secondary cursor-pointer"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    View Full Size
+                  </Button>
+                </div>
+                <div 
+                  onClick={() => window.open(mediaList[0], "_blank", "noopener,noreferrer")}
+                  className="overflow-hidden rounded-2xl border border-hairline bg-black/[0.02] flex items-center justify-center cursor-pointer group p-2"
+                >
+                  <img
+                    src={mediaList[0]}
+                    alt={`${opp.title} poster`}
+                    className="max-h-[520px] w-full object-contain rounded-xl group-hover:scale-[1.01] transition-transform duration-200"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Questions & Comments Section */}
+            <Separator className="bg-hairline" />
+
+            <div>
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-brand">
-                    Gallery
+                  <p className="mb-1 text-xs uppercase tracking-[0.18em] text-brand">
+                    Discussion
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {opp.media.slice(1).map((url: string, i: number) => (
-                      <a
-                        key={i}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block group"
+                  <h2
+                    className="text-3xl text-ink md:text-4xl"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Questions & Comments
+                  </h2>
+                  <p className="text-sm text-ink-soft mt-1">
+                    Have questions about this role? Ask the hiring poster or connect with other applicants.
+                  </p>
+                </div>
+                <Badge variant="outline" className="border-hairline gap-1.5 px-3 py-1 text-xs w-fit">
+                  <MessageSquare className="h-3.5 w-3.5 text-brand" />
+                  {comments?.length ?? 0} {comments?.length === 1 ? "Question" : "Questions"}
+                </Badge>
+              </div>
+
+              {/* Comment input form */}
+              <form onSubmit={handlePostComment} className="mb-8 space-y-3">
+                <div className="flex gap-3">
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarImage src={profile?.profile_picture} alt={profile?.display_name || "User"} />
+                    <AvatarFallback>{profile?.display_name ? getInitials(profile.display_name) : "ME"}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-2">
+                    <Textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Ask a question about requirements, team, salary, interview process..."
+                      className="min-h-[90px] rounded-2xl border-hairline bg-surface text-ink resize-none focus-visible:ring-brand"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={!commentText.trim() || addCommentMutation.isPending}
+                        className="gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs px-4 cursor-pointer"
                       >
-                        <img
-                          src={url}
-                          alt={`Media ${i + 2}`}
-                          className="w-full h-48 object-cover rounded-2xl border border-hairline group-hover:opacity-90 transition"
-                        />
-                      </a>
-                    ))}
+                        {addCommentMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Posting...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-3.5 w-3.5" />
+                            Post Question
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
+              </form>
+
+              {/* Comments list */}
+              <div className="space-y-4">
+                {commentsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-20 w-full rounded-2xl" />
+                    <Skeleton className="h-20 w-full rounded-2xl" />
+                  </div>
+                ) : comments && comments.length > 0 ? (
+                  comments.map((comment: any) => (
+                    <div
+                      key={comment.id}
+                      className="rounded-2xl border border-hairline bg-surface p-4 transition-all hover:border-hairline/80 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={comment.profile_picture} alt={comment.display_name} />
+                            <AvatarFallback className="text-[10px]">
+                              {comment.display_name ? getInitials(comment.display_name) : "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-ink">{comment.display_name}</span>
+                              {comment.role && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize bg-blue-50 text-blue-700 border border-blue-200">
+                                  {comment.role}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-ink-soft">
+                              @{comment.username} · {new Date(comment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {(profileId && (String(profileId) === String(comment.userId) || isOwner)) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteCommentMutation.mutate(comment.id)}
+                            disabled={deleteCommentMutation.isPending}
+                            className="h-8 w-8 p-0 text-ink-soft hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap pl-11">
+                        {comment.content}
+                      </p>
+
+                      {/* Reply button action */}
+                      <div className="pl-11 flex items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (replyingToCommentId === comment.id) {
+                              setReplyingToCommentId(null);
+                              setReplyText("");
+                            } else {
+                              setReplyingToCommentId(comment.id);
+                              setReplyText("");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline cursor-pointer"
+                        >
+                          <CornerDownRight className="h-3.5 w-3.5" />
+                          {replyingToCommentId === comment.id ? "Cancel reply" : "Reply"}
+                        </button>
+                      </div>
+
+                      {/* Inline Reply Form */}
+                      {replyingToCommentId === comment.id && (
+                        <div className="pl-11 pt-2">
+                          <div className="flex gap-2.5 items-start">
+                            <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                              <AvatarImage src={profile?.profile_picture} alt={profile?.display_name || "User"} />
+                              <AvatarFallback className="text-[10px]">{profile?.display_name ? getInitials(profile.display_name) : "ME"}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 space-y-2">
+                              <Textarea
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder={`Reply to @${comment.username}...`}
+                                className="min-h-[70px] rounded-xl border-hairline bg-background text-ink text-xs resize-none focus-visible:ring-brand"
+                                autoFocus
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setReplyingToCommentId(null);
+                                    setReplyText("");
+                                  }}
+                                  className="h-7 px-3 text-xs"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={!replyText.trim() || replyMutation.isPending}
+                                  onClick={() => replyMutation.mutate({ commentId: comment.id, content: replyText.trim() })}
+                                  className="h-7 px-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                                >
+                                  {replyMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Replying...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Send className="h-3 w-3" />
+                                      Send Reply
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Nested Replies */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="pl-11 pt-3 space-y-2.5 border-t border-hairline/60 mt-2">
+                          {comment.replies.map((reply: any) => {
+                            const isReplyAuthorPoster = Boolean(posterId && reply.userId && String(posterId) === String(reply.userId));
+                            const canDeleteReply = Boolean(profileId && (String(profileId) === String(reply.userId) || String(profileId) === String(comment.userId) || isOwner));
+
+                            return (
+                              <div key={reply.id} className="rounded-xl border border-hairline/70 bg-background/50 p-3 space-y-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 flex-wrap">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarImage src={reply.profile_picture} alt={reply.display_name} />
+                                      <AvatarFallback className="text-[9px]">
+                                        {reply.display_name ? getInitials(reply.display_name) : "U"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-xs font-semibold text-ink">{reply.display_name}</span>
+                                      {isReplyAuthorPoster && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-600 text-white shadow-xs">
+                                          Author
+                                        </span>
+                                      )}
+                                      {reply.role && !isReplyAuthorPoster && (
+                                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize bg-blue-50 text-blue-700 border border-blue-200">
+                                          {reply.role}
+                                        </span>
+                                      )}
+                                      <span className="text-[11px] text-ink-soft">
+                                        @{reply.username} · {new Date(reply.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {canDeleteReply && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteReplyMutation.mutate({ commentId: comment.id, replyId: reply.id })}
+                                      disabled={deleteReplyMutation.isPending}
+                                      className="h-6 w-6 p-0 text-ink-soft hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap pl-8">
+                                  {reply.content}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-hairline p-8 text-center bg-surface/50">
+                    <MessageSquare className="h-8 w-8 text-ink-soft mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-medium text-ink">No questions asked yet</p>
+                    <p className="text-xs text-ink-soft mt-1">
+                      Have questions about requirements or the application? Be the first to ask!
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </article>
 
           {/* Sidebar */}

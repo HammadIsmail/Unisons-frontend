@@ -78,6 +78,11 @@ export interface StudentProfile {
   roll_number: string;
   batch: string;
   skills: string[];
+  detailed_skills?: DetailedSkill[];
+  education?: any[];
+  graduation_year?: number | null;
+  upgrade_status?: "pending" | "approved" | "rejected" | null;
+  upgrade_rejection_reason?: string | null;
   tenant_id?: string;
   account_status: "approved" | "pending" | "rejected";
 }

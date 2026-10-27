@@ -10,14 +10,14 @@ export const addWorkExperienceSchema = z
     employment_type: z.enum(["full-time", "part-time", "freelance"]),
   })
   .superRefine((data, ctx) => {
-    if (!data.is_current && !data.end_date) {
+    if (!data.is_current && (!data.end_date || data.end_date.trim() === "")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "End date is required when not currently working here",
         path: ["end_date"],
       });
     }
-    if (data.end_date && data.start_date) {
+    if (!data.is_current && data.end_date && data.end_date.trim() !== "" && data.start_date) {
       if (new Date(data.end_date) <= new Date(data.start_date)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

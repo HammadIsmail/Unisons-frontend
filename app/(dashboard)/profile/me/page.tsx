@@ -36,7 +36,7 @@ import {
   Pencil, Plus, X, Trash2, Camera, Loader2,
   Linkedin, Phone, Tag, Briefcase, GraduationCap,
   Building2, CalendarDays, AlertCircle, Check,
-  Activity, ArrowRight, ChevronRight, Mail, Users,
+  Activity, ArrowRight, ChevronRight, Mail, Users, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -318,8 +318,16 @@ export default function MyProfilePage() {
   const p = profile as any;
 
   useEffect(() => {
-    if (profile) updateProfile(profile as any);
-  }, [profile, updateProfile]);
+    if (profile) {
+      const profileRole = (profile as any)?.role;
+      if (profileRole && profileRole !== role) {
+        updateProfile(profile as any);
+        queryClient.invalidateQueries();
+      } else {
+        updateProfile(profile as any);
+      }
+    }
+  }, [profile, role, updateProfile, queryClient]);
 
   const { data: myOpportunities } = useQuery({
     queryKey: ["opportunities", "me"],
@@ -360,7 +368,14 @@ export default function MyProfilePage() {
 
   const workForm = useForm<AddWorkExperienceInput>({
     resolver: zodResolver(addWorkExperienceSchema),
-    defaultValues: { is_current: false },
+    defaultValues: {
+      company_name: "",
+      role: "",
+      start_date: "",
+      end_date: "",
+      is_current: false,
+      employment_type: "full-time",
+    },
   });
   const isCurrentJob = workForm.watch("is_current");
 
@@ -434,9 +449,20 @@ export default function MyProfilePage() {
     mutationFn: addWorkExperience,
     onSuccess: () => {
       setShowAddWork(false);
-      workForm.reset();
+      workForm.reset({
+        company_name: "",
+        role: "",
+        start_date: "",
+        end_date: "",
+        is_current: false,
+        employment_type: "full-time",
+      });
       flash("Work experience added.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "me"] });
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Failed to add work experience.";
+      toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
     },
   });
 
@@ -484,6 +510,7 @@ export default function MyProfilePage() {
       toast.success(res.message ?? "Profile upgrade request submitted successfully.", {
         action: { label: "OK", onClick: () => {} },
       });
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message ?? "Failed to submit upgrade request.");
@@ -522,7 +549,7 @@ export default function MyProfilePage() {
     } else {
       skillMutation.mutate({
         skill_name: skillInput.trim(),
-        category: skillCategory.trim() || undefined,
+        category: skillCategory.trim() || "General",
         proficiency_level: skillProficiency,
       });
     }
@@ -839,8 +866,9 @@ export default function MyProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Education */}
-          <Card className="border-border/60 shadow-sm">
+          {/* Education — alumni only */}
+          {isAlumni && (
+            <Card className="border-border/60 shadow-sm">
               <CardContent className="p-5">
                 <SectionHeader
                   icon={<GraduationCap className="h-4 w-4" />}
@@ -982,6 +1010,7 @@ export default function MyProfilePage() {
                 )}
               </CardContent>
             </Card>
+          )}
         </div>
 
         {/* ── RIGHT MAIN CONTENT ────────────────────────────────────────── */}
@@ -1119,8 +1148,25 @@ export default function MyProfilePage() {
 
                 {showAddWork && (
                   <form
-                    onSubmit={workForm.handleSubmit((data) => workMutation.mutate(data))}
-                    className="mb-4 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
+                    onSubmit={workForm.handleSubmit(
+                      (data: AddWorkExperienceInput) => {
+                        const payload = {
+                          company_name: data.company_name,
+                          role: data.role,
+                          start_date: data.start_date,
+                          is_current: data.is_current,
+                          employment_type: data.employment_type,
+                          end_date: data.is_current ? undefined : (data.end_date || undefined),
+                        };
+                        workMutation.mutate(payload);
+                      },
+                      (errors) => {
+                        console.error("Work experience validation errors:", errors);
+                        const first = Object.values(errors)[0]?.message;
+                        toast.error(typeof first === "string" ? first : "Please check the form for errors.");
+                      }
+                    )}
+                    className="mb-4 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 border rounded-xl bg-card"
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
@@ -1138,17 +1184,22 @@ export default function MyProfilePage() {
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Start Date</Label>
                         <Input {...workForm.register("start_date")} type="date" className="h-9 text-sm border-border/60" />
+                        <FieldError message={workForm.formState.errors.start_date?.message} />
                       </div>
                       {!isCurrentJob && (
                         <div className="space-y-1">
                           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">End Date</Label>
                           <Input {...workForm.register("end_date")} type="date" className="h-9 text-sm border-border/60" />
+                          <FieldError message={workForm.formState.errors.end_date?.message} />
                         </div>
                       )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employment Type</Label>
-                      <Select onValueChange={(val) => workForm.setValue("employment_type", val as any, { shouldValidate: true })}>
+                      <Select
+                        value={workForm.watch("employment_type") || "full-time"}
+                        onValueChange={(val) => workForm.setValue("employment_type", val as any, { shouldValidate: true })}
+                      >
                         <SelectTrigger className="h-9 text-sm border-border/60">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -1158,19 +1209,28 @@ export default function MyProfilePage() {
                           <SelectItem value="freelance">Freelance</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FieldError message={workForm.formState.errors.employment_type?.message} />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => workForm.setValue("is_current", !isCurrentJob)}
-                      className="flex items-center gap-2 group"
-                    >
-                      <div className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${isCurrentJob ? "bg-indigo-600 border-indigo-600" : "border-border/60 group-hover:border-border"}`}>
-                        {isCurrentJob && <Check className="h-3 w-3 text-white" />}
-                      </div>
-                      <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">I currently work here</span>
-                    </button>
-                    <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600">
-                      {workMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding…</> : "Add Experience"}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="is_current_work"
+                        checked={Boolean(isCurrentJob)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          workForm.setValue("is_current", checked, { shouldValidate: true });
+                          if (checked) {
+                            workForm.setValue("end_date", "");
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                      />
+                      <Label htmlFor="is_current_work" className="text-sm cursor-pointer text-foreground select-none">
+                        I currently work here
+                      </Label>
+                    </div>
+                    <Button type="submit" size="sm" disabled={workMutation.isPending} className="h-9 gap-1.5 cursor-pointer !text-blue-600 bg-white text-sm border border-1 !border-blue-600 hover:bg-blue-50">
+                      {workMutation.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Adding…</> : "Add Experience"}
                     </Button>
                   </form>
                 )}
@@ -1283,42 +1343,62 @@ export default function MyProfilePage() {
                   icon={<GraduationCap className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
                   title="Request Profile Upgrade"
                 />
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  Already graduated? Submit a request to upgrade your profile from
-                  <span className="font-semibold text-blue-600"> Student </span>to
-                  <span className="font-semibold text-blue-600"> Alumni</span>.
-                  An admin will review and approve your request.
-                </p>
-                <div className="flex items-end gap-3">
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Graduation Year</Label>
-                    <Input
-                      id="upgrade-graduation-year"
-                      type="number"
-                      min={1990}
-                      max={new Date().getFullYear() + 5}
-                      placeholder={`e.g. ${new Date().getFullYear()}`}
-                      value={upgradeYear}
-                      onChange={(e) => setUpgradeYear(e.target.value)}
-                      className="h-9 text-sm border-amber-200 dark:border-amber-800 focus:border-amber-400"
-                      disabled={upgradeRequestMutation.isPending}
-                    />
+                {p?.upgrade_status === "pending" ? (
+                  <div className="flex items-center gap-3 p-3.5 rounded-lg bg-amber-100/70 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200">
+                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 animate-pulse" />
+                    <div>
+                      <p className="text-sm font-semibold">Upgrade Request Pending Review</p>
+                      <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                        Your request to upgrade your account to Alumni{p?.graduation_year ? ` (Graduation Year: ${p.graduation_year})` : ""} has been submitted and is currently being reviewed by an administrator.
+                      </p>
+                    </div>
                   </div>
-                  <Button
-                    id="submit-upgrade-request"
-                    onClick={() => {
-                      const year = parseInt(upgradeYear, 10);
-                      if (!upgradeYear || isNaN(year)) { toast.error("Please enter a valid graduation year."); return; }
-                      upgradeRequestMutation.mutate({ graduation_year: year });
-                    }}
-                    disabled={upgradeRequestMutation.isPending || !upgradeYear.trim()}
-                    className="h-9 gap-1.5 cursor-pointer bg-white hover:scale-103 !text-blue-600 !border !border-blue-600 font-normal flex-shrink-0"
-                  >
-                    {upgradeRequestMutation.isPending
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
-                      : <><GraduationCap className="h-4 w-4" /> Request Upgrade</>}
-                  </Button>
-                </div>
+                ) : (
+                  <>
+                    {p?.upgrade_status === "rejected" && (
+                      <div className="mb-3.5 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 text-xs">
+                        <span className="font-semibold">Previous Request Rejected:</span>{" "}
+                        {p?.upgrade_rejection_reason || "No specific reason provided."} You may submit a new request below.
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                      Already graduated? Submit a request to upgrade your profile from
+                      <span className="font-semibold text-blue-600"> Student </span>to
+                      <span className="font-semibold text-blue-600"> Alumni</span>.
+                      An admin will review and approve your request.
+                    </p>
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Graduation Year</Label>
+                        <Input
+                          id="upgrade-graduation-year"
+                          type="number"
+                          min={1990}
+                          max={new Date().getFullYear() + 5}
+                          placeholder={`e.g. ${new Date().getFullYear()}`}
+                          value={upgradeYear}
+                          onChange={(e) => setUpgradeYear(e.target.value)}
+                          className="h-9 text-sm border-amber-200 dark:border-amber-800 focus:border-amber-400"
+                          disabled={upgradeRequestMutation.isPending}
+                        />
+                      </div>
+                      <Button
+                        id="submit-upgrade-request"
+                        onClick={() => {
+                          const year = parseInt(upgradeYear, 10);
+                          if (!upgradeYear || isNaN(year)) { toast.error("Please enter a valid graduation year."); return; }
+                          upgradeRequestMutation.mutate({ graduation_year: year });
+                        }}
+                        disabled={upgradeRequestMutation.isPending || !upgradeYear.trim()}
+                        className="h-9 gap-1.5 cursor-pointer bg-white hover:scale-103 !text-blue-600 !border !border-blue-600 font-normal flex-shrink-0"
+                      >
+                        {upgradeRequestMutation.isPending
+                          ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
+                          : <><GraduationCap className="h-4 w-4" /> Request Upgrade</>}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}

@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { updateOpportunitySchema, UpdateOpportunityInput } from "@/schemas/opportunity.schemas";
 import { getOpportunityById, updateOpportunity } from "@/lib/api/opportunities.api";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import useAuthStore from "@/store/authStore";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,8 @@ const inputCls =
 export default function EditOpportunityPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
   const queryClient = useQueryClient();
   const { profile } = useAuthStore();
 
@@ -109,8 +112,10 @@ export default function EditOpportunityPage() {
 
   useEffect(() => {
     if (opp) {
-      if (profile && opp.posted_by?.id !== profile?.id) {
-        router.push(`/opportunities/${id}`);
+      const posterId = opp.posted_by?.id || (opp.posted_by as any)?._id || (opp.posted_by as any)?.userId;
+      const myId = profile?.id || (profile as any)?._id || (profile as any)?.userId;
+      if (profile && posterId && myId && String(posterId) !== String(myId)) {
+        router.push(from || `/opportunities/${id}`);
       }
 
       reset({
@@ -129,7 +134,7 @@ export default function EditOpportunityPage() {
       setSelectedSkills(opp.required_skills || []);
       setExistingMediaUrls(opp.media || []);
     }
-  }, [opp, reset, profile, id, router]);
+  }, [opp, reset, profile, id, router, from]);
 
   const isRemote = watch("is_remote");
   const selectedType = watch("type");
@@ -157,8 +162,15 @@ export default function EditOpportunityPage() {
     mutationFn: (data: Parameters<typeof updateOpportunity>[1]) => updateOpportunity(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["my-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["opportunity", id] });
-      router.push(`/opportunities/${id}`);
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      toast.success("Opportunity updated successfully");
+      if (from) {
+        router.push(from);
+      } else {
+        router.push(`/opportunities/${id}`);
+      }
     },
     onError: (error: any) => {
       setServerError(error.response?.data?.message || "Failed to update. Try again.");
@@ -189,8 +201,11 @@ export default function EditOpportunityPage() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header */}
         <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-6 group"
+          onClick={() => {
+            if (from) router.push(from);
+            else router.back();
+          }}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-6 group cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back

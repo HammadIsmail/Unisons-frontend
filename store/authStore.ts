@@ -18,6 +18,7 @@ interface AuthState {
     profile: UserProfile,
     tenant?: PublicTenant | null
   ) => void;
+  setRole: (role: UserRole) => void;
   setTenant: (tenant: PublicTenant | null) => void;
   clearAuth: () => void;
   updateProfile: (profile: Partial<UserProfile>) => void;
@@ -55,6 +56,8 @@ const useAuthStore = create<AuthState>()(
         set({ token, role, account_status, profile, tenant, isAuthenticated: true });
       },
 
+      setRole: (role) => set({ role }),
+
       setTenant: (tenant) => set({ tenant }),
 
       clearAuth: () => {
@@ -70,9 +73,13 @@ const useAuthStore = create<AuthState>()(
       },
 
       updateProfile: (profile) =>
-        set((state) => ({
-          profile: state.profile ? ({ ...state.profile, ...profile } as UserProfile) : null,
-        })),
+        set((state) => {
+          const newRole = ((profile as any)?.role as UserRole) || state.role;
+          return {
+            profile: state.profile ? ({ ...state.profile, ...profile } as UserProfile) : (profile as UserProfile),
+            role: newRole,
+          };
+        }),
     }),
     {
       name: "unison_auth",

@@ -83,6 +83,11 @@ export default function LoginForm() {
       const status = error.response?.status;
       const message = error.response?.data?.message;
 
+      if (message?.toLowerCase().includes("pending")) {
+        router.push("/pending");
+        return;
+      }
+
       if (status === 403) {
         setServerError("This university's access has been suspended.");
       } else if (status === 401 && message?.includes("Session outdated")) {

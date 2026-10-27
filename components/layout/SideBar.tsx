@@ -37,7 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Search",        href: "/search",           icon: <Search className="h-4 w-4" />,          roles: ["alumni", "student", "partner"] },
   { label: "My Network",    href: "/my-network",       icon: <Network className="h-4 w-4" />,         roles: ["alumni", "partner"] },
   { label: "Batch Mates",   href: "/batch-mates",      icon: <Users className="h-4 w-4" />,           roles: ["alumni"] },
-  { label: "My Posts",      href: "/my-opportunities", icon: <FileText className="h-4 w-4" />,        roles: ["alumni", "partner"] },
+  { label: "My Posts",      href: "/opportunities?my=true", icon: <FileText className="h-4 w-4" />, roles: ["alumni", "partner"] },
   { label: "My Events",     href: "/my-events",        icon: <CalendarCheck className="h-4 w-4" />,   roles: ["alumni", "partner"] },
   { label: "Mentors",       href: "/mentors",          icon: <GraduationCap className="h-4 w-4" />,   roles: ["student"] },
   { label: "Messages",      href: "/chat",             icon: <MessageSquare className="h-4 w-4" />,   roles: ["alumni", "student", "partner"] },
