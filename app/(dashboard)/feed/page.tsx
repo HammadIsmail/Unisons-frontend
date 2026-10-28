@@ -8,6 +8,9 @@ import { deleteEvent } from "@/lib/api/events.api";
 import { getMyNetwork } from "@/lib/api/connections.api";
 import { getProfileSuggestions, UserSuggestion } from "@/lib/api/profiles.api";
 import { getSkillTrends } from "@/lib/api/network.api";
+import { getMyAlumniProfile } from "@/lib/api/alumni.api";
+import { getMyStudentProfile } from "@/lib/api/student.api";
+import { getMyPartnerProfile } from "@/lib/api/partner.api";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -629,7 +632,17 @@ function ConnectionsStrip({ connections, isLoading }: { connections: Connection[
 
 // ─── Profile Card (left sidebar) ─────────────────────────────────────────────
 
-function ProfileCard({ profile, role }: { profile: any; role?: string | null }) {
+function ProfileCard({
+  profile,
+  role,
+  connectionsCount,
+  postsCount,
+}: {
+  profile: any;
+  role?: string | null;
+  connectionsCount?: number;
+  postsCount?: number;
+}) {
   return (
     <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-soft">
       {profile?.backDropImage ? (
@@ -653,12 +666,12 @@ function ProfileCard({ profile, role }: { profile: any; role?: string | null }) 
 
         <div className={`mt-4 grid ${role === "student" ? "grid-cols-1" : "grid-cols-2"} divide-x divide-border rounded-2xl bg-secondary/40 py-3 text-center`}>
           <div>
-            <div className="text-sm font-semibold">{profile?.connections_count ?? "0"}</div>
+            <div className="text-sm font-semibold">{connectionsCount !== undefined ? connectionsCount : (profile?.connections_count ?? 0)}</div>
             <div className="text-[11px] text-muted-foreground">Connections</div>
           </div>
           {role !== "student" && (
             <div>
-              <div className="text-sm font-semibold">{profile?.posts_count ?? "0"}</div>
+              <div className="text-sm font-semibold">{postsCount !== undefined ? postsCount : (profile?.posts_count ?? 0)}</div>
               <div className="text-[11px] text-muted-foreground">Posts</div>
             </div>
           )}
@@ -893,6 +906,18 @@ export default function FeedPage() {
     enabled: !!role,
   });
 
+  const { data: myProfile } = useQuery({
+    queryKey: [role, "me"],
+    queryFn: () => (role === "alumni" ? getMyAlumniProfile() : role === "student" ? getMyStudentProfile() : getMyPartnerProfile()),
+    enabled: !!role,
+  });
+
+  const activeProfile = myProfile || profile;
+  const currentConnectionsCount = connectionsLoading
+    ? (activeProfile?.connections_count ?? 0)
+    : connections.length;
+  const currentPostsCount = (activeProfile as any)?.posts_count ?? (profile as any)?.posts_count ?? 0;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Ambient gradient mesh */}
@@ -909,7 +934,12 @@ export default function FeedPage() {
 
           {/* ── LEFT sidebar ── */}
           <aside className="hidden space-y-4 lg:block">
-            <ProfileCard profile={profile} role={role} />
+            <ProfileCard
+              profile={activeProfile}
+              role={role}
+              connectionsCount={currentConnectionsCount}
+              postsCount={currentPostsCount}
+            />
             <TrendingSkillsCard />
           </aside>
 
@@ -917,7 +947,7 @@ export default function FeedPage() {
           <section className="w-full min-w-0 space-y-5">
             {/* Composer — alumni only */}
             {role === "alumni" && (
-              <Composer profilePicture={profile?.profile_picture} displayName={profile?.display_name} />
+              <Composer profilePicture={activeProfile?.profile_picture} displayName={activeProfile?.display_name} />
             )}
 
             {/* Connections strip */}

@@ -180,23 +180,29 @@ function Sidebar({
           </div>
         ) : (
           filteredItems.map((conv) => {
-            const isActive = pathname === `/chat/${conv.participantProfile.id}`;
-            const participantId = conv.participantProfile.id;
+            const p = conv.participantProfile || {
+              id: conv.participants?.find((x: string) => x !== profileId) || "",
+              display_name: "Chat",
+              username: "",
+              profile_picture: null,
+            };
+            const participantId = p.id;
+            const isActive = pathname === `/chat/${participantId}`;
             const liveStatus = onlineStatus[participantId];
             const isOnline =
-              liveStatus?.isOnline ?? (conv.participantProfile as any).is_online ?? false;
+              liveStatus?.isOnline ?? (p as any).is_online ?? false;
             const hasUnread =
               conv.lastMessage &&
               !conv.lastMessage.isRead &&
               conv.lastMessage.senderId &&
               conv.lastMessage.senderId !== profileId;
-            const initials = getInitials(conv.participantProfile.display_name);
+            const initials = getInitials(p.display_name);
             const hasMessage = !!conv.lastMessage?.content;
 
             return (
               <Link
                 key={conv._id}
-                href={`/chat/${conv.participantProfile.id}`}
+                href={`/chat/${participantId}`}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-100 relative ${
                   isActive
                     ? "bg-slate-100 dark:bg-slate-800/80"
@@ -207,8 +213,8 @@ function Sidebar({
                 <div className="relative flex-shrink-0">
                   <Avatar className="h-10 w-10 border border-border/50">
                     <AvatarImage
-                      src={conv.participantProfile.profile_picture || undefined}
-                      alt={conv.participantProfile.display_name}
+                      src={p.profile_picture || undefined}
+                      alt={p.display_name}
                     />
                     <AvatarFallback
                       className={`text-[12px] font-semibold ${
@@ -235,7 +241,7 @@ function Sidebar({
                           : "font-medium text-foreground/80"
                       }`}
                     >
-                      {conv.participantProfile.display_name}
+                      {p.display_name}
                     </p>
                     {hasMessage && (
                       <span
@@ -349,7 +355,10 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
   const mergedItems = useMemo(() => {
     if (!myConnections) return conversations || [];
     const convMap = new Map();
-    conversations?.forEach((c) => convMap.set(c.participantProfile.id, c));
+    conversations?.forEach((c) => {
+      const pid = c.participantProfile?.id || c.participants?.find((p: string) => p !== profile?.id);
+      if (pid) convMap.set(pid, c);
+    });
     const result = [...(conversations || [])];
     myConnections.forEach((conn: any) => {
       const connId = conn.id || conn.alumni_id || conn.user_id;
@@ -380,8 +389,8 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
     const q = search.toLowerCase();
     return mergedItems.filter(
       (c) =>
-        c.participantProfile.display_name.toLowerCase().includes(q) ||
-        c.participantProfile.username.toLowerCase().includes(q)
+        c.participantProfile?.display_name?.toLowerCase()?.includes(q) ||
+        c.participantProfile?.username?.toLowerCase()?.includes(q)
     );
   }, [mergedItems, search]);
 

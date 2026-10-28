@@ -66,7 +66,9 @@ export default function ChatRoomPage() {
     queryFn: getConversations,
   });
 
-  const conversation = conversations?.find((c) => c.participantProfile.id === participantId);
+  const conversation = conversations?.find(
+    (c) => c.participantProfile?.id === participantId || c.participants?.includes(participantId)
+  );
   const participant = conversation?.participantProfile as any;
 
   const isOnline = liveStatus?.isOnline ?? participant?.is_online ?? false;

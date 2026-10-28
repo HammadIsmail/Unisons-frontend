@@ -39,6 +39,7 @@ export interface AlumniProfile {
   current_role: string;
   skills: string[];
   connections_count: number;
+  posts_count?: number;
   account_status: "approved" | "pending" | "rejected";
   tenant_id?: string;
   work_experiences: WorkExperience[];
