@@ -11,6 +11,7 @@ import { getSkillTrends } from "@/lib/api/network.api";
 import { getMyAlumniProfile } from "@/lib/api/alumni.api";
 import { getMyStudentProfile } from "@/lib/api/student.api";
 import { getMyPartnerProfile } from "@/lib/api/partner.api";
+import { formatEventDate, formatDeadline, timeAgo } from "@/lib/temporal";
 import useAuthStore from "@/store/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -88,28 +89,6 @@ const TYPE_META: Record<string, { label: string; icon: React.ReactNode; pillClas
   },
 };
 
-
-function formatDeadline(iso: string) {
-  const d = new Date(iso);
-  const diff = Math.ceil((d.getTime() - Date.now()) / 86_400_000);
-  const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  if (diff < 0) return { label: "Expired", urgent: true };
-  if (diff <= 3) return { label: diff === 0 ? "Today!" : `${diff}d left`, urgent: true };
-  return { label, urgent: false };
-}
-
-function timeAgo(dateStr?: string) {
-  if (!dateStr) return "";
-  const ts = Date.parse(dateStr);
-  if (isNaN(ts)) return "";
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
 
 function getInitials(name: string | null | undefined) {
   if (!name) return "?";
@@ -192,11 +171,13 @@ function CopyLinkButton({ id }: { id: string }) {
 
 // ─── Caption with Read More ───────────────────────────────────────────────────
 
-function Caption({ text }: { text: string }) {
+function Caption({ text }: { text?: string | null }) {
   const [expanded, setExpanded] = useState(false);
+  const content = text ?? "";
+  if (!content) return null;
   const MAX = 180;
-  const truncated = text.length > MAX;
-  const display = expanded || !truncated ? text : text.slice(0, MAX);
+  const truncated = content.length > MAX;
+  const display = expanded || !truncated ? content : content.slice(0, MAX);
 
   return (
     <p className="text-[12px] sm:text-sm leading-relaxed text-foreground/90">
@@ -274,11 +255,11 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
     >
       {/* Header */}
       <div className="flex items-start gap-3 px-3 sm:px-5 pt-4 sm:pt-5">
-        <Link href={`/profile/${item.author.id}`} className="flex-shrink-0">
+        <Link href={`/profile/${item.author?.id || ""}`} className="flex-shrink-0">
           <Avatar className="h-7 w-7 sm:h-9 sm:w-9 ring-2 ring-primary/10">
-            <AvatarImage src={item.author.profile_picture ?? undefined} />
+            <AvatarImage src={item.author?.profile_picture ?? undefined} />
             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-xs">
-              {getInitials(item.author.display_name)}
+              {getInitials(item.author?.display_name)}
             </AvatarFallback>
           </Avatar>
         </Link>
@@ -286,9 +267,9 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
         {/* middle section MUST be allowed to shrink properly */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <Link href={`/profile/${item.author.id}`} className="min-w-0">
+            <Link href={`/profile/${item.author?.id || ""}`} className="min-w-0">
               <h4 className="truncate text-[12px] sm:text-base font-semibold hover:text-primary transition-colors">
-                {item.author.display_name}
+                {item.author?.display_name || "User"}
               </h4>
             </Link>
 
@@ -298,7 +279,7 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
           </div>
 
           <p className="truncate text-[11px] sm:text-sm text-muted-foreground">
-            {item.author.role}
+            {item.author?.role || ""}
           </p>
         </div>
 
@@ -359,7 +340,18 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
 
       {/* Caption */}
       <div className="px-5 pt-3">
-        <Caption text={item.type === "announcement" ? item.description : (item.title || "")} />
+        {item.type === "announcement" && item.title && (item.description || (item as any).content) && (
+          <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1">
+            {item.title}
+          </h3>
+        )}
+        <Caption
+          text={
+            item.type === "announcement"
+              ? (item.description || (item as any).content || item.title || "")
+              : (item.title || (item as any).description || "")
+          }
+        />
       </div>
 
       {/* Media */}
@@ -416,7 +408,7 @@ function FeedCard({ item, index }: { item: FeedItem; index: number }) {
             {item.type === "event" && (
               <span className="flex items-center gap-1 text-xs md:text-sm">
                 <CalendarDays className="h-3 w-3" />
-                {new Date(item.event_date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "numeric" })}
+                {formatEventDate(item.event_date)}
               </span>
             )}
             {item.type === "event" && item.is_online && (

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/utils";
+import { getEventDateParts } from "@/lib/temporal";
 import {
   CalendarDays,
   MapPin,
@@ -48,15 +49,8 @@ const TYPE_COLORS: Record<EventType, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatEventDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return {
-    day: d.toLocaleDateString("en-US", { weekday: "short" }),
-    date: d.getDate(),
-    month: d.toLocaleDateString("en-US", { month: "short" }),
-    year: d.getFullYear(),
-    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-  };
+function formatEventDate(dateStr: unknown) {
+  return getEventDateParts(dateStr);
 }
 
 // ── Event Card ────────────────────────────────────────────────────────────────
