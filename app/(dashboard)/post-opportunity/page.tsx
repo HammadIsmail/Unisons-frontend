@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postOpportunitySchema, PostOpportunityInput } from "@/schemas/opportunity.schemas";
 import { postOpportunity } from "@/lib/api/opportunities.api";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,7 +78,7 @@ const TYPES = [
 const inputCls =
   "h-11 text-sm border-slate-200 bg-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500";
 
-export default function PostOpportunityPage() {
+function PostOpportunityContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
@@ -136,7 +136,7 @@ export default function PostOpportunityPage() {
       }
     },
     onError: (error: any) => {
-      setServerError(error.response?.data?.message || "Failed to post. Try again.");
+      setServerError(error.response?.data?.message || "Failed to post.  Try again.");
     },
   });
 
@@ -555,5 +555,20 @@ export default function PostOpportunityPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function PostOpportunityPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[400px] w-full items-center justify-center p-8 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          Loading...
+        </div>
+      }
+    >
+      <PostOpportunityContent />
+    </Suspense>
   );
 }

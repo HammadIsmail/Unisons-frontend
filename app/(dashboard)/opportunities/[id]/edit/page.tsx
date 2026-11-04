@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { updateOpportunitySchema, UpdateOpportunityInput } from "@/schemas/opportunity.schemas";
 import { getOpportunityById, updateOpportunity } from "@/lib/api/opportunities.api";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ const inputCls =
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function EditOpportunityPage() {
+function EditOpportunityContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -621,5 +621,20 @@ export default function EditOpportunityPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function EditOpportunityPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[400px] w-full items-center justify-center p-8 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          Loading...
+        </div>
+      }
+    >
+      <EditOpportunityContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, Suspense } from "react";
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthStore from "@/store/authStore";
 import Link from "next/link";
@@ -195,7 +195,7 @@ function FeaturedCardSkeleton() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function OpportunitiesPage() {
+function OpportunitiesContent() {
   const { role, profile } = useAuthStore();
   const searchParams = useSearchParams();
   const [type, setType] = useState<"" | OppType>("");
@@ -687,6 +687,21 @@ export default function OpportunitiesPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function OpportunitiesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[400px] w-full items-center justify-center p-8 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          Loading opportunities...
+        </div>
+      }
+    >
+      <OpportunitiesContent />
+    </Suspense>
   );
 }
 
