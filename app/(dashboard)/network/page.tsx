@@ -713,15 +713,7 @@ function NetworkPageContent() {
               </div>
             </div>
 
-            {/* Tip banner */}
-            {suggestions && suggestions.length > 0 && (
-              <div className="mt-3 flex items-center gap-2.5 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl w-full sm:w-fit">
-                <Sparkles className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                <p className="text-[12px] text-blue-700">
-                  <span className="font-semibold">{suggestions.length} people</span> suggested based on your batch and interests
-                </p>
-              </div>
-            )}
+        
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">

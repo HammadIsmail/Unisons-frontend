@@ -118,18 +118,7 @@ function PostSkeleton() {
   );
 }
 
-function ConnectionsSkeleton() {
-  return (
-    <div className="flex gap-4 py-1 animate-pulse">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
-          <div className="h-14 w-14 rounded-full bg-secondary" />
-          <div className="h-2 bg-secondary rounded-full w-12" />
-        </div>
-      ))}
-    </div>
-  );
-}
+
 
 function SidebarSkeleton() {
   return (
@@ -551,76 +540,7 @@ function Composer({ profilePicture, displayName }: { profilePicture?: string; di
   );
 }
 
-// ─── Connections Strip ────────────────────────────────────────────────────────
 
-function ConnectionsStrip({ connections, isLoading }: { connections: Connection[]; isLoading: boolean }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scroll = (dir: "left" | "right") =>
-    scrollRef.current?.scrollBy({ left: dir === "left" ? -240 : 240, behavior: "smooth" });
-
-  return (
-    <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-soft">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold">Your Network</h3>
-          <p className="text-xs text-muted-foreground">Stay close with people you know</p>
-        </div>
-        <Link href="/network/my-connections" className="text-xs font-semibold text-primary hover:underline">
-          See all
-        </Link>
-      </div>
-
-      {isLoading ? (
-        <ConnectionsSkeleton />
-      ) : connections.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-2">No connections yet. Start building your network!</p>
-      ) : (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => scroll("left")}
-            className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-
-          <div
-            ref={scrollRef}
-            className="flex flex-1 gap-4 overflow-x-auto scroll-smooth py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {connections.map((c) => (
-              <Link
-                key={c.id}
-                href={`/profile/${c.id}`}
-                className="group flex w-20 flex-shrink-0 flex-col items-center gap-2"
-              >
-                <div className="rounded-full bg-gradient-to-br from-primary/60 to-primary p-[2px] transition-transform group-hover:scale-105">
-                  <div className="rounded-full border-2 border-card">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14">
-                      <AvatarImage src={c.profile_picture ?? undefined} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm">
-                        {getInitials(c.display_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                </div>
-                <span className="line-clamp-1 text-[11px] font-medium text-foreground">
-                  {c.display_name.split(" ")[0]}
-                </span>
-              </Link>
-            ))}
-          </div>
-
-          <button
-            onClick={() => scroll("right")}
-            className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Profile Card (left sidebar) ─────────────────────────────────────────────
 
@@ -942,8 +862,7 @@ export default function FeedPage() {
               <Composer profilePicture={activeProfile?.profile_picture} displayName={activeProfile?.display_name} />
             )}
 
-            {/* Connections strip */}
-            <ConnectionsStrip connections={connections} isLoading={connectionsLoading} />
+        
 
             {/* Filter + heading */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">

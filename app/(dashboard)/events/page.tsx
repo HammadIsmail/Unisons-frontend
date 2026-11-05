@@ -264,10 +264,6 @@ export default function EventsPage() {
         <div className="max-w-6xl mx-auto px-6 py-10">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium ring-1 ring-blue-100 mb-4">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Alumni Network
-              </div>
               <h1 className="text-4xl font-bold tracking-tight text-slate-900">Events</h1>
               <p className="text-slate-500 mt-2 text-[15px] max-w-lg">
                 Discover reunions, webinars, workshops, and networking events hosted by the alumni community.
