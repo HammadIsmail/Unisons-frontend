@@ -54,7 +54,7 @@ interface StatBox {
 
 // ─── Shared Helpers ───────────────────────────────────────────────────────────
 
-export function getInitials(name?: string) {
+function getInitials(name?: string) {
   if (!name) return "U";
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }

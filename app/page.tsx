@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import BackendWarmup from "@/components/common/BackendWarmup";
 import {
   Briefcase,
   GraduationCap,
@@ -315,6 +316,7 @@ function Footer() {
 export default function Landing() {
   return (
     <main className="min-h-screen bg-white">
+      <BackendWarmup />
       <Nav />
       <Hero />
       <Features />
