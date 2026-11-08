@@ -66,8 +66,8 @@ function SectionLabel({
         {icon}
       </div>
       <div>
-        <h2 className="text-base font-semibold text-slate-900 leading-tight">{title}</h2>
-        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+        <h2 className="text-base font-semibold text-foreground leading-tight">{title}</h2>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -84,7 +84,7 @@ const EVENT_TYPES = [
 ] as const;
 
 const inputCls =
-  "h-11 text-sm border-slate-200 bg-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500";
+  "h-11 text-sm border-border bg-card text-foreground focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500";
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ export default function CreateEventPage() {
         {/* Back */}
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-6 group"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
@@ -153,12 +153,12 @@ export default function CreateEventPage() {
 
         {/* Header */}
         <div className="mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium ring-1 ring-blue-100 mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 text-xs font-medium ring-1 ring-blue-100 dark:ring-blue-900/50 mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
             New Event
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900">Create Event</h1>
-          <p className="text-slate-500 mt-2 text-[15px] leading-relaxed max-w-xl">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">Create Event</h1>
+          <p className="text-muted-foreground mt-2 text-[15px] leading-relaxed max-w-xl">
             Host a reunion, webinar, workshop, or networking session for the alumni community.
           </p>
         </div>
@@ -190,8 +190,8 @@ export default function CreateEventPage() {
                         type="button"
                         onClick={() => setValue("type", value, { shouldValidate: true })}
                         className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 w-full ${active
-                            ? "border-blue-600 bg-white text-blue-600 shadow-md shadow-blue-600/20"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/40"
+                            ? "border-blue-600 bg-card text-blue-600 dark:text-blue-400 shadow-md shadow-blue-600/20"
+                            : "border-border/60 bg-card text-muted-foreground hover:border-blue-400 hover:text-blue-600 hover:bg-muted/50"
                           }`}
                       >
                         {icon}
@@ -392,10 +392,10 @@ export default function CreateEventPage() {
                   <div className="h-10 w-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
                     <ImagePlus className="h-5 w-5 text-blue-600" />
                   </div>
-                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                  <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                     <span className="text-blue-600 font-medium">Click to upload</span> banner
                   </span>
-                  <span className="text-xs text-slate-400">PNG, JPG, WebP up to 5MB</span>
+                  <span className="text-xs text-muted-foreground/60">PNG, JPG, WebP up to 5MB</span>
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -412,7 +412,7 @@ export default function CreateEventPage() {
             <Button
               type="submit"
               disabled={isSubmitting || mutation.isPending}
-              className="flex-1 h-12 bg-white !text-blue-600 border !border-blue-600 text-sm shadow-md hover:scale-[1.02] cursor-pointer shadow-blue-600/25 gap-2"
+              className="flex-1 h-12 bg-card text-blue-600 dark:text-blue-400 border border-blue-600 text-sm shadow-md hover:scale-[1.02] cursor-pointer shadow-blue-600/25 gap-2"
             >
               {mutation.isPending ? (
                 <>
@@ -425,7 +425,7 @@ export default function CreateEventPage() {
             <Button
               type="button"
               variant="outline"
-              className="h-12 px-6 border-slate-200 text-slate-700 hover:bg-slate-50 text-sm"
+              className="h-12 px-6 border-border text-foreground hover:bg-muted text-sm"
               onClick={() => router.back()}
             >
               Cancel

@@ -23,7 +23,7 @@ export default function SentRequestCard({
   isLoading
 }: SentRequestCardProps) {
   return (
-    <Card className="p-4 border-none shadow-sm bg-white hover:shadow-md transition-shadow">
+    <Card className="p-4 border border-border/40 shadow-sm bg-card text-card-foreground hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-14 w-14 border border-border/40 shrink-0">

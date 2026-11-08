@@ -46,10 +46,8 @@ function SelectTrigger({
       className={cn(
         // Base layout
         "group flex w-fit items-center justify-between gap-2 rounded-lg border px-3 text-sm whitespace-nowrap select-none outline-none transition-all duration-200",
-        // Blue/white theme
-        "border-blue-200 bg-white text-black shadow-sm",
-        // Hover
-        "hover:border-blue-400 hover:bg-blue-50 hover:shadow-md",
+        // Theme-adaptive
+        "border-border bg-card text-foreground shadow-sm hover:border-blue-400 hover:bg-accent/40 hover:shadow-md",
         // Focus
         "focus-visible:border-blue-500 focus-visible:ring-3 focus-visible:ring-blue-300/50",
         // Open state
@@ -100,8 +98,8 @@ function SelectContent({
           className={cn(
             // Base
             "relative z-50 max-h-[min(320px,var(--radix-select-content-available-height))] min-w-[--radix-select-trigger-width] origin-[--radix-select-content-transform-origin] overflow-x-hidden overflow-y-auto",
-            // Blue/white theme
-            "rounded-xl border border-blue-100 bg-white text-blue-900 shadow-xl shadow-blue-900/10",
+            // Theme-adaptive
+            "rounded-xl border border-border bg-popover text-popover-foreground shadow-xl",
             // Top accent line
             "before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:rounded-t-xl before:bg-gradient-to-r before:from-blue-400 before:via-blue-500 before:to-blue-400",
             // Open animation
@@ -164,10 +162,8 @@ function SelectItem({
       className={cn(
         // Base layout
         "relative flex w-full cursor-default items-center gap-2 rounded-lg py-2 pr-8 pl-2.5 text-sm outline-hidden select-none",
-        // Blue/white theme
-        "text-blue-800",
-        // Hover / focus
-        "focus:bg-blue-50 focus:text-blue-900",
+        // Theme-adaptive
+        "text-foreground focus:bg-accent focus:text-accent-foreground",
         // Animated entry — stagger via inline style below
         "animate-in fade-in-0 slide-in-from-left-2",
         // Disabled

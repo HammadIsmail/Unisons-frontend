@@ -90,7 +90,7 @@ function ConfirmDialog({
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onCancel}
       />
-      <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 fade-in duration-200">
+      <div className="relative z-10 bg-card text-card-foreground border border-border/40 rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 fade-in duration-200">
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
@@ -271,7 +271,7 @@ function SuggestionCard({
 // ─── Skeleton for suggestion card ────────────────────────────────────────────
 function SuggestionCardSkeleton() {
   return (
-    <div className="bg-white w-full sm:w-[220px] border border-border/40 rounded-2xl overflow-hidden flex flex-col">
+    <div className="bg-card w-full sm:w-[220px] border border-border/40 rounded-2xl overflow-hidden flex flex-col">
       <Skeleton className="h-20 w-full rounded-none" />
       <div className="pt-10 pb-4 px-4 flex flex-col items-center gap-2">
         <Skeleton className="h-4 w-24" />
@@ -295,7 +295,7 @@ function NetworkStatsBar({
   invitationsCount: number;
 }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-white border border-border/40 rounded-2xl w-fit">
+    <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border/40 rounded-2xl w-fit">
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-xl bg-blue-50 flex items-center justify-center">
           <Link2 className="w-3 h-3 text-blue-500" />
@@ -422,9 +422,9 @@ function NetworkPageContent() {
             value="connections"
             className={cn(
               "group h-auto py-2.5 px-4 rounded-xl text-[13px] font-medium border transition-all duration-150",
-              "bg-white border-border/50 text-muted-foreground shadow-sm",
+              "bg-card border-border/50 text-muted-foreground shadow-sm",
               "hover:border-blue-600 hover:text-blue-600 hover:shadow-none hover:scale-102",
-              "data-[state=active]:bg-white data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+              "data-[state=active]:bg-card data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
             )}
           >
             <span className="flex items-center gap-2">
@@ -435,9 +435,9 @@ function NetworkPageContent() {
 
               {myConnections && myConnections.length > 0 && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full leading-none font-semibold 
-                                bg-gray-100 text-muted-foreground
-                                group-hover:bg-blue-100 group-hover:text-blue-600
-                                group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-600"
+                                bg-muted text-muted-foreground
+                                group-hover:bg-blue-100 dark:group-hover:bg-blue-950/40 group-hover:text-blue-600
+                                group-data-[state=active]:bg-blue-100 dark:group-data-[state=active]:bg-blue-950/40 group-data-[state=active]:text-blue-600"
                 >
                   {myConnections.length}
                 </span>
@@ -449,9 +449,9 @@ function NetworkPageContent() {
               value="invitations"
               className={cn(
                 "group h-auto py-2.5 px-4 rounded-xl text-[13px] font-medium border transition-all duration-150",
-                "bg-white border-border/50 text-muted-foreground shadow-sm",
+                "bg-card border-border/50 text-muted-foreground shadow-sm",
                 "hover:border-blue-600 hover:text-blue-600 hover:shadow-none hover:scale-[1.02]",
-                "data-[state=active]:bg-white data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                "data-[state=active]:bg-card data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
               )}
             >
               <span className="flex items-center gap-2">
@@ -466,9 +466,9 @@ function NetworkPageContent() {
                 {invitations && invitations.length > 0 && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded-full leading-none font-semibold
-        bg-gray-100 text-muted-foreground
-        group-hover:bg-blue-100 group-hover:text-blue-600
-        group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-600"
+        bg-muted text-muted-foreground
+        group-hover:bg-blue-100 dark:group-hover:bg-blue-950/40 group-hover:text-blue-600
+        group-data-[state=active]:bg-blue-100 dark:group-data-[state=active]:bg-blue-950/40 group-data-[state=active]:text-blue-600"
                   >
                     {invitations.length}
                   </span>
@@ -480,9 +480,9 @@ function NetworkPageContent() {
             value="sent"
             className={cn(
               "group h-auto py-2.5 px-4 rounded-xl text-[13px] font-medium border transition-all duration-150",
-              "bg-white border-border/50 text-muted-foreground shadow-sm",
+              "bg-card border-border/50 text-muted-foreground shadow-sm",
               "hover:border-blue-600 hover:text-blue-600 hover:shadow-none hover:scale-[1.02]",
-              "data-[state=active]:bg-white data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+              "data-[state=active]:bg-card data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
             )}
           >
             <span className="flex items-center gap-2">
@@ -497,9 +497,9 @@ function NetworkPageContent() {
               {sentRequests && sentRequests.length > 0 && (
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded-full leading-none font-semibold
-        bg-gray-100 text-muted-foreground
-        group-hover:bg-blue-100 group-hover:text-blue-600
-        group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-600"
+        bg-muted text-muted-foreground
+        group-hover:bg-blue-100 dark:group-hover:bg-blue-950/40 group-hover:text-blue-600
+        group-data-[state=active]:bg-blue-100 dark:group-data-[state=active]:bg-blue-950/40 group-data-[state=active]:text-blue-600"
                 >
                   {sentRequests.length}
                 </span>
@@ -510,9 +510,9 @@ function NetworkPageContent() {
             value="discover"
             className={cn(
               "group h-auto py-2.5 px-4 rounded-xl text-[13px] font-medium border transition-all duration-150",
-              "bg-white border-border/50 text-muted-foreground shadow-sm",
+              "bg-card border-border/50 text-muted-foreground shadow-sm",
               "hover:border-blue-600 hover:text-blue-600 hover:shadow-none hover:scale-[1.02]",
-              "data-[state=active]:bg-white data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+              "data-[state=active]:bg-card data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
             )}
           >
             <span className="flex items-center gap-2 text-muted-foreground group-hover:text-blue-600 group-data-[state=active]:text-blue-600 transition-colors">
@@ -588,7 +588,7 @@ function NetworkPageContent() {
             <div className="flex flex-col gap-3 max-w-2xl">
               {invitationsLoading ? (
                 [1, 2].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-border/40">
+                  <div key={i} className="flex items-center justify-between p-4 bg-card rounded-2xl border border-border/40">
                     <div className="flex items-center gap-3">
                       <Skeleton className="h-12 w-12 rounded-full" />
                       <div className="space-y-2">
@@ -627,8 +627,8 @@ function NetworkPageContent() {
                   </div>
                 </>
               ) : (
-                <div className="py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
-                  <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3">
+                <div className="py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-card/50">
+                  <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center mb-3">
                     <MailOpen className="h-5 w-5 text-rose-400" />
                   </div>
                   <p className="text-[14px] font-semibold text-foreground">No pending invitations</p>
@@ -649,7 +649,7 @@ function NetworkPageContent() {
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))] max-w-4xl">
             {sentRequestsLoading ? (
               [1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-border/40">
+                <div key={i} className="flex items-center justify-between p-4 bg-card rounded-2xl border border-border/40">
                   <div className="flex items-center gap-3">
                     <Skeleton className="h-11 w-11 rounded-full flex-shrink-0" />
                     <div className="space-y-2">
@@ -759,8 +759,8 @@ function NetworkPageContent() {
                 </div>
               </>
             ) : (
-              <div className="col-span-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-white/50">
-                <div className="w-12 h-12 rounded-full bg-violet-50 flex items-center justify-center mb-3">
+              <div className="col-span-full py-16 flex flex-col items-center text-center border border-dashed border-border/60 rounded-2xl bg-card/50">
+                <div className="w-12 h-12 rounded-full bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center mb-3">
                   <Compass className="h-5 w-5 text-violet-400" />
                 </div>
                 <h3 className="text-[15px] font-semibold text-foreground">No suggestions yet</h3>

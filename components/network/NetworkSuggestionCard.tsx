@@ -53,9 +53,9 @@ export default function NetworkSuggestionCard({
   const isConnected = connectionStatus === "connected";
 
   return (
-    <Card className="flex flex-col items-center text-center overflow-hidden border-none shadow-sm bg-white hover:shadow-md transition-all group">
+    <Card className="flex flex-col items-center text-center overflow-hidden border border-border/40 shadow-sm bg-card text-card-foreground hover:shadow-md transition-all group">
       {/* Banner Placeholder */}
-      <div className="h-16 w-full bg-gradient-to-br from-blue-100 to-blue-50 group-hover:from-blue-200 transition-colors" />
+      <div className="h-16 w-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-slate-800 dark:to-slate-900 group-hover:from-blue-200 dark:group-hover:from-slate-700 transition-colors" />
       
       <CardContent className="flex flex-col items-center -mt-9 pb-3 px-4 w-full">
         <Avatar className="h-20 w-20 border-4 border-white shadow-sm shrink-0">

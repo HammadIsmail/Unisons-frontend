@@ -63,10 +63,10 @@ function EventCard({ event }: { event: EventListItem }) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200"
+      className="group flex flex-col rounded-2xl border border-border/40 bg-card text-card-foreground overflow-hidden shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
     >
       {/* Banner */}
-      <div className="relative h-44 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+      <div className="relative h-44 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 overflow-hidden">
         {event.banner_url ? (
           <img
             src={event.banner_url}
@@ -75,13 +75,13 @@ function EventCard({ event }: { event: EventListItem }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <CalendarDays className="h-12 w-12 text-slate-300" />
+            <CalendarDays className="h-12 w-12 text-slate-300 dark:text-slate-600" />
           </div>
         )}
         {/* Date chip */}
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 text-center shadow-sm min-w-[52px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">{d.month}</p>
-          <p className="text-lg font-bold text-slate-900 leading-none">{d.date}</p>
+        <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 text-center shadow-sm min-w-[52px] border border-border/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">{d.month}</p>
+          <p className="text-lg font-bold text-foreground leading-none">{d.date}</p>
         </div>
 {/* Ribbon — clean small version */}
 <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none z-20">
@@ -115,25 +115,25 @@ function EventCard({ event }: { event: EventListItem }) {
 
       {/* Content */}
       <div className="flex flex-col flex-1 p-4">
-        <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+        <h3 className="font-semibold text-foreground text-sm leading-snug mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
           {event.title}
         </h3>
 
         <div className="space-y-1.5 mb-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Clock className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/70" />
             <span>{d.day}, {d.date} {d.month} {d.year} · {d.time}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {event.is_online ? (
               <>
                 <Wifi className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
-                <span className="text-emerald-600 font-medium">Online</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">Online</span>
                 {event.location && <span>· {event.location}</span>}
               </>
             ) : (
               <>
-                <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/70" />
                 <span className="truncate">{event.location || "Location TBD"}</span>
               </>
             )}
@@ -260,18 +260,18 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen">
       {/* Hero Header */}
-      <div className="bg-white border-b border-slate-200">
+      <div className="bg-card border-b border-border/40">
         <div className="max-w-6xl mx-auto px-6 py-10">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight text-slate-900">Events</h1>
-              <p className="text-slate-500 mt-2 text-[15px] max-w-lg">
+              <h1 className="text-4xl font-bold tracking-tight text-foreground">Events</h1>
+              <p className="text-muted-foreground mt-2 text-[15px] max-w-lg">
                 Discover reunions, webinars, workshops, and networking events hosted by the alumni community.
               </p>
             </div>
             {canCreate && (
               <Link href="/events/create">
-                <Button className="gap-2 bg-white !text-blue-600 border !border-blue-600 hover:scale-103 shadow-blue-600/25 shadow-sm cursor-pointer shrink-0">
+                <Button className="gap-2 bg-card text-blue-600 dark:text-blue-400 border border-blue-600 hover:scale-103 shadow-blue-600/25 shadow-sm cursor-pointer shrink-0">
                   <Plus className="h-4 w-4" />
                   Create Event
                 </Button>
@@ -297,8 +297,8 @@ export default function EventsPage() {
                 className={`
                   inline-flex items-center gap-1.5 flex-shrink-0 px-3.5 py-1.5 cursor-pointer rounded-full text-[11px] font-medium transition-all duration-150 border
                   ${selectedType === t.value
-                    ? "bg-white !text-blue-600 border !border-blue-600 shadow-sm scale-[1.02]"
-                    : "border-slate-200 text-slate-600 hover:border-blue-600 hover:!text-blue-600 hover:scale-[1.03]"
+                    ? "bg-card text-blue-600 dark:text-blue-400 border-blue-600 shadow-sm scale-[1.02]"
+                    : "border-border/60 text-muted-foreground hover:border-blue-600 hover:text-blue-600 hover:scale-[1.03]"
                   }
                 `}
               >
@@ -317,7 +317,7 @@ export default function EventsPage() {
                 className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors shrink-0 ${
                   showMyEvents
                     ? "border-transparent bg-blue-600 text-white shadow-sm"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-muted"
                 }`}
               >
                 <CalendarDays className="h-3.5 w-3.5" />
@@ -326,7 +326,7 @@ export default function EventsPage() {
             )}
 
             {/* Online/Offline */}
-            <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium shrink-0">
+            <div className="flex rounded-xl border border-border/60 overflow-hidden bg-card text-xs font-medium shrink-0">
               {(
                 [
                   { label: "All", value: undefined },
@@ -340,7 +340,7 @@ export default function EventsPage() {
                   className={`px-3 py-2 transition-colors ${
                     isOnlineFilter === opt.value
                       ? "bg-blue-600 text-white"
-                      : "text-slate-600 hover:bg-slate-50"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {opt.label}
@@ -349,7 +349,7 @@ export default function EventsPage() {
             </div>
 
             {/* Upcoming / Past */}
-            <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-xs font-medium shrink-0">
+            <div className="flex rounded-xl border border-border/60 overflow-hidden bg-card text-xs font-medium shrink-0">
               {(["upcoming", "past"] as const).map((s) => (
                 <button
                   key={s}
@@ -357,7 +357,7 @@ export default function EventsPage() {
                   className={`px-3 py-2 capitalize transition-colors ${
                     statusFilter === s
                       ? "bg-blue-600 text-white"
-                      : "text-slate-600 hover:bg-slate-50"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {s}
