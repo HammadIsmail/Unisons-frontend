@@ -40,7 +40,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           {/* Left: Logo & Search */}
           <div className="flex items-center gap-4 flex-1">

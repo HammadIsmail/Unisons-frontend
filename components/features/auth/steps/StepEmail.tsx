@@ -73,7 +73,7 @@ export default function StepEmail() {
         <div>
           <h3 className="text-sm font-bold text-foreground">Verify your email</h3>
           <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-            We'll send a 6-digit code to your university email to verify your identity.
+            We'll send a 6-digit code to your email to verify your identity.
           </p>
         </div>
       </div>

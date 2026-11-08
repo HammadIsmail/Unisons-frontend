@@ -48,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [profile, role, updateProfile, queryClient]);
   return (
-    <div className="min-h-screen bg-white has-bottom-nav">
+    <div className="min-h-screen bg-background text-foreground has-bottom-nav">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-6">
         <main className="w-full">

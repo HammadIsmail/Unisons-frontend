@@ -240,8 +240,10 @@ export default function ChatRoomPage() {
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!content.trim() || sendMutation.isPending) return;
-    sendMutation.mutate(content.trim());
+    const textToSend = content.trim();
+    if (!textToSend) return;
+    setContent("");
+    sendMutation.mutate(textToSend);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -524,24 +526,19 @@ export default function ChatRoomPage() {
                   onKeyDown={handleKeyDown}
                   placeholder="Write a message…"
                   rows={1}
-                  disabled={sendMutation.isPending}
-                  className="flex-1 bg-transparent resize-none min-h-[34px] max-h-[120px] py-1 text-[13.5px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none overflow-y-auto scrollbar-hide leading-relaxed disabled:opacity-60"
+                  className="flex-1 bg-transparent resize-none min-h-[34px] max-h-[120px] py-1 text-[13.5px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none overflow-y-auto scrollbar-hide leading-relaxed"
                 />
 
                 <button
                   type="submit"
-                  disabled={!content.trim() || sendMutation.isPending}
+                  disabled={!content.trim()}
                   className={`h-8 w-8 flex-shrink-0 self-end rounded-lg flex items-center justify-center transition-all duration-150 ${
-                    content.trim() && !sendMutation.isPending
+                    content.trim()
                       ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:opacity-90"
                       : "bg-muted/60 text-muted-foreground/30 cursor-not-allowed"
                   }`}
                 >
-                  {sendMutation.isPending ? (
-                    <div className="w-3.5 h-3.5 border-[1.5px] border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Send className="w-3.5 h-3.5 ml-0.5" />
-                  )}
+                  <Send className="w-3.5 h-3.5 ml-0.5" />
                 </button>
               </form>
 

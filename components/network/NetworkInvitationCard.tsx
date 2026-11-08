@@ -26,12 +26,12 @@ export default function NetworkInvitationCard({
   isLoading
 }: NetworkInvitationCardProps) {
   return (
-    <Card className="p-4 border-none shadow-sm bg-white hover:shadow-md transition-shadow">
+    <Card className="p-4 border border-border/40 shadow-sm bg-card text-card-foreground hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-14 w-14 border border-border/40 shrink-0">
             <AvatarImage src={senderImage} />
-            <AvatarFallback className="bg-blue-50 text-sm font-bold text-[#0a66c2]">
+            <AvatarFallback className="bg-blue-50 dark:bg-blue-950/50 text-sm font-bold text-[#0a66c2] dark:text-blue-400">
               {(senderName || "??").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -39,7 +39,7 @@ export default function NetworkInvitationCard({
             <h3 className="font-bold text-[15px] text-foreground truncate hover:underline cursor-pointer">
               {senderName}
             </h3>
-            <h3 className="font-normal text-[12px] text-gray-500 truncate hover:underline cursor-pointer">
+            <h3 className="font-normal text-[12px] text-muted-foreground truncate hover:underline cursor-pointer">
               @{senderUserName}
             </h3>
             <p className="text-xs text-muted-foreground line-clamp-1">
@@ -63,9 +63,9 @@ export default function NetworkInvitationCard({
             size="sm"
             onClick={onAccept}
             disabled={isLoading}
-            className="border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 font-bold text-xs px-4 rounded-full"
+            className="border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 dark:hover:bg-blue-950/30 font-bold text-xs px-4 rounded-full"
           >
-            Accept
+            {isLoading ? "Accepting..." : "Accept"}
           </Button>
         </div>
       </div>

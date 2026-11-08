@@ -136,10 +136,13 @@ export function useNetwork() {
     suggestionsLoading,
     respondInvitation: respondMutation.mutate,
     isResponding: respondMutation.isPending,
+    respondingSenderId: respondMutation.isPending ? (respondMutation.variables as any)?.senderId : null,
     connect: connectMutation.mutate,
     isConnecting: connectMutation.isPending,
+    connectingTargetId: connectMutation.isPending ? (connectMutation.variables as any)?.targetId : null,
     cancelRequest: cancelRequestMutation.mutate,
     isCancelling: cancelRequestMutation.isPending,
+    cancellingTargetId: cancelRequestMutation.isPending ? (cancelRequestMutation.variables as any) : null,
     removeOldConnection,
     isRemoving,
   };

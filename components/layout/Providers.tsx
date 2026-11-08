@@ -5,6 +5,7 @@ import queryClient from "@/lib/queryClient";
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { disconnectSocket } from "@/lib/socket";
+import { ThemeProvider } from "next-themes";
 
 function SocketManager() {
   const { isAuthenticated, token } = useAuthStore();
@@ -20,9 +21,16 @@ function SocketManager() {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SocketManager />
-      {children}
-    </QueryClientProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <QueryClientProvider client={queryClient}>
+        <SocketManager />
+        {children}
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

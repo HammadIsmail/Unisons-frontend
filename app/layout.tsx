@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)} data-scroll-behavior="smooth">
-      <body>
+    <html lang="en" className={cn("font-sans", geist.variable)} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <body className="bg-background text-foreground antialiased min-h-screen">
         <Providers>
           {children}
           <Toaster position="top-center"/>

@@ -176,12 +176,12 @@ function SuggestionCard({
     .toUpperCase();
 
   return (
-    <div className="bg-white w-full sm:w-[220px] border border-gray-100 rounded-2xl overflow-hidden flex flex-col hover:border-blue-200 hover:shadow-lg transition-all duration-200">
+    <div className="bg-card text-card-foreground w-full sm:w-[220px] border border-border/40 rounded-2xl overflow-hidden flex flex-col hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-lg transition-all duration-200">
       {/* Backdrop */}
       <div
         className={cn(
           "h-20 flex-shrink-0 relative",
-          person.backDropImage ? "bg-cover bg-center" : "bg-gradient-to-br from-slate-100 to-slate-200"
+          person.backDropImage ? "bg-cover bg-center" : "bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900"
         )}
         style={
           person.backDropImage
@@ -192,7 +192,7 @@ function SuggestionCard({
         {/* Avatar */}
         <Link
           href={`/profile/${person.id}`}
-          className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[64px] h-[64px] rounded-full border-[3px] border-white bg-muted overflow-hidden flex items-center justify-center text-base font-semibold text-muted-foreground shadow-sm hover:ring-2 hover:ring-blue-400/40 transition-all"
+          className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[64px] h-[64px] rounded-full border-[3px] border-card bg-muted overflow-hidden flex items-center justify-center text-base font-semibold text-muted-foreground shadow-sm hover:ring-2 hover:ring-blue-400/40 transition-all"
         >
           {person.image ? (
             <img src={person.image} alt={person.name} className="w-full h-full object-cover" />
@@ -240,7 +240,7 @@ function SuggestionCard({
             <button
               onClick={onRequestDisconnectConfirm}
               disabled={isLoading}
-              className="w-full py-1.5 rounded-lg text-[12px] font-medium border border-border/60 text-muted-foreground hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors disabled:opacity-50"
+              className="w-full py-1.5 rounded-lg text-[12px] font-medium border border-border/60 text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-200 dark:hover:border-red-900/50 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
             >
               Connected
             </button>
@@ -248,18 +248,18 @@ function SuggestionCard({
             <button
               onClick={onRequestCancelConfirm}
               disabled={isLoading}
-              className="w-full py-1.5 rounded-lg text-[12px] font-medium border border-border/60 text-muted-foreground hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors disabled:opacity-50"
+              className="w-full py-1.5 rounded-lg text-[12px] font-medium border border-border/60 text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-200 dark:hover:border-red-900/50 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
             >
-              Pending…
+              {isLoading ? "Cancelling..." : "Pending…"}
             </button>
           ) : (
             <button
               onClick={onConnect}
               disabled={isLoading}
-              className="w-full py-1.5 rounded-lg text-[12px] font-semibold bg-white border border-blue-400 text-blue-600 hover:bg-blue-50 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+              className="w-full py-1.5 rounded-lg text-[12px] font-semibold bg-white dark:bg-card border border-blue-400 dark:border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              Connect
+              {isLoading ? "Connecting..." : "Connect"}
             </button>
           )}
         </div>
@@ -353,10 +353,13 @@ function NetworkPageContent() {
     suggestionsLoading,
     respondInvitation,
     isResponding,
+    respondingSenderId,
     connect,
     isConnecting,
+    connectingTargetId,
     cancelRequest,
     isCancelling,
+    cancellingTargetId,
     removeOldConnection,
     isRemoving,
   } = useNetwork();
@@ -616,7 +619,7 @@ function NetworkPageContent() {
                       senderImage={invite.sender_profile_picture}
                       onAccept={() => respondInvitation({ senderId: invite.sender_id, action: "accept" })}
                       onIgnore={() => respondInvitation({ senderId: invite.sender_id, action: "reject" })}
-                      isLoading={isResponding}
+                      isLoading={isResponding && respondingSenderId === invite.sender_id}
                     />
                   ))}
                   <div ref={invitationsObserver} className="h-10 flex items-center justify-center">
@@ -738,7 +741,11 @@ function NetworkPageContent() {
                     onConnect={() => handleConnect(person.id)}
                     onCancel={() => cancelRequest(person.id)}
                     onRemove={() => removeOldConnection(person.id)}
-                    isLoading={isConnecting || isCancelling || isRemoving}
+                    isLoading={
+                      (isConnecting && connectingTargetId === person.id) ||
+                      (isCancelling && cancellingTargetId === person.id) ||
+                      isRemoving
+                    }
                     onRequestCancelConfirm={() =>
                       setPendingAction({ type: "cancel", targetId: person.id, targetName: person.name })
                     }
