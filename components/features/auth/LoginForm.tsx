@@ -130,7 +130,7 @@ export default function LoginForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="email" className="text-sm font-semibold text-foreground ml-1">
-            Email or Username
+            Email
           </Label>
           <div className="relative group">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-[#0a66c2] transition-colors">
